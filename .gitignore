@@ -18,6 +18,12 @@ npm-debug.log*
 .env.*
 !.env.example
 
+# OEM manuals and local extracted text (respect document licences)
+manuals/
+oem_exports/
+data/manual_index/*.json
+!data/manual_index/.gitkeep
+
 # Logs and local runtime data
 logs/
 *.log
