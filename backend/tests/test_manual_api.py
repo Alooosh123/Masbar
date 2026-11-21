@@ -113,3 +113,22 @@ def test_manual_search_is_disabled_by_default_without_authentication(tmp_path, m
     assert chat.status_code == 200
     assert "بحث الكتيبات معطل افتراضياً" in chat.json()["message_ar"]
     assert "المصادقة والصلاحيات" in chat.json()["message_ar"]
+
+def test_manual_search_stays_disabled_in_production_even_if_flag_is_true(tmp_path, monkeypatch):
+    _seed_manual_index(tmp_path)
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as client:
+        search = client.get("/api/v1/manuals/search", params={"q": "shaft seal"})
+        chat = client.post(
+            "/api/v1/chat",
+            json={"message": "ابحث في الكتيبات عن shaft seal"},
+        )
+
+    assert search.status_code == 404
+    assert search.json()["detail"]["code"] == "manual_search_disabled"
+    assert "بحث الكتيبات معطل افتراضياً" in chat.json()["message_ar"]
