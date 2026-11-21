@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pytest
 
 from app.core.config import get_settings
@@ -45,8 +47,30 @@ def test_torque_only_for_torque_steps(guard, kb):
     torque = guard.build_torque(record, torque_step)
     assert torque is not None
     assert torque.value_nm == 45.0
-    assert torque.verified_from_manual is True
+    assert torque.verified_from_manual is False
+    assert torque.source_status == "sample"
     assert torque.source_document_id == "SENR9834-08"
+
+
+
+def test_torque_provenance_requires_verified_equipment_and_component(kb):
+    sample_record = kb.require_component("312-5620")
+    sample_torque = SafetyGuard(kb).build_torque(sample_record, sample_record.steps[-1])
+    assert sample_torque is not None
+    assert sample_torque.verified_from_manual is False
+    assert sample_torque.source_status == "sample"
+
+    verified_kb = deepcopy(kb)
+    verified_kb.equipment_files["Caterpillar C15 ACERT"].data_status = "verified"
+    verified_record = verified_kb.require_component("312-5620")
+    verified_record.verification_status = "verified"
+
+    verified_torque = SafetyGuard(verified_kb).build_torque(
+        verified_record, verified_record.steps[-1]
+    )
+    assert verified_torque is not None
+    assert verified_torque.verified_from_manual is True
+    assert verified_torque.source_status == "verified"
 
 
 def test_missing_torque_is_never_invented(guard, kb):
