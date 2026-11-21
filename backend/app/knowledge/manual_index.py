@@ -50,6 +50,7 @@ class ManualChunk(BaseModel):
 
     chunk_id: str = Field(min_length=16, max_length=64)
     doc_id: str
+    pdf_page_index: int = Field(ge=0)
     pdf_page_number: int = Field(ge=1)
     printed_page_number: int | None = Field(default=None, ge=1)
     chunk_index: int = Field(ge=0)
@@ -87,6 +88,7 @@ class ManualSearchHit(BaseModel):
     manufacturer: str
     document_number: str | None
     revision: str | None
+    pdf_page_index: int
     pdf_page_number: int
     printed_page_number: int | None
     section_title: str | None
@@ -228,6 +230,7 @@ def build_manual_index(
                 ManualChunk(
                     chunk_id=chunk_hash,
                     doc_id=doc_id,
+                    pdf_page_index=page_index,
                     pdf_page_number=page_index + 1,
                     printed_page_number=printed_page,
                     chunk_index=chunk_index,
@@ -388,6 +391,7 @@ class ManualLibrary:
                     manufacturer=document.manufacturer,
                     document_number=document.document_number,
                     revision=document.revision,
+                    pdf_page_index=chunk.pdf_page_index,
                     pdf_page_number=chunk.pdf_page_number,
                     printed_page_number=chunk.printed_page_number,
                     section_title=chunk.section_title,
