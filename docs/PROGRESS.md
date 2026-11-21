@@ -252,6 +252,14 @@ VISION_MODEL=command-a-vision-07-2025
 - استثناء ملفات PDF والفهارس النصية من Git، وتركيب مجلد الفهرس في Docker كقراءة فقط.
 - إضافة اختبارات لفهرسة المراجع، تقييد الموديل، حماية سلامة الفهرس، API، والبحث من المحادثة.
 
+**التحقق على آخر commit للفرع (1f8b991b48ce64d6ce20bdc0e0c685d59196f40a):**
+
+- Backend: **79 passed** في GitHub Actions.
+- Frontend: فحص TypeScript وبناء Vite نجحا.
+- npm: فحص الحزم في `npm ci` أظهر **0 vulnerabilities**.
+- Docker Compose: `docker compose config --quiet` نجح؛ لم يتم بناء أو تشغيل الحاويات.
+- E2E: نتيجة 34/34 الموجودة تاريخية وتعتمد على كاميرا canvas وميكروفون وهميين؛ لم تختبر كاميرا فعلية أو ASR حقيقي.
+
 **حدود النسخة الحالية:**
 
 - البحث نصي BM25/lexical؛ لا يوجد Qdrant أو embeddings أو reranker.
