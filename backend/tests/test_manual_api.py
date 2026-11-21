@@ -4,7 +4,6 @@ from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
 from app.deps import reset_caches
-from app.domain.api_models import ChatRequest
 from app.knowledge.manual_index import ManualChunk, ManualDocument, ManualIndex, write_manual_index
 from app.main import app
 
@@ -77,6 +76,7 @@ def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, mo
 def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path, monkeypatch):
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
     get_settings.cache_clear()
     reset_caches()
 
@@ -92,6 +92,7 @@ def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path,
     assert "96546866 0407" in body["message_ar"]
     assert "الصفحة المطبوعة 9" in body["message_ar"]
     assert "لا تنفذ خطوة صيانة" in body["message_ar"]
+
 
 def test_manual_search_is_disabled_by_default_without_authentication(tmp_path, monkeypatch):
     _seed_manual_index(tmp_path)
