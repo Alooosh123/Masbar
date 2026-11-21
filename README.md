@@ -288,6 +288,22 @@ scripts/             # تشغيل + اختبار + smoke + e2e_chat.py
 
 وجود الشركة والرابط والموديل **لا يعني** توفر كتيب الصيانة. قيم العزم وخطوات الفك وLOTO تبقى `sample` حتى استيراد كتيب OEM معتمد؛ المساعد لا يخترع أي قيمة.
 
+### استيعاب كتيبات OEM والبحث داخلها (أول نسخة)
+
+أضيف مسار محلي لاستيعاب ملفات PDF المصرح بمعالجتها، واستخراج النص وتقسيمه إلى مقاطع مرتبطة بمرجع الوثيقة والصفحة:
+
+- أداة الاستيعاب: `scripts/ingest_manual.py`.
+- فهرس التشغيل المحلي: `data/manual_index/` (مستثنى من Git).
+- قائمة المستندات: `GET /api/v1/manuals`.
+- البحث: `GET /api/v1/manuals/search?q=shaft%20seal`.
+- من المحادثة: **«ابحث في الكتيبات عن shaft seal»**.
+
+كل نتيجة تحفظ `pdf_page_index` و`pdf_page_number` و`printed_page_number` منفصلة عند توفرها. يتطلب الاستيعاب تأكيد حق معالجة الملف وتوضيح أساس الإذن؛ لا ترفع ملفات OEM أو مفهرساتها المحمية إلى GitHub.
+
+**حدود النسخة الحالية:** البحث نصي BM25/lexical فقط؛ لا يوجد Qdrant أو embeddings أو OCR أو استخراج آلي لجداول العزم أو تحليل رسومات تفجيرية حتى الآن. الصفحات المصورة تُسجل على أنها تحتاج OCR. نتائج البحث مقتطفات موثقة وليست تعليمات صيانة معتمدة، ولا تتحول إلى قيم عزم أو إجراءات LOTO تشغيلية تلقائياً.
+
+الدليل التفصيلي: [docs/MANUAL_INGESTION_GUIDE_AR.md](docs/MANUAL_INGESTION_GUIDE_AR.md). وسجل مصدر Grundfos CR 5 Model A: [docs/equipment/GRUNDFOS_CR5_MODEL_A_SOURCE_REGISTER_AR.md](docs/equipment/GRUNDFOS_CR5_MODEL_A_SOURCE_REGISTER_AR.md).
+
 ---
 
 ## 8. Docker
