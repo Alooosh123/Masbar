@@ -28,6 +28,7 @@ jobs:
       VISION_PROVIDER: mock
       CHAT_PROVIDER: off
       DEMO_MODE: "true"
+      MANUAL_SEARCH_ENABLED: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,3 +62,12 @@ jobs:
         run: npm ci
       - name: Type-check and build
         run: npm run build
+
+  compose:
+    name: Docker Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
