@@ -237,8 +237,15 @@ class ChatService:
         if self._is_help(message):
             return self._help(session)
 
-        # Explicit manual search returns source excerpts and page citations only.
+        # Excerpts from potentially licensed manuals are opt-in until access control
+        # is available; this app currently has no user authentication layer.
         if self._is_manual_search(message):
+            if not self.settings.manual_search_enabled:
+                return self._system_reply(
+                    "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. فعّله فقط في بيئة محلية/خاصة، "
+                    "ولا تعرض الخادم للإنترنت قبل إضافة المصادقة والصلاحيات.",
+                    session,
+                )
             return self._manual_search_reply(session, message)
 
         # Safety-critical questions always resolve through the knowledge base,
