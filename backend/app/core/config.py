@@ -60,6 +60,14 @@ class Settings(BaseSettings):
     tts_cache_dir: Path = PROJECT_ROOT / "data" / "cache" / "tts"
 
     @property
+    def manual_search_available(self) -> bool:
+        """Manual excerpts are unavailable in production until auth/RBAC exists."""
+        return self.manual_search_enabled and self.environment.strip().lower() not in {
+            "production",
+            "prod",
+        }
+
+    @property
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":
             return ["*"]
