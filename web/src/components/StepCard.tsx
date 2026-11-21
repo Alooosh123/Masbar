@@ -74,7 +74,7 @@ export function StepCard({ session, busy, onStep, onSpeak }: Props) {
       {step.torque_spec && (
         <div className="torque-card">
           <div className="torque-main">
-            <span className="torque-label">عزم الشد المعتمد</span>
+            <span className="torque-label">{step.torque_spec.verified_from_manual ? "عزم الشد المعتمد" : "قيمة عزم تجريبية — غير معتمدة"}</span>
             <div className="torque-value">
               <strong dir="ltr">{step.torque_spec.value_nm}</strong>
               <span>N·m</span>
