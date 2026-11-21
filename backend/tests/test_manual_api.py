@@ -49,6 +49,7 @@ def _seed_manual_index(index_dir):
 def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, monkeypatch):
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
     get_settings.cache_clear()
     reset_caches()
 
@@ -91,3 +92,23 @@ def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path,
     assert "96546866 0407" in body["message_ar"]
     assert "الصفحة المطبوعة 9" in body["message_ar"]
     assert "لا تنفذ خطوة صيانة" in body["message_ar"]
+
+def test_manual_search_is_disabled_by_default_without_authentication(tmp_path, monkeypatch):
+    _seed_manual_index(tmp_path)
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "false")
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as client:
+        search = client.get("/api/v1/manuals/search", params={"q": "shaft seal"})
+        chat = client.post(
+            "/api/v1/chat",
+            json={"message": "ابحث في الكتيبات عن shaft seal"},
+        )
+
+    assert search.status_code == 404
+    assert search.json()["detail"]["code"] == "manual_search_disabled"
+    assert chat.status_code == 200
+    assert "بحث الكتيبات معطل افتراضياً" in chat.json()["message_ar"]
+    assert "المصادقة والصلاحيات" in chat.json()["message_ar"]
