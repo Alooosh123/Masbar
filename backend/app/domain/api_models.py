@@ -201,6 +201,8 @@ class HealthResponse(BaseModel):
     tts_provider: str = "disabled"
     tts_ready: bool = False
     manufacturers: int = 0
+    manual_documents: int = 0
+    manual_chunks: int = 0
 
 
 class ManufacturerSummary(BaseModel):
