@@ -13,7 +13,7 @@
 
 | المكوّن | الحالة |
 | --- | --- |
-| Backend (FastAPI + Pydantic) | ✅ يعمل — **90 اختبار pytest ناجحًا على فرع التطوير (CI)** |
+| Backend (FastAPI + Pydantic) | ✅ يعمل — **91 اختبار pytest ناجحًا على فرع التطوير (CI)** |
 | واجهة المحادثة (Chat-first) | ✅ فقاعات، ردود سريعة، بطاقات قطعة/سلامة/خطوة، صور، وضع داكن RTL |
 | نقطة المحادثة الموحّدة `/api/v1/chat` | ✅ أوامر + جلسة + تحديد + وصف صور + محادثة عامة |
 | محرك السلامة الحتمي (LOTO + العزم) | ✅ يُفرض على الخادم ولا يمكن تجاوزه من الواجهة أو المحادثة |
@@ -26,7 +26,7 @@
 | الجلسات وسجل التدقيق | ✅ SQLite محلي دائم مع TTL واستعادة بعد إعادة تشغيل الخادم؛ Docker volume |
 | اختبار E2E آلي | ✅ **34/34 فحصًا مسجلاً** عبر Chrome/CDP؛ كاميرا canvas وميكروفون وهميان وليسا أجهزة ميدانية |
 | كتيبات OEM (PDF) | ✅ استيعاب محلي + بحث BM25 مع مراجع صفحات؛ مقتطفات البحث معطلة افتراضياً في الإنتاج |
-| Docker | ✅ ملفات جاهزة — فحص `docker compose config` ناجح؛ لم يتم بناء أو تشغيل الحاويات بعد |
+| Docker | ✅ صورتا Backend وFrontend بُنيتا؛ اختبار تشغيل CI أثبت وصول الواجهتين وعمل Backend بصلاحيات غير root مع استعادة الجلسة بعد إعادة التشغيل |
 
 ### لقطات من واجهة المحادثة (عرض جوال 430px)
 
@@ -105,7 +105,7 @@ Invoke-RestMethod http://localhost:8010/health
 cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-آخر CI ناجح على commit `553d4ad4f60a7e6a5d1fb1b8b2515ab3ef27e79b`: **90 passed** في Backend، وبناء الواجهة وفحص Compose ناجحان، و`npm ci` أظهر **0 vulnerabilities**. [عرض CI](https://github.com/Alooosh123/Masbar/actions/runs/44949143668).
+آخر CI ناجح على commit `cb1b2cdf3914af2d2b61eabf9ea5954901f32385`: **91 passed** في Backend، وبناء TypeScript/Vite ناجح، و`npm ci` أظهر **0 vulnerabilities**. بُنيت صور Docker وشُغلت الخدمتان في CI، واختُبرت استعادة جلسة وسجل تدقيق بعد إعادة تشغيل Backend. [عرض CI](https://github.com/Alooosh123/Masbar/actions/runs/44949746855).
 
 ### اختبار E2E فعلي للواجهة
 
@@ -232,7 +232,7 @@ backend/
       chat/          # cohere chat + vision descriptions
       tts/           # Arabic neural TTS (Edge) + disk cache
       vision/        # mock + OpenAI-compatible + Cohere VLM
-  tests/             # 64 tests
+  tests/             # 91 tests في آخر تشغيل CI
 data/kb/             # 3 ملفات معرفة تجريبية (9 قطع)
 data/catalog/        # سجل مصادر OEM الرسمية (31 شركة / 126 موديلًا)
 data/cache/tts/      # ذاكرة MP3 عربية للعمل دون اتصال
@@ -316,6 +316,8 @@ scripts/             # تشغيل + اختبار + smoke + e2e_chat.py
 
 هذا التخزين مخصص لنسخة تطبيق واحدة على مضيف واحد؛ لا يوفر مشاركة آمنة بين عدة workers أو hosts، ولا نسخاً احتياطياً آلياً أو استعادة مجربة. عند التوسع يلزم تخزين مشترك وإعداد نسخ احتياطية واختبار الاستعادة.
 
+## 9. Docker
+
 ```powershell
 docker compose up --build
 ```
@@ -324,7 +326,7 @@ docker compose up --build
 - الخادم: http://localhost:8010
 - لتفعيل OpenAI: أنشئ `.env` بجانب `docker-compose.yml` بنفس متغيرات القسم 4 (يُقرأ عبر `env_file`).
 
-> ملاحظة: تم التحقق من صحة `docker-compose.yml` ومن ملفات Dockerfiles، لكن بناء الصور وتشغيل الحاويات لم يُختبرا بعد على هذا الجهاز. إذا كان المنفذ 8010 مستخدمًا من التشغيل المحلي، أوقف الخادم المحلي أولًا.
+تم بناء صورتي Backend وFrontend وتشغيلهما في GitHub Actions على Linux runner. تحقق الاختبار من استجابة /health والواجهة، ومن أن Backend يعمل بالمستخدم UID 10001 وجذر ملفات للقراءة فقط، ثم أنشأ جلسة وأعاد تشغيل الحاوية وتحقق من استعادة الجلسة وسجل التدقيق من Docker volume. هذه نتيجة اختبار CI وليست نشراً على جهازك أو على خادم إنتاج. إذا كان المنفذ 8010 مستخدماً من التشغيل المحلي، أوقف الخادم المحلي أولاً.
 
 ---
 
