@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
-from app.deps import get_manual_library
+from app.core.config import get_settings\nfrom app.deps import get_manual_library
 from app.knowledge.manual_index import ManualDocumentSummary, ManualSearchResponse
 
 router = APIRouter(prefix="/api/v1", tags=["manuals"])
@@ -23,6 +23,15 @@ def search_manuals(
     This is lexical retrieval, not vector retrieval, OCR, or authorization to
     execute a maintenance procedure.
     """
+    if not get_settings().manual_search_enabled:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "manual_search_disabled",
+                "message_ar": "بحث مقتطفات الكتيبات معطل افتراضياً. فعّله فقط في بيئة محلية/خاصة إلى أن تُضاف مصادقة وصلاحيات.",
+            },
+        )
+
     library = get_manual_library()
     hits = library.search(q, equipment_model=equipment_model, limit=limit)
     return ManualSearchResponse(
