@@ -13,7 +13,7 @@
 
 | المكوّن | الحالة |
 | --- | --- |
-| Backend (FastAPI + Pydantic) | ✅ يعمل — **79 اختبار pytest ناجحًا على فرع التطوير (CI)** |
+| Backend (FastAPI + Pydantic) | ✅ يعمل — **90 اختبار pytest ناجحًا على فرع التطوير (CI)** |
 | واجهة المحادثة (Chat-first) | ✅ فقاعات، ردود سريعة، بطاقات قطعة/سلامة/خطوة، صور، وضع داكن RTL |
 | نقطة المحادثة الموحّدة `/api/v1/chat` | ✅ أوامر + جلسة + تحديد + وصف صور + محادثة عامة |
 | محرك السلامة الحتمي (LOTO + العزم) | ✅ يُفرض على الخادم ولا يمكن تجاوزه من الواجهة أو المحادثة |
@@ -105,7 +105,7 @@ Invoke-RestMethod http://localhost:8010/health
 cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-آخر تحقق مكتمل قبل إضافة SQLite: **87 passed** في Backend، وبناء الواجهة وفحص Compose ناجحان. نتائج CI للنسخة الحالية قيد التحقق.
+آخر CI ناجح على commit `553d4ad4f60a7e6a5d1fb1b8b2515ab3ef27e79b`: **90 passed** في Backend، وبناء الواجهة وفحص Compose ناجحان، و`npm ci` أظهر **0 vulnerabilities**. [عرض CI](https://github.com/Alooosh123/Masbar/actions/runs/44949143668).
 
 ### اختبار E2E فعلي للواجهة
 
@@ -237,7 +237,6 @@ data/kb/             # 3 ملفات معرفة تجريبية (9 قطع)
 data/catalog/        # سجل مصادر OEM الرسمية (31 شركة / 126 موديلًا)
 data/cache/tts/      # ذاكرة MP3 عربية للعمل دون اتصال
 data/sessions/        # قاعدة SQLite محلية للجلسات (مستثناة من Git)
-data/sessions/        # قاعدة SQLite محلية للجلسات (مستثناة من Git)
 web/                 # PWA (React + Vite) — ChatScreen + ChatCamera
 docs/blueprint/      # خطة النظام الأصلية (6 مراحل)
 docs/test-results/   # تقارير الاختبار الفعلي (JSON)
@@ -311,7 +310,11 @@ scripts/             # تشغيل + اختبار + smoke + e2e_chat.py
 
 ---
 
-## 8. تخزين الجلسات\n\nيحفظ مِسبار الجلسات وسجل التدقيق في SQLite محلياً داخل `data/sessions/sessions.sqlite3` افتراضياً (`SESSION_DB_PATH`). في Docker يستخدم volume دائم باسم `misbar_sessions`، حتى تبقى البيانات بعد استبدال الحاوية. مدة الصلاحية الافتراضية 240 دقيقة (`SESSION_TTL_MINUTES`).\n\nهذا التخزين مخصص لنسخة تطبيق واحدة على مضيف واحد؛ لا يوفر مشاركة آمنة بين عدة workers أو hosts، ولا نسخاً احتياطياً آلياً أو استعادة مجربة. عند التوسع يلزم تخزين مشترك وإعداد نسخ احتياطية واختبار الاستعادة.\n\n## 9. Docker
+## 8. تخزين الجلسات
+
+يحفظ مِسبار الجلسات وسجل التدقيق في SQLite محلياً داخل `data/sessions/sessions.sqlite3` افتراضياً (`SESSION_DB_PATH`). في Docker يستخدم volume دائم باسم `misbar_sessions`، حتى تبقى البيانات بعد استبدال الحاوية. مدة الصلاحية الافتراضية 240 دقيقة (`SESSION_TTL_MINUTES`).
+
+هذا التخزين مخصص لنسخة تطبيق واحدة على مضيف واحد؛ لا يوفر مشاركة آمنة بين عدة workers أو hosts، ولا نسخاً احتياطياً آلياً أو استعادة مجربة. عند التوسع يلزم تخزين مشترك وإعداد نسخ احتياطية واختبار الاستعادة.
 
 ```powershell
 docker compose up --build
