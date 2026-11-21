@@ -106,7 +106,7 @@ GET /api/v1/manuals
 GET /api/v1/manuals/search?q=shaft%20seal&equipment_model=Grundfos%20CR%205%20Model%20A&limit=5
 ```
 
-كل نتيجة تحتوي مرجع الوثيقة، ورقم صفحة PDF، والصفحة المطبوعة إذا كانت مكتشفة، والقسم، ومقتطفاً نصياً قصيراً، ورابط المصدر إن كان موجوداً.
+كل نتيجة تحتوي مرجع الوثيقة، و`pdf_page_index` و`pdf_page_number` و`printed_page_number` عند اكتشافه، والقسم، ومقتطفاً نصياً قصيراً، ورابط المصدر إن كان موجوداً.
 
 حقول الاستجابة تعلن صراحة:
 - `retrieval_method = bm25_lexical`
