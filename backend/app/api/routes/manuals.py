@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 
-from app.core.config import get_settings\nfrom app.deps import get_manual_library
+from app.core.config import get_settings
+from app.deps import get_manual_library
 from app.knowledge.manual_index import ManualDocumentSummary, ManualSearchResponse
 
 router = APIRouter(prefix="/api/v1", tags=["manuals"])
