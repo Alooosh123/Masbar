@@ -1,9 +1,10 @@
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from app.core.config import get_settings
-from app.domain.kb import CueSpec, StepRecord
+from app.domain.kb import CueSpec, StepRecord, VerificationEvidence
 from app.knowledge.loader import load_knowledge_base
 from app.safety.guard import SafetyGuard, SafetyViolation
 
@@ -16,6 +17,25 @@ def kb():
 @pytest.fixture(scope="module")
 def guard(kb):
     return SafetyGuard(kb, min_visual_confidence=0.85)
+
+
+def _verified_evidence(record, equipment_model: str) -> VerificationEvidence:
+    reviewed_at = datetime(2026, 11, 21, 10, 0, tzinfo=timezone.utc)
+    return VerificationEvidence(
+        source_document_id=record.manual_doc_id,
+        source_document_number="SYNTHETIC-QA-001",
+        source_revision="test-revision",
+        source_sha256="a" * 64,
+        source_page=record.manual_page,
+        equipment_model=equipment_model,
+        nameplate_reference="TEST-ASSET-REFERENCE-001",
+        reviewed_by="reviewer-test",
+        reviewed_at=reviewed_at,
+        approved_by="approver-test",
+        approved_at=reviewed_at + timedelta(minutes=5),
+        approval_reference="TEST-APPROVAL-001",
+        reviewed_scopes=["identity", "procedure", "torque", "safety"],
+    )
 
 
 def test_unknown_part_is_rejected(guard):
@@ -52,18 +72,34 @@ def test_torque_only_for_torque_steps(guard, kb):
     assert torque.source_document_id == "SENR9834-08"
 
 
-
-def test_torque_provenance_requires_verified_equipment_and_component(kb):
+def test_torque_provenance_requires_traceable_independent_review(kb):
     sample_record = kb.require_component("312-5620")
     sample_torque = SafetyGuard(kb).build_torque(sample_record, sample_record.steps[-1])
     assert sample_torque is not None
     assert sample_torque.verified_from_manual is False
     assert sample_torque.source_status == "sample"
 
+    # Merely flipping status flags must not turn an unreferenced value into an approved one.
+    unreviewed_kb = deepcopy(kb)
+    unreviewed_kb.equipment_files["Caterpillar C15 ACERT"].data_status = "verified"
+    unreviewed_record = unreviewed_kb.require_component("312-5620")
+    unreviewed_record.verification_status = "verified"
+    unreviewed_torque = SafetyGuard(unreviewed_kb).build_torque(
+        unreviewed_record, unreviewed_record.steps[-1]
+    )
+    assert unreviewed_torque is not None
+    assert unreviewed_torque.verified_from_manual is False
+    assert unreviewed_torque.source_status == "sample"
+
+    # A verified value needs a source/page hash, model/nameplate match and two distinct reviewers.
     verified_kb = deepcopy(kb)
-    verified_kb.equipment_files["Caterpillar C15 ACERT"].data_status = "verified"
     verified_record = verified_kb.require_component("312-5620")
+    evidence = _verified_evidence(verified_record, "Caterpillar C15 ACERT")
     verified_record.verification_status = "verified"
+    verified_record.verification_evidence = evidence
+    verified_equipment = verified_kb.equipment_files["Caterpillar C15 ACERT"]
+    verified_equipment.data_status = "verified"
+    verified_equipment.equipment_verification_evidence = evidence
 
     verified_torque = SafetyGuard(verified_kb).build_torque(
         verified_record, verified_record.steps[-1]
@@ -71,6 +107,33 @@ def test_torque_provenance_requires_verified_equipment_and_component(kb):
     assert verified_torque is not None
     assert verified_torque.verified_from_manual is True
     assert verified_torque.source_status == "verified"
+
+
+def test_verification_evidence_requires_independent_review_and_timezone():
+    valid = {
+        "source_document_id": "DOC-001",
+        "source_document_number": "OEM-001",
+        "source_revision": "Rev A",
+        "source_sha256": "b" * 64,
+        "source_page": 12,
+        "equipment_model": "Machine Model A",
+        "nameplate_reference": "ASSET-REF-01",
+        "reviewed_by": "reviewer",
+        "reviewed_at": "2026-11-21T10:00:00Z",
+        "approved_by": "approver",
+        "approved_at": "2026-11-21T10:05:00Z",
+        "approval_reference": "QA-APPROVAL-01",
+        "reviewed_scopes": ["identity", "procedure"],
+    }
+    assert VerificationEvidence.model_validate(valid)
+
+    same_person = {**valid, "approved_by": " REVIEWER "}
+    with pytest.raises(ValueError, match="different people"):
+        VerificationEvidence.model_validate(same_person)
+
+    naive_timestamp = {**valid, "reviewed_at": "2026-11-21T10:00:00"}
+    with pytest.raises(ValueError, match="timezone"):
+        VerificationEvidence.model_validate(naive_timestamp)
 
 
 def test_missing_torque_is_never_invented(guard, kb):

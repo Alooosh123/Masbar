@@ -52,7 +52,15 @@ class KnowledgeBase:
         for model in component.equipment_models:
             equipment_file = self.equipment_files.get(model)
             if equipment_file is not None:
-                return equipment_file.data_status
+                evidence = equipment_file.equipment_verification_evidence
+                if (
+                    equipment_file.data_status == "verified"
+                    and evidence is not None
+                    and evidence.equipment_model == model
+                    and "identity" in evidence.reviewed_scopes
+                ):
+                    return "verified"
+                return "sample"
         return "sample"
 
 

@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> core -> app -> backend -> project root
@@ -72,6 +73,17 @@ class Settings(BaseSettings):
         if self.cors_origins.strip() == "*":
             return ["*"]
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def reject_wildcard_cors_in_production(self) -> "Settings":
+        if (
+            self.environment.strip().lower() in {"production", "prod"}
+            and "*" in self.cors_origin_list
+        ):
+            raise ValueError(
+                "CORS_ORIGINS must list explicit trusted origins in production; wildcard CORS is refused"
+            )
+        return self
 
 
 @lru_cache

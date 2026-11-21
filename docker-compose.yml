@@ -12,7 +12,7 @@ services:
         required: false
     environment:
       ENVIRONMENT: production
-      CORS_ORIGINS: "*"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:8080}"
       MANUAL_SEARCH_ENABLED: "false"
     volumes:
       - ./data/manual_index:/app/data/manual_index:ro
