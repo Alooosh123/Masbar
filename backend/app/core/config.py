@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Knowledge base
     kb_dir: Path = PROJECT_ROOT / "data" / "kb"
     oem_registry_path: Path = PROJECT_ROOT / "data" / "catalog" / "oem_registry.json"
+    manual_index_dir: Path = PROJECT_ROOT / "data" / "manual_index"
     min_visual_confidence: float = 0.85
     demo_mode: bool = True
 
