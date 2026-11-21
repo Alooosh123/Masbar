@@ -240,7 +240,7 @@ class ChatService:
         # Excerpts from potentially licensed manuals are opt-in until access control
         # is available; this app currently has no user authentication layer.
         if self._is_manual_search(message):
-            if not self.settings.manual_search_enabled:
+            if not self.settings.manual_search_available:
                 return self._system_reply(
                     "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. فعّله فقط في بيئة محلية/خاصة، "
                     "ولا تعرض الخادم للإنترنت قبل إضافة المصادقة والصلاحيات.",
