@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.adapters.chat.factory import chat_is_configured
 from app.adapters.tts.edge import tts_is_available
-from app.deps import get_assistant, get_kb, get_oem_registry
+from app.deps import get_assistant, get_kb, get_manual_library, get_oem_registry
 from app.domain.api_models import HealthResponse
 
 router = APIRouter(tags=["health"])
@@ -26,6 +26,8 @@ def health() -> HealthResponse:
         tts_provider=settings.tts_provider if tts_is_available(settings.tts_provider) else "disabled",
         tts_ready=tts_is_available(settings.tts_provider),
         manufacturers=get_oem_registry().count,
+        manual_documents=len(get_manual_library().documents),
+        manual_chunks=len(get_manual_library().chunks),
     )
 
 
