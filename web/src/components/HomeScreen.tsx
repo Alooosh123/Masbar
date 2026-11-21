@@ -45,8 +45,8 @@ export function HomeScreen({
             <ShieldIcon size={22} />
           </span>
           <span className="brand-text">
-            <strong>المساعد الصناعي</strong>
-            <small>SPATIAL AI · FIELD</small>
+            <strong>مسبار</strong>
+            <small>MASBAR · SPATIAL AI</small>
           </span>
         </div>
         <span className="version-chip">MVP 0.1</span>

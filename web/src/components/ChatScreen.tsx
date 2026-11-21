@@ -700,7 +700,7 @@ export function ChatScreen() {
             <SparkIcon size={21} />
           </span>
           <div className="chat-brand-copy">
-            <strong>مساعد المصنع</strong>
+            <strong>مسبار</strong>
             <small>
               <span className={`chat-status-dot ${online ? "online" : "offline"}`} />
               {health === null
@@ -776,7 +776,7 @@ export function ChatScreen() {
                 <div className="chat-msg-content">
                   {message.role === "assistant" && (
                     <div className="chat-msg-meta">
-                      <strong>مساعد المصنع</strong>
+                      <strong>مسبار</strong>
                       {message.source && (
                         <span className={`chat-source ${message.source}`}>
                           {SOURCE_LABELS[message.source]}

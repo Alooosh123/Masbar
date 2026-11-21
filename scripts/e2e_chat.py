@@ -513,7 +513,7 @@ def main() -> int:
         cdp.call("Page.navigate", {"url": APP_URL})
 
         cdp.wait_js(
-            "document.querySelector('.chat-brand-copy strong')?.textContent.includes('مساعد المصنع')",
+            "document.querySelector('.chat-brand-copy strong')?.textContent.includes('مسبار')",
             30,
             "app shell",
         )
