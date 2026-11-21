@@ -130,7 +130,7 @@ def test_verified_evidence_must_match_source_page():
         "approved_by": "approver",
         "approved_at": "2026-11-21T10:05:00Z",
         "approval_reference": "SYNTHETIC-APPROVAL-001",
-        "reviewed_scopes": ["identity", "procedure", "safety"],
+        "reviewed_scopes": ["identity", "procedure", "torque", "safety"],
     }
     component["verification_evidence"] = evidence
     raw["data_status"] = "verified"

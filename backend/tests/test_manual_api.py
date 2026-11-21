@@ -119,6 +119,7 @@ def test_manual_search_stays_disabled_in_production_even_if_flag_is_true(tmp_pat
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
     monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("CORS_ORIGINS", "https://frontend.example.test")
     get_settings.cache_clear()
     reset_caches()
 
