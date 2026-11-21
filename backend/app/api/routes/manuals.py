@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Query
 
 from app.deps import get_manual_library
-from app.domain.api_models import ManualSearchResponse
-from app.knowledge.manual_index import ManualDocumentSummary
+from app.knowledge.manual_index import ManualDocumentSummary, ManualSearchResponse
 
 router = APIRouter(prefix="/api/v1", tags=["manuals"])
 
