@@ -44,3 +44,13 @@ def test_in_memory_mode_remains_available():
     session = store.create("Siemens S7-1200 Control Panel")
     assert store.get(session.id).equipment_model == "Siemens S7-1200 Control Panel"
     assert store.count() == 1
+
+
+
+def test_session_ids_use_high_entropy_random_tokens():
+    store = SessionStore()
+    session_ids = [store.create("Caterpillar C15 ACERT").id for _ in range(25)]
+    tokens = [session_id.split("-", 2)[2] for session_id in session_ids]
+
+    assert len(set(session_ids)) == len(session_ids)
+    assert all(len(token) >= 40 for token in tokens)

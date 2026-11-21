@@ -181,7 +181,7 @@ class SessionStore:
 
     def create(self, equipment_model: str) -> Session:
         with self._lock:
-            session_id = f"mnt-{utc_now():%Y%m%d}-{secrets.token_hex(3)}"
+            session_id = f"mnt-{utc_now():%Y%m%d}-{secrets.token_urlsafe(32)}"
             session = Session(id=session_id, equipment_model=equipment_model)
             self._sessions[session_id] = session
             self.audit(session, "session_created", f"بدأت جلسة صيانة لمعدة: {equipment_model}")

@@ -64,7 +64,7 @@ jobs:
         run: npm run build
 
   compose:
-    name: Docker Compose configuration and image build
+    name: Docker image build and runtime smoke test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -73,3 +73,60 @@ jobs:
         run: docker compose config --quiet
       - name: Build production images
         run: docker compose build
+      - name: Run containers and verify persistent session recovery
+        run: |
+          set -euo pipefail
+          docker compose up -d
+
+          cleanup() {
+            docker compose down --volumes
+          }
+          trap cleanup EXIT
+
+          wait_for_backend() {
+            for attempt in $(seq 1 45); do
+              if curl --fail --silent http://127.0.0.1:8010/health >/dev/null; then
+                return 0
+              fi
+              sleep 2
+            done
+            docker compose logs backend
+            return 1
+          }
+
+          wait_for_backend
+          curl --fail --silent http://127.0.0.1:8080/ >/dev/null
+
+          backend_uid="$(docker compose exec -T backend id -u | tr -d '\r')"
+          test "$backend_uid" = "10001"
+
+          readonly_root="$(docker inspect "$(docker compose ps -q backend)" --format '{{.HostConfig.ReadonlyRootfs}}')"
+          test "$readonly_root" = "true"
+
+          session_response="$(curl --fail --silent --show-error \
+            -X POST http://127.0.0.1:8010/api/v1/sessions \
+            -H 'Content-Type: application/json' \
+            -d '{"equipment_model":"Caterpillar C15 ACERT"}')"
+          session_id="$(python -c 'import json,sys; print(json.load(sys.stdin)["session_id"])' <<< "$session_response")"
+
+          docker compose restart backend
+          wait_for_backend
+
+          curl --fail --silent --show-error \
+            "http://127.0.0.1:8010/api/v1/sessions/$session_id" \
+            -o /tmp/restored-session.json
+          curl --fail --silent --show-error \
+            "http://127.0.0.1:8010/api/v1/sessions/$session_id/audit" \
+            -o /tmp/restored-audit.json
+
+          SESSION_ID="$session_id" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          session = json.loads(Path("/tmp/restored-session.json").read_text())
+          audit = json.loads(Path("/tmp/restored-audit.json").read_text())
+          assert session["session_id"] == os.environ["SESSION_ID"]
+          assert audit["session_id"] == os.environ["SESSION_ID"]
+          assert any(item["event"] == "session_created" for item in audit["entries"])
+          PY
