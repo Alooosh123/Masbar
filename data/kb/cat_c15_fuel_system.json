@@ -1,0 +1,165 @@
+{
+  "schema_version": "1.0",
+  "equipment_family": "Caterpillar C15 ACERT",
+  "manufacturer": "Caterpillar",
+  "data_status": "sample",
+  "disclaimer_ar": "بيانات هذا الملف نموذجية لأغراض العرض والاختبار فقط. لا تعتمد عليها في صيانة محرك حقيقي؛ ارجع إلى كتيب Caterpillar الرسمي وإجراءات السلامة المعتمدة.",
+  "components": [
+    {
+      "part_number": "312-5620",
+      "english_name": "Fuel Injection Actuator Control Valve",
+      "arabic_name": "صمام التحكم في مشغل حقن الوقود",
+      "equipment_models": ["Caterpillar C15 ACERT"],
+      "manual_doc_id": "SENR9834-08",
+      "manual_page": 142,
+      "section_title": "Disassembly and Assembly - Fuel System",
+      "torque_nm": 45.0,
+      "tightening_sequence": "اربط مسماري التثبيت على مرحلتين: 20 نيوتن·م ثم 45 نيوتن·م بنمط متقاطع.",
+      "symptoms": ["oil leak", "fuel leak", "valve leakage", "actuator fault", "rough idle"],
+      "symptoms_ar": ["تسريب زيت", "تسريب ديزل", "تهريب وقود", "خلل في المشغل", "رجفة في المحرك"],
+      "related_parts": [
+        {"part_number": "238-5080", "name_ar": "حلقة منع تسرب O-Ring", "name_en": "O-Ring Seal"},
+        {"part_number": "154-2211", "name_ar": "حشية", "name_en": "Gasket"}
+      ],
+      "safety": {
+        "loto_required": true,
+        "severity": "CRITICAL",
+        "warnings_ar": [
+          "افصل مفتاح البطاريات الرئيسي وضع بطاقة تحذير الصيانة قبل البدء.",
+          "انتظر 10 دقائق على الأقل بعد إيقاف المحرك لتفريغ ضغط الوقود العالي وتجنب الحروق.",
+          "ارتدِ واقي وجه وقفازات مقاومة للوقود عند فتح خط الوقود."
+        ],
+        "checklist": [
+          {"id": "battery_disconnected", "label_ar": "فصلت مفتاح البطارية الرئيسي"},
+          {"id": "pressure_released", "label_ar": "انتظرت 10 دقائق وتأكدت من تفريغ ضغط الوقود"},
+          {"id": "lockout_tag", "label_ar": "ركبت قفل وبطاقة السلامة (LOTO)"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل الفيش الكهربائي الرباعي من أعلى الصمام بالضغط على لسان التثبيت المعدني وسحبه للأعلى.",
+          "tool_required_ar": "باليد أو مفك عادي صغير",
+          "warning_ar": "لا تسحب الفيش من الأسلاك مباشرة؛ اضغط على لسان التثبيت أولًا.",
+          "cue": {"cue_type": "DISCONNECT_PLUG", "direction": "UP", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "فك مسماري التثبيت الجانبيين مقاس 10 ملم بعكس اتجاه عقارب الساعة.",
+          "tool_required_ar": "مفتاح ربط أو حبة 10 ملم",
+          "cue": {"cue_type": "ROTATE_CCW", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 3,
+          "instruction_ar": "اسحب الصمام بحذر واستبدل حلقة منع التسرب رقم 238-5080 بأخرى جديدة مدهونة بزيت محرك نظيف.",
+          "tool_required_ar": "أداة إزالة الحلقات المطاطية (Pick Tool)",
+          "warning_ar": "تأكد من عدم بقاء أي جزء من الحلقة القديمة داخل التجويف.",
+          "cue": {"cue_type": "PULL_ARROW", "direction": "OUT", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 4,
+          "instruction_ar": "أعد تركيب الصمام واربط مسماري التثبيت بالعزم المعتمد على مرحلتين، ثم أعد توصيل الفيش الكهربائي.",
+          "tool_required_ar": "مفتاح عزم (Torque Wrench)",
+          "requires_torque": true,
+          "verification_ar": "بعد التشغيل، افحص منطقة الصمام بحثًا عن أي تسريب لمدة دقيقتين.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    },
+    {
+      "part_number": "DEMO-C15-FFB-01",
+      "english_name": "Fuel Filter Base Assembly",
+      "arabic_name": "قاعدة فلتر الوقود",
+      "equipment_models": ["Caterpillar C15 ACERT"],
+      "manual_doc_id": "DEMO-C15-FUEL-02",
+      "manual_page": 88,
+      "section_title": "Fuel System - Filter Base Removal",
+      "torque_nm": 25.0,
+      "tightening_sequence": "اربط مسامير القاعدة بالتساوي بنمط متقاطع على مرحلتين.",
+      "symptoms": ["diesel leak", "fuel leak", "hard starting", "air in fuel system"],
+      "symptoms_ar": ["تسريب ديزل", "تهريب وقود", "صعوبة تشغيل", "هواء في نظام الوقود"],
+      "related_parts": [
+        {"part_number": "DEMO-C15-FFG-01", "name_ar": "حشية قاعدة الفلتر", "name_en": "Filter Base Gasket"}
+      ],
+      "safety": {
+        "loto_required": true,
+        "severity": "CRITICAL",
+        "warnings_ar": [
+          "أغلق خط الوقود وافصل البطارية قبل فك القاعدة.",
+          "الوقود المتسرب قابل للاشتعال؛ أبعد مصادر الشرر وجهّز مطفأة حريق."
+        ],
+        "checklist": [
+          {"id": "battery_disconnected", "label_ar": "فصلت مفتاح البطارية الرئيسي"},
+          {"id": "fuel_shutoff", "label_ar": "أغلقت محبس الوقود وتأكدت من عدم وجود ضغط"},
+          {"id": "lockout_tag", "label_ar": "ركبت قفل وبطاقة السلامة (LOTO)"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل خرطوم دخول الوقود من قاعدة الفلتر وضع وعاءً أسفلها لالتقاط أي وقود متبقٍ.",
+          "tool_required_ar": "مفتاح صواميل خطوط الوقود",
+          "cue": {"cue_type": "DISCONNECT_PLUG", "direction": "DOWN", "color_hex": "#EF4444"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "فك مسامير تثبيت القاعدة الثلاثة وارفع القاعدة مع الحشية القديمة.",
+          "tool_required_ar": "حبة 13 ملم",
+          "cue": {"cue_type": "ROTATE_CCW", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 3,
+          "instruction_ar": "نظف سطح التثبيت، ضع الحشية الجديدة، وأعد ربط المسامير بالعزم المعتمد.",
+          "tool_required_ar": "مفتاح عزم (Torque Wrench)",
+          "requires_torque": true,
+          "verification_ar": "شغّل المحرك وافحص القاعدة بحثًا عن تسريب قبل إعادة الغطاء.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    },
+    {
+      "part_number": "DEMO-C15-OPS-01",
+      "english_name": "Engine Oil Pressure Sensor",
+      "arabic_name": "حساس ضغط زيت المحرك",
+      "equipment_models": ["Caterpillar C15 ACERT"],
+      "manual_doc_id": "DEMO-C15-ELEC-03",
+      "manual_page": 61,
+      "section_title": "Electrical System - Oil Pressure Sensor",
+      "torque_nm": 20.0,
+      "symptoms": ["low oil pressure warning", "gauge fault", "oil leak at sensor"],
+      "symptoms_ar": ["تحذير ضغط زيت منخفض", "خلل في العداد", "تسريب زيت عند الحساس"],
+      "related_parts": [],
+      "safety": {
+        "loto_required": true,
+        "severity": "WARNING",
+        "warnings_ar": [
+          "افصل البطارية قبل فك أي موصل كهربائي.",
+          "قد يكون الحساس ساخنًا بعد التشغيل؛ انتظر حتى يبرد."
+        ],
+        "checklist": [
+          {"id": "battery_disconnected", "label_ar": "فصلت مفتاح البطارية الرئيسي"},
+          {"id": "engine_cooled", "label_ar": "انتظرت حتى يبرد المحرك"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل موصل الحساس الكهربائي ثم فك الحساس بعكس اتجاه عقارب الساعة.",
+          "tool_required_ar": "مفتاح حساس أو مقاس مناسب",
+          "cue": {"cue_type": "ROTATE_CCW", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "ركب الحساس الجديد مع وجهه المحكم واربطه بالعزم المعتمد ثم أعد توصيل الفيش.",
+          "tool_required_ar": "مفتاح عزم (Torque Wrench)",
+          "requires_torque": true,
+          "verification_ar": "شغّل المحرك وتأكد من اختفاء التحذير وعدم وجود تسريب.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    }
+  ]
+}

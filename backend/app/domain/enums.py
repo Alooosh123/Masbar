@@ -1,0 +1,45 @@
+from enum import Enum
+
+
+class SafetySeverity(str, Enum):
+    INFO = "INFO"
+    WARNING = "WARNING"
+    CRITICAL = "CRITICAL"
+
+
+class CueType(str, Enum):
+    HIGHLIGHT_MESH = "HIGHLIGHT_MESH"
+    PULL_ARROW = "PULL_ARROW"
+    PUSH_ARROW = "PUSH_ARROW"
+    ROTATE_CCW = "ROTATE_CCW"
+    ROTATE_CW = "ROTATE_CW"
+    DISCONNECT_PLUG = "DISCONNECT_PLUG"
+
+
+class SessionState(str, Enum):
+    CREATED = "CREATED"
+    IDENTIFIED = "IDENTIFIED"
+    AWAITING_LOTO = "AWAITING_LOTO"
+    READY = "READY"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
+
+class Intent(str, Enum):
+    IDENTIFY = "IDENTIFY"
+    NEXT_STEP = "NEXT_STEP"
+    REPEAT_STEP = "REPEAT_STEP"
+    PREV_STEP = "PREV_STEP"
+    TORQUE_QUERY = "TORQUE_QUERY"
+    PART_NUMBER_QUERY = "PART_NUMBER_QUERY"
+    SAFETY_QUERY = "SAFETY_QUERY"
+    CONFIRM_LOTO = "CONFIRM_LOTO"
+    HELP = "HELP"
+    UNKNOWN = "UNKNOWN"
+
+
+class IdentificationSource(str, Enum):
+    MANUAL = "MANUAL"
+    TEXT_SEARCH = "TEXT_SEARCH"
+    VISION_MOCK = "VISION_MOCK"
+    VISION_VLM = "VISION_VLM"

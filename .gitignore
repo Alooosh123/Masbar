@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Vite
+web/node_modules/
+web/dist/
+web/.vite/
+npm-debug.log*
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Logs and local runtime data
+logs/
+*.log
+data/cache/tts/*.mp3
+!data/cache/tts/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

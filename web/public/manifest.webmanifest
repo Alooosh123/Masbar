@@ -1,0 +1,21 @@
+{
+  "name": "المساعد الصناعي الذكي",
+  "short_name": "المساعد الصناعي",
+  "description": "مساعد صيانة صناعي بصري وصوتي مع بوابة سلامة LOTO وخطوات موثقة.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050811",
+  "theme_color": "#050811",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "equipment_family": "Caterpillar C15 ACERT Diesel Engine",
+  "components": [
+    {
+      "part_number": "312-5620",
+      "english_name": "Fuel Injection Actuator Control Valve",
+      "arabic_name": "صمام التحكم في مشغل حقن الوقود",
+      "manual_doc_id": "SENR9834-08",
+      "manual_page": 142,
+      "section_title": "Disassembly and Assembly - Fuel System",
+      "torque_nm": 45.0,
+      "tightening_sequence": "Cross-tighten mounting bolts in 2 stages (20 N·m then 45 N·m)",
+      "symptoms": [
+        "oil leak",
+        "fuel leak",
+        "valve leakage",
+        "actuator fault"
+      ],
+      "related_seals": [
+        "238-5080 O-Ring Seal",
+        "154-2211 Gasket"
+      ],
+      "loto_warnings_ar": [
+        "افصل مفتاح البطاريات الرئيسي (Battery Disconnect Switch) وضع بطاقة تحذير الصيانة.",
+        "انتظر 10 دقائق على الأقل بعد إيقاف المحرك لتفريغ ضغط الوقود العالي وتجنب الحروق."
+      ],
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل الفيش الكهربائي الرباعي من أعلى الصمام بالضغط على لسان التثبيت المعدني وسحبه للأعلى.",
+          "tool_required_ar": "باليد أو مفك عادي صغير",
+          "requires_torque": false,
+          "ar_cue": "DISCONNECT_PLUG"
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "قم بفك مسماري التثبيت الجانبيين مقاس 10 ملم بعكس اتجاه عقارب الساعة.",
+          "tool_required_ar": "مفتاح ربط أو حبة 10 ملم",
+          "requires_torque": false,
+          "ar_cue": "ROTATE_CCW"
+        },
+        {
+          "step_number": 3,
+          "instruction_ar": "اسحب الصمام بحذر واستبدل حلقة منع التسرب (O-Ring رقم 238-5080) بأخرى جديدة مدهونة بزيت محرك نظيف.",
+          "tool_required_ar": "أداة إزالة الحلقات المطاطية (Pick Tool)",
+          "requires_torque": false,
+          "ar_cue": "PULL_ARROW"
+        },
+        {
+          "step_number": 4,
+          "instruction_ar": "أعد تركيب الصمام واربط مسماري التثبيت بالعزم المعتمد على مرحلتين ثم أعد توصيل الفيش الكهربائي.",
+          "tool_required_ar": "مفتاح عزم (Torque Wrench)",
+          "requires_torque": true,
+          "ar_cue": "ROTATE_CW"
+        }
+      ]
+    }
+  ]
+}

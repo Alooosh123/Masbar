@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: industrial-spatial-ai-backend:0.1.0
+    container_name: isa-backend
+    ports:
+      - "8010:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      ENVIRONMENT: production
+      CORS_ORIGINS: "*"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
+    image: industrial-spatial-ai-web:0.1.0
+    container_name: isa-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

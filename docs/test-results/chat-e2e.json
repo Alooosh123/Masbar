@@ -1,0 +1,429 @@
+{
+  "started_at": "2026-11-21T19:11:18.376323+00:00",
+  "app_url": "http://127.0.0.1:5173/",
+  "backend": "http://127.0.0.1:8010",
+  "test_image": "docs\\test-assets\\part-312-5620.jpg",
+  "checks": [
+    {
+      "name": "backend online",
+      "ok": true,
+      "detail": {
+        "status": "online",
+        "app_version": "0.1.0",
+        "components": 9,
+        "equipment": 3,
+        "vision_provider": "cohere",
+        "demo_mode": true,
+        "chat_provider": "cohere",
+        "chat_ready": true,
+        "tts_provider": "edge",
+        "tts_ready": true,
+        "manufacturers": 31
+      }
+    },
+    {
+      "name": "chat provider ready",
+      "ok": true,
+      "detail": "cohere"
+    },
+    {
+      "name": "vite app reachable",
+      "ok": true,
+      "detail": 200
+    },
+    {
+      "name": "Arabic TTS provider ready",
+      "ok": true,
+      "detail": "edge"
+    },
+    {
+      "name": "OEM registry loaded",
+      "ok": true,
+      "detail": 31
+    },
+    {
+      "name": "manufacturers endpoint returns real brands",
+      "ok": true,
+      "detail": [
+        "كاتربيلر",
+        "كوماتسو",
+        "فولفو للمعدات الإنشائية",
+        "هيتاشي للمعدات الإنشائية",
+        "ليبهر"
+      ]
+    },
+    {
+      "name": "manufacturer model search works",
+      "ok": true,
+      "detail": [
+        "komatsu"
+      ]
+    },
+    {
+      "name": "server serves cached Arabic MP3",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "voice": "ar-SA-ZariyahNeural",
+        "bytes": 35568
+      }
+    },
+    {
+      "name": "live Edge Arabic TTS reachable",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "voice": "ar-SA-ZariyahNeural",
+        "bytes": 22752
+      }
+    },
+    {
+      "name": "welcome message rendered",
+      "ok": true,
+      "detail": "مرحبًا! أنا مساعد المصنع. أستطيع فتح الكاميرا ووصف الصور، والاستماع لصوتك، وبدء "
+    },
+    {
+      "name": "RTL layout",
+      "ok": true,
+      "detail": "rtl"
+    },
+    {
+      "name": "header shows chat ready",
+      "ok": true,
+      "detail": "محادثة ذكية + قاعدة معرفة"
+    },
+    {
+      "name": "UI plays cached Arabic MP3",
+      "ok": true,
+      "detail": {
+        "plays": 1,
+        "error": null
+      }
+    },
+    {
+      "name": "chat lists manufacturers from OEM registry",
+      "ok": true,
+      "detail": "سجل مصادر OEM الرسمي يحتوي 31 شركة من مصنّعي المعدات الثقيلة:\n\n• كاتربيلر (Caterpillar) — الولايات المتحدة — 8 عائلات موديلات\n\n• كوماتسو (Komatsu) — اليابان — 7"
+    },
+    {
+      "name": "camera receives frames",
+      "ok": true,
+      "detail": {
+        "videoWidth": 1280,
+        "videoHeight": 960,
+        "readyState": 4,
+        "fake": {
+          "width": 1280,
+          "height": 960,
+          "source": "canvas"
+        }
+      }
+    },
+    {
+      "name": "image captured and described",
+      "ok": true,
+      "detail": "جهاز إلكتروني رمادي اللون ذو شكل غير منتظم، به شاشة عرض في المنتصف تعرض النص التالي:\n\nجهاز تحكم وقود القطارات\n\n312-5620\n"
+    },
+    {
+      "name": "description mentions visible content",
+      "ok": true,
+      "detail": "جهاز إلكتروني رمادي اللون ذو شكل غير منتظم، به شاشة عرض في المنتصف تعرض النص التالي:\n\nجهاز تحكم وقود القطارات\n\n312-5620\n"
+    },
+    {
+      "name": "description is labelled non-authoritative",
+      "ok": true,
+      "detail": "note present"
+    },
+    {
+      "name": "session started from chat",
+      "ok": true,
+      "detail": "C15 ACERT"
+    },
+    {
+      "name": "component catalog rendered",
+      "ok": true,
+      "detail": [
+        "312-5620 | صمام التحكم في مشغل حقن الوقود | Fuel Injection Actuator Control Valve",
+        "DEMO-C15-FFB-01 | قاعدة فلتر الوقود | Fuel Filter Base Assembly",
+        "DEMO-C15-OPS-01 | حساس ضغط زيت المحرك | Engine Oil Pressure Sensor"
+      ]
+    },
+    {
+      "name": "camera image identified deterministically",
+      "ok": true,
+      "detail": {
+        "part": "312-5620",
+        "name": "صمام التحكم في مشغل حقن الوقود",
+        "confidence": "100%",
+        "source": "تحليل VLM",
+        "state": "بوابة السلامة",
+        "checklist": [
+          "فصلت مفتاح البطارية الرئيسي",
+          "انتظرت 10 دقائق وتأكدت من تفريغ ضغط الوقود",
+          "ركبت قفل وبطاقة السلامة (LOTO)"
+        ],
+        "warnings": [
+          "افصل مفتاح البطاريات الرئيسي وضع بطاقة تحذير الصيانة قبل البدء.",
+          "انتظر 10 دقائق على الأقل بعد إيقاف المحرك لتفريغ ضغط الوقود العالي وتجنب الحروق.",
+          "ارتدِ واقي وجه وقفازات مقاومة للوقود عند فتح خط الوقود."
+        ]
+      }
+    },
+    {
+      "name": "vision confidence is full",
+      "ok": true,
+      "detail": "100%"
+    },
+    {
+      "name": "LOTO gate blocks steps",
+      "ok": true,
+      "detail": "بوابة السلامة"
+    },
+    {
+      "name": "LOTO confirmation unlocks procedure",
+      "ok": true,
+      "detail": {
+        "progress": "الخطوة 1 من 4\nافصل الفيش",
+        "instruction": "افصل الفيش الكهربائي الرباعي من أعلى الصمام بالضغط على لسان التثبيت المعدني وسحبه للأعلى.",
+        "state": "جاهز",
+        "torque": false
+      }
+    },
+    {
+      "name": "session ready for steps",
+      "ok": true,
+      "detail": "جاهز"
+    },
+    {
+      "name": "next step advances",
+      "ok": true,
+      "detail": "الخطوة 2 من 4\nلف عكس عقارب الساعة"
+    },
+    {
+      "name": "torque answered from knowledge base",
+      "ok": true,
+      "detail": "الخطوة الحالية لا تتطلب عزم شد. عزم الربط مذكور في الخطوة 4: 45 نيوتن·م (33.2 رطل·قدم) حسب SENR9834-08 صفحة 142."
+    },
+    {
+      "name": "microphone permission granted",
+      "ok": true,
+      "detail": "granted"
+    },
+    {
+      "name": "getUserMedia audio track live",
+      "ok": true,
+      "detail": {
+        "label": "Fake Default Audio Input",
+        "readyState": "live",
+        "enabled": true,
+        "settings": {
+          "autoGainControl": true,
+          "channelCount": 1,
+          "deviceId": "default",
+          "echoCancellation": true,
+          "groupId": "8242fa3dc1e2989fd6a3d0792d209f55d7969dd39647147786586b88b482d148",
+          "latency": 0.01,
+          "noiseSuppression": true,
+          "sampleRate": 48000,
+          "sampleSize": 16,
+          "voiceIsolation": false
+        }
+      }
+    },
+    {
+      "name": "speech recognition API present",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "speech synthesis API works",
+      "ok": true,
+      "detail": {
+        "supported": true,
+        "started": true,
+        "ended": true,
+        "timeout": false
+      }
+    },
+    {
+      "name": "microphone button starts listening",
+      "ok": true,
+      "detail": {
+        "placeholder": "أستمع الآن… تكلّم بالعربية",
+        "meta": "أستمع الآن… سأرسل النص تلقائيًا بعد انتهاء كلامك.",
+        "error": "",
+        "button": "chat-tool-btn mic is-listening"
+      }
+    },
+    {
+      "name": "microphone returns to idle cleanly",
+      "ok": true,
+      "detail": {
+        "listening": false,
+        "error": "",
+        "placeholder": "اكتب رسالتك… أو قل: افتح الكاميرا"
+      }
+    },
+    {
+      "name": "no JavaScript exceptions",
+      "ok": true,
+      "detail": 0
+    }
+  ],
+  "steps": {
+    "health": {
+      "status": "online",
+      "app_version": "0.1.0",
+      "components": 9,
+      "equipment": 3,
+      "vision_provider": "cohere",
+      "demo_mode": true,
+      "chat_provider": "cohere",
+      "chat_ready": true,
+      "tts_provider": "edge",
+      "tts_ready": true,
+      "manufacturers": 31
+    },
+    "cached_tts_response": {
+      "status": 200,
+      "voice": "ar-SA-ZariyahNeural",
+      "content_type": "audio/mpeg",
+      "bytes": 35568
+    },
+    "live_tts_response": {
+      "status": 200,
+      "voice": "ar-SA-ZariyahNeural",
+      "bytes": 22752
+    },
+    "welcome": "مرحبًا! أنا مساعد المصنع. أستطيع فتح الكاميرا ووصف الصور، والاستماع لصوتك، وبدء جلسة صيانة آمنة خطوة بخطوة.\n\nجرّب: «افتح الكاميرا»، «ما المعدات المتاحة؟»، أو «ابدأ جلسة على Caterpillar C15 ACERT».",
+    "header_status": "محادثة ذكية + قاعدة معرفة",
+    "tts_probe": {
+      "plays": 1,
+      "srcs": [
+        "blob:http://127.0.0.1:5173/721980dd-96e5-4696-bcf4-18a112bc9482"
+      ],
+      "error": null
+    },
+    "manufacturers_answer": "سجل مصادر OEM الرسمي يحتوي 31 شركة من مصنّعي المعدات الثقيلة:\n\n• كاتربيلر (Caterpillar) — الولايات المتحدة — 8 عائلات موديلات\n\n• كوماتسو (Komatsu) — اليابان — 7 عائلات موديلات\n\n• فولفو للمعدات الإنشائية (Volvo Construction Equipment) — السويد — 6 عائلات موديلات\n\n• هيتاشي للمعدات الإنشائية (Hitachi Construction Machinery) — اليابان — 6 عائلات موديلات\n\n• ليبهر (Liebherr) — ألمانيا / سويسرا — 6 عائلات موديلات\n\n• جون ديري (John Deere) — الولايات المتحدة — 7 عائلات موديلات\n\n• كيس للمعدات الإنشائية (Case Construction Equipment) — الولايات المتحدة — 5 عائلات موديلات\n\n• نيو هولاند للإنشاءات (New Holland Construction) — إيطاليا — 3 عائلات موديلات\n\n• ديفيلون (Develon) — كوريا الجنوبية — 5 عائلات موديلات\n\n• هيونداي للمعدات الإنشائية (Hyundai Construction Equipment) — كوريا الجنوبية — 4 عائلات موديلات\n\n• كوبيلكو (Kobelco Construction Machinery) — اليابان — 4 عائلات موديلات\n\n• جي سي بي (JCB) — المملكة المتحدة — 7 عائلات موديلات\n\n• ساني (SANY) — الصين — 4 عائلات موديلات\n\n• إكس سي إم جي (XCMG) — الصين — 4 عائلات موديلات\n\n• زومليون (Zoomlion) — الصين — 3 عائلات موديلات\n\n• ليوغونغ (LiuGong) — الصين — 3 عائلات موديلات\n\n• شانتووي (Shantui) — الصين — 3 عائلات موديلات\n\n• تادانو (Tadano) — اليابان — 3 عائلات موديلات\n\n• مانيتووك (Manitowoc) — الولايات المتحدة — 3 عائلات موديلات\n\n• تيريكس (Terex) — الولايات المتحدة — 3 عائلات موديلات\n\n• بوماغ (BOMAG) — ألمانيا — 3 عائلات موديلات\n\n• فيرتكين (Wirtgen) — ألمانيا — 3 عائلات موديلات\n\n• أمان (Ammann) — سويسرا — 2 عائلات موديلات\n\n• كوبوتا (Kubota) — اليابان — 3 عائلات موديلات\n\n• يانمار (Yanmar) — اليابان — 2 عائلات موديلات\n\n• تاكوتشي (Takeuchi) — اليابان — 3 عائلات موديلات\n\n• بوبكات (Bobcat) — الولايات المتحدة — 4 عائلات موديلات\n\n• ميكالاك (Mecalac) — فرنسا — 3 عائلات موديلات\n\n• هيدروميك (Hidromek) — تركيا — 3 عائلات موديلات\n\n• دريسستا (Dressta) — بولندا — 3 عائلات موديلات\n\n• بيل إيكويبمنت (Bell Equipment) — جنوب أفريقيا — 3 عائلات موديلات\n\nهذه روابط وموديلات كتالوج عامة من المواقع الرسمية. قيم العزم وخطوات الفك وبنود LOTO لا تُعرض إلا بعد استيراد كتيب خدمة OEM معتمد ومُتحقق منه.",
+    "camera": {
+      "videoWidth": 1280,
+      "videoHeight": 960,
+      "readyState": 4,
+      "fake": {
+        "width": 1280,
+        "height": 960,
+        "source": "canvas"
+      }
+    },
+    "image_description": {
+      "seconds": 6.5,
+      "text": "جهاز إلكتروني رمادي اللون ذو شكل غير منتظم، به شاشة عرض في المنتصف تعرض النص التالي:\n\nجهاز تحكم وقود القطارات\n\n312-5620\n\nصمام التحكم / 24 فولت\n\nيوجد في الجزء العلوي من الجهاز دائرة كبيرة، وفي الجزء السفلي منه يوجد ثلاثة دوائر صغيرة، اثنتان على اليسار وواحدة على اليمين. كما يوجد في الجزء العلوي على اليمين مستطيل أصفر صغير. الجهاز موضوع على سطح داكن والخلفية سوداء تمامًا.\n\nملاحظة: هذا وصف عام للصورة وليس تحديدًا معتمدًا. استخدم «حدد القطعة» للتحقق من قاعدة المعرفة."
+    },
+    "session_chip": "C15 ACERT",
+    "components": [
+      "312-5620 | صمام التحكم في مشغل حقن الوقود | Fuel Injection Actuator Control Valve",
+      "DEMO-C15-FFB-01 | قاعدة فلتر الوقود | Fuel Filter Base Assembly",
+      "DEMO-C15-OPS-01 | حساس ضغط زيت المحرك | Engine Oil Pressure Sensor"
+    ],
+    "vision_identification": {
+      "seconds": 6.1,
+      "part": "312-5620",
+      "name": "صمام التحكم في مشغل حقن الوقود",
+      "confidence": "100%",
+      "source": "تحليل VLM",
+      "state": "بوابة السلامة",
+      "checklist": [
+        "فصلت مفتاح البطارية الرئيسي",
+        "انتظرت 10 دقائق وتأكدت من تفريغ ضغط الوقود",
+        "ركبت قفل وبطاقة السلامة (LOTO)"
+      ],
+      "warnings": [
+        "افصل مفتاح البطاريات الرئيسي وضع بطاقة تحذير الصيانة قبل البدء.",
+        "انتظر 10 دقائق على الأقل بعد إيقاف المحرك لتفريغ ضغط الوقود العالي وتجنب الحروق.",
+        "ارتدِ واقي وجه وقفازات مقاومة للوقود عند فتح خط الوقود."
+      ]
+    },
+    "first_step": {
+      "progress": "الخطوة 1 من 4\nافصل الفيش",
+      "instruction": "افصل الفيش الكهربائي الرباعي من أعلى الصمام بالضغط على لسان التثبيت المعدني وسحبه للأعلى.",
+      "state": "جاهز",
+      "torque": false
+    },
+    "second_step": "الخطوة 2 من 4\nلف عكس عقارب الساعة",
+    "torque_answer": "الخطوة الحالية لا تتطلب عزم شد. عزم الربط مذكور في الخطوة 4: 45 نيوتن·م (33.2 رطل·قدم) حسب SENR9834-08 صفحة 142.",
+    "microphone": {
+      "recognition_supported": true,
+      "permission": "granted",
+      "stream": {
+        "label": "Fake Default Audio Input",
+        "readyState": "live",
+        "enabled": true,
+        "settings": {
+          "autoGainControl": true,
+          "channelCount": 1,
+          "deviceId": "default",
+          "echoCancellation": true,
+          "groupId": "8242fa3dc1e2989fd6a3d0792d209f55d7969dd39647147786586b88b482d148",
+          "latency": 0.01,
+          "noiseSuppression": true,
+          "sampleRate": 48000,
+          "sampleSize": 16,
+          "voiceIsolation": false
+        }
+      },
+      "voices": {
+        "total": 0,
+        "arabic": []
+      },
+      "tts": {
+        "supported": true,
+        "started": true,
+        "ended": true,
+        "timeout": false
+      }
+    },
+    "microphone_ui": {
+      "listening": true,
+      "placeholder": "أستمع الآن… تكلّم بالعربية",
+      "meta": "أستمع الآن… سأرسل النص تلقائيًا بعد انتهاء كلامك.",
+      "error": "",
+      "button": "chat-tool-btn mic is-listening"
+    },
+    "microphone_result": {
+      "listening": false,
+      "error": "",
+      "placeholder": "اكتب رسالتك… أو قل: افتح الكاميرا",
+      "transcript_sent": false,
+      "note": "الجهاز الوهمي صامت؛ توقف الاستماع دون نص متوقع. تم التحقق من الإذن والبث وواجهة الاستماع."
+    },
+    "javascript_exceptions": 0
+  },
+  "screenshots": [
+    "docs\\screenshots\\chat-welcome.png",
+    "docs\\screenshots\\chat-tts.png",
+    "docs\\screenshots\\chat-manufacturers.png",
+    "docs\\screenshots\\chat-camera-live.png",
+    "docs\\screenshots\\chat-image-description.png",
+    "docs\\screenshots\\chat-session-components.png",
+    "docs\\screenshots\\chat-loto.png",
+    "docs\\screenshots\\chat-step-1.png",
+    "docs\\screenshots\\chat-step-2.png",
+    "docs\\screenshots\\chat-torque.png",
+    "docs\\screenshots\\chat-mic-test.png",
+    "docs\\screenshots\\chat-mic-result.png"
+  ],
+  "limitations": [
+    "الكاميرا في هذا الاختبار بث canvas مُحقَن وليس كاميرا فيزيائية.",
+    "الميكروفون جهاز وهمي صامت؛ لم يُختبر التعرف الصوتي العربي بكلام حقيقي.",
+    "الصوت في Chrome headless لا يُسمَع عبر مكبر الصوت؛ تم التحقق من تنزيل MP3 عربي ومن بدء تشغيله في المتصفح.",
+    "الصوت العصبي يعتمد على خدمة Edge عبر الإنترنت؛ عند انقطاع الشبكة يعيد الخادم 503 ولا يوجد صوت محلي مضمّن."
+  ],
+  "finished_at": "2026-11-21T19:11:59.432131+00:00",
+  "status": "passed",
+  "summary": {
+    "checks": 34,
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0
+  }
+}

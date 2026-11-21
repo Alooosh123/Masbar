@@ -1,0 +1,128 @@
+import type {
+  AssistantResponse,
+  AuditEntry,
+  ChatRequest,
+  ChatResponse,
+  ComponentSummary,
+  EquipmentSummary,
+  HealthResponse,
+} from "../types";
+
+function inferApiUrl(): string {
+  const configured = import.meta.env.VITE_API_URL as string | undefined;
+  if (configured && configured.trim()) return configured.trim().replace(/\/$/, "");
+  if (typeof window !== "undefined" && window.location.hostname) {
+    return `http://${window.location.hostname}:8010`;
+  }
+  return "http://localhost:8010";
+}
+
+export const API_URL = inferApiUrl();
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+      ...init,
+    });
+  } catch {
+    throw new ApiError(
+      "تعذر الاتصال بالخادم. تأكد من تشغيل الـ Backend على المنفذ 8010.",
+      0,
+      "network_error"
+    );
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail = payload?.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : detail?.message_ar || "حدث خطأ غير متوقع في الخادم.";
+    throw new ApiError(message, response.status, detail?.code);
+  }
+  return payload as T;
+}
+
+export interface IdentifyPayload {
+  part_number?: string;
+  transcript?: string;
+  image_base64?: string;
+  visual_confidence?: number;
+  bounding_box?: [number, number, number, number];
+}
+
+export const api = {
+  health: () => request<HealthResponse>("/health"),
+
+  chat: (payload: ChatRequest) =>
+    request<ChatResponse>("/api/v1/chat", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  equipment: () => request<EquipmentSummary[]>("/api/v1/equipment"),
+
+  components: (q?: string, equipment?: string) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (equipment) params.set("equipment", equipment);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return request<ComponentSummary[]>(`/api/v1/components${suffix}`);
+  },
+
+  createSession: (equipmentModel: string) =>
+    request<AssistantResponse>("/api/v1/sessions", {
+      method: "POST",
+      body: JSON.stringify({ equipment_model: equipmentModel }),
+    }),
+
+  getSession: (sessionId: string) =>
+    request<AssistantResponse>(`/api/v1/sessions/${sessionId}`),
+
+  identify: (sessionId: string, payload: IdentifyPayload) =>
+    request<AssistantResponse>(`/api/v1/sessions/${sessionId}/identify`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  confirmLoto: (sessionId: string, confirmedItemIds: string[], note?: string) =>
+    request<AssistantResponse>(`/api/v1/sessions/${sessionId}/loto`, {
+      method: "POST",
+      body: JSON.stringify({
+        confirmed_item_ids: confirmedItemIds,
+        technician_note: note || null,
+      }),
+    }),
+
+  step: (sessionId: string, action: "next" | "prev" | "repeat" | "goto", stepIndex?: number) =>
+    request<AssistantResponse>(`/api/v1/sessions/${sessionId}/step`, {
+      method: "POST",
+      body: JSON.stringify({ action, step_index: stepIndex ?? null }),
+    }),
+
+  ask: (sessionId: string, transcript: string) =>
+    request<AssistantResponse>(`/api/v1/sessions/${sessionId}/ask`, {
+      method: "POST",
+      body: JSON.stringify({ transcript }),
+    }),
+
+  audit: (sessionId: string) =>
+    request<{ session_id: string; state: string; entries: AuditEntry[] }>(
+      `/api/v1/sessions/${sessionId}/audit`
+    ),
+};

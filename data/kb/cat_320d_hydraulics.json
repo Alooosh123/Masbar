@@ -1,0 +1,163 @@
+{
+  "schema_version": "1.0",
+  "equipment_family": "Caterpillar 320D Excavator",
+  "manufacturer": "Caterpillar",
+  "data_status": "sample",
+  "disclaimer_ar": "بيانات نموذجية للعرض والاختبار فقط وليست بديلًا عن كتيب الصيانة الرسمي. الضغط الهيدروليكي قاتل؛ لا تفك أي خط قبل تفريغ الضغط بالكامل.",
+  "components": [
+    {
+      "part_number": "DEMO-320D-HYD-01",
+      "english_name": "Main Hydraulic Pump",
+      "arabic_name": "المضخة الهيدروليكية الرئيسية",
+      "equipment_models": ["Caterpillar 320D Excavator"],
+      "manual_doc_id": "DEMO-320D-HYD-01",
+      "manual_page": 210,
+      "section_title": "Hydraulic System - Main Pump Removal",
+      "torque_nm": 120.0,
+      "tightening_sequence": "اربط مسامير المضخة على ثلاث مراحل: 50 ثم 90 ثم 120 نيوتن·م بنمط نجمة.",
+      "symptoms": ["hydraulic oil leak", "slow boom movement", "pump noise", "low hydraulic pressure"],
+      "symptoms_ar": ["تسريب زيت هيدروليكي", "بطء حركة الذراع", "صوت غريب من المضخة", "ضعف ضغط الهيدروليك"],
+      "related_parts": [
+        {"part_number": "DEMO-320D-HPG-01", "name_ar": "حشية المضخة", "name_en": "Pump Gasket"}
+      ],
+      "safety": {
+        "loto_required": true,
+        "severity": "CRITICAL",
+        "warnings_ar": [
+          "أطفئ المحرك وأنزل المعدة على الأرض بالكامل.",
+          "افصل البطارية وضع بطاقة الصيانة.",
+          "حرك جميع العصايات لتفريغ الضغط المتبقي وانتظر 15 دقيقة.",
+          "افتح خزان الزيت الهيدروليكي ببطء لتفادي ضغط متبقٍ."
+        ],
+        "checklist": [
+          {"id": "engine_off", "label_ar": "أطفأت المحرك وأنزلت المعدة على الأرض"},
+          {"id": "pressure_released", "label_ar": "حركت العصايات وانتظرت 15 دقيقة لتفريغ الضغط"},
+          {"id": "battery_disconnected", "label_ar": "فصلت البطارية"},
+          {"id": "lockout_tag", "label_ar": "ركبت قفل وبطاقة السلامة (LOTO)"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "ضع وعاء تصريف أسفل المضخة وافصل خطوط الضغط الرئيسية بحذر.",
+          "tool_required_ar": "مفتاح خطوط هيدروليكية",
+          "warning_ar": "قد يتدفق زيت ساخن عند فتح الخط؛ ارتدِ نظارات واقية.",
+          "cue": {"cue_type": "DISCONNECT_PLUG", "color_hex": "#EF4444"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "فك مسامير تثبيت المضخة الأربعة بالتساوي وارفع المضخة باستخدام رافعة مناسبة.",
+          "tool_required_ar": "مفتاح ربط + رافعة",
+          "warning_ar": "المضخة ثقيلة؛ لا ترفعها يدويًا.",
+          "cue": {"cue_type": "PULL_ARROW", "direction": "UP", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 3,
+          "instruction_ar": "نظف سطح التثبيت واستبدل حشية المضخة، ثم ابدأ تركيب المضخة الجديدة.",
+          "tool_required_ar": "أداة كشط حشيات",
+          "cue": {"cue_type": "HIGHLIGHT_MESH", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 4,
+          "instruction_ar": "اربط مسامير المضخة بالعزم المعتمد على ثلاث مراحل ثم أعد توصيل الخطوط.",
+          "tool_required_ar": "مفتاح عزم كبير",
+          "requires_torque": true,
+          "verification_ar": "شغّل المحرك على السرعة البطيئة وافحص التسريب لمدة 5 دقائق.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    },
+    {
+      "part_number": "DEMO-320D-HSE-01",
+      "english_name": "High-Pressure Hydraulic Hose",
+      "arabic_name": "خرطوم الضغط العالي الهيدروليكي",
+      "equipment_models": ["Caterpillar 320D Excavator"],
+      "manual_doc_id": "DEMO-320D-HYD-02",
+      "manual_page": 244,
+      "section_title": "Hydraulic System - Hose Replacement",
+      "torque_nm": 90.0,
+      "symptoms": ["hydraulic oil leak", "hose bulge", "pressure loss"],
+      "symptoms_ar": ["تسريب زيت هيدروليكي", "انتفاخ الخرطوم", "فقدان ضغط"],
+      "related_parts": [],
+      "safety": {
+        "loto_required": true,
+        "severity": "CRITICAL",
+        "warnings_ar": [
+          "لا تفك أي خرطوم ضغط قبل تفريغ الضغط بالكامل.",
+          "ارتدِ نظارات وواقي وجه وقفازات مقاومة للزيت."
+        ],
+        "checklist": [
+          {"id": "pressure_released", "label_ar": "فرغت الضغط الهيدروليكي بالكامل"},
+          {"id": "engine_off", "label_ar": "أطفأت المحرك"},
+          {"id": "lockout_tag", "label_ar": "ركبت قفل وبطاقة السلامة (LOTO)"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل طرفي الخرطوم وضعه في وعاء تصريف.",
+          "tool_required_ar": "مفتاح خراطيم هيدروليكية",
+          "cue": {"cue_type": "ROTATE_CCW", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "ركب الخرطوم الجديد وتأكد من سلامة الوجيهات وعدم التواء الخرطوم.",
+          "tool_required_ar": "باليد",
+          "cue": {"cue_type": "HIGHLIGHT_MESH", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 3,
+          "instruction_ar": "اربط طرفي الخرطوم بالعزم المعتمد ثم شغّل النظام وافحص التسريب.",
+          "tool_required_ar": "مفتاح عزم",
+          "requires_torque": true,
+          "verification_ar": "افحص الخرطوم تحت الضغط الكامل من مسافة آمنة.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    },
+    {
+      "part_number": "DEMO-320D-HPS-01",
+      "english_name": "Hydraulic Pressure Sensor",
+      "arabic_name": "حساس ضغط الهيدروليك",
+      "equipment_models": ["Caterpillar 320D Excavator"],
+      "manual_doc_id": "DEMO-320D-ELEC-04",
+      "manual_page": 95,
+      "section_title": "Electrical System - Pressure Sensors",
+      "torque_nm": 30.0,
+      "symptoms": ["pressure reading fault", "sensor error code", "hydraulic warning"],
+      "symptoms_ar": ["خطأ في قراءة الضغط", "كود خطأ في الحساس", "تحذير هيدروليكي"],
+      "related_parts": [],
+      "safety": {
+        "loto_required": true,
+        "severity": "WARNING",
+        "warnings_ar": [
+          "افصل البطارية قبل التعامل مع الموصلات الكهربائية.",
+          "قد يبقى ضغط متبقٍ في مجمع الحساس؛ فرّغه قبل الفك."
+        ],
+        "checklist": [
+          {"id": "battery_disconnected", "label_ar": "فصلت البطارية"},
+          {"id": "pressure_released", "label_ar": "فرغت الضغط المتبقي"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل موصل الحساس ثم فكه بعكس اتجاه عقارب الساعة.",
+          "tool_required_ar": "مفتاح حساس",
+          "cue": {"cue_type": "ROTATE_CCW", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "ركب الحساس الجديد واربطه بالعزم المعتمد ثم أعد توصيل الموصل.",
+          "tool_required_ar": "مفتاح عزم",
+          "requires_torque": true,
+          "verification_ar": "راقب قراءة الضغط على الشاشة وتأكد من اختفاء كود الخطأ.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    }
+  ]
+}

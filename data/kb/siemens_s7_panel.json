@@ -1,0 +1,146 @@
+{
+  "schema_version": "1.0",
+  "equipment_family": "Siemens S7-1200 Control Panel",
+  "manufacturer": "Siemens",
+  "data_status": "sample",
+  "disclaimer_ar": "بيانات نموذجية للعرض والاختبار فقط. الجهد الكهربائي قد يكون قاتلًا حتى بعد فصل المفتاح الرئيسي؛ تحقق دائمًا بجهاز قياس معتمد واتبع إجراءات العزل LOTO.",
+  "components": [
+    {
+      "part_number": "DEMO-S7-CTC-01",
+      "english_name": "24V Contactor",
+      "arabic_name": "كونتاكتور 24 فولت",
+      "equipment_models": ["Siemens S7-1200 Control Panel"],
+      "manual_doc_id": "DEMO-S7-ELEC-01",
+      "manual_page": 34,
+      "section_title": "Control Panel - Contactor Replacement",
+      "torque_nm": 2.5,
+      "tightening_sequence": "اربط أطراف الكونتاكتور بقيمة 2.5 نيوتن·م دون إفراط.",
+      "symptoms": ["contactor not closing", "buzzing noise", "burnt contacts", "intermittent operation"],
+      "symptoms_ar": ["الكونتاكتور لا يغلق", "طنين مستمر", "احتراق نقاط التلامس", "تشغيل متقطع"],
+      "related_parts": [],
+      "safety": {
+        "loto_required": true,
+        "severity": "CRITICAL",
+        "warnings_ar": [
+          "افصل المفتاح الرئيسي للوحة واقفل عليه ببطاقة LOTO.",
+          "تحقق بجهاز قياس أن الجهد صفر على جميع الأطراف قبل اللمس.",
+          "لا تعتمد على إطفاء الجهاز فقط؛ الجهد قد يبقى في المكثفات."
+        ],
+        "checklist": [
+          {"id": "main_breaker_off", "label_ar": "فصلت المفتاح الرئيسي للوحة"},
+          {"id": "voltage_verified_zero", "label_ar": "تحققت بجهاز القياس أن الجهد صفر"},
+          {"id": "lockout_tag", "label_ar": "ركبت قفل وبطاقة السلامة (LOTO)"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل أسلاك التحكم من أطراف الكونتاكتور وسجّل ترتيب الأطراف قبل الفك.",
+          "tool_required_ar": "مفك كهربائي معزول",
+          "warning_ar": "تأكد من فصل الجهد مرة أخرى قبل لمس الأطراف.",
+          "cue": {"cue_type": "DISCONNECT_PLUG", "color_hex": "#EF4444"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "فك براغي تثبيت الكونتاكتور على السكة وأخرجه من اللوحة.",
+          "tool_required_ar": "مفك صليبة",
+          "cue": {"cue_type": "PULL_ARROW", "direction": "OUT", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 3,
+          "instruction_ar": "ركب الكونتاكتور الجديد، أعد توصيل الأسلاك حسب الترتيب المسجل، واربط الأطراف بالعزم المعتمد.",
+          "tool_required_ar": "مفك عزم كهربائي",
+          "requires_torque": true,
+          "verification_ar": "أعد الطاقة وشغّل دائرة التحكم وتأكد من عمل الكونتاكتور دون طنين.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    },
+    {
+      "part_number": "DEMO-S7-PSU-01",
+      "english_name": "24V DC Power Supply",
+      "arabic_name": "مزود طاقة 24 فولت",
+      "equipment_models": ["Siemens S7-1200 Control Panel"],
+      "manual_doc_id": "DEMO-S7-ELEC-02",
+      "manual_page": 41,
+      "section_title": "Control Panel - Power Supply Unit",
+      "torque_nm": 1.2,
+      "symptoms": ["no 24v output", "power supply fault", "blown fuse", "panel dead"],
+      "symptoms_ar": ["لا يوجد خرج 24 فولت", "خلل في مزود الطاقة", "احتراق الفيوز", "اللوحة مطفأة"],
+      "related_parts": [],
+      "safety": {
+        "loto_required": true,
+        "severity": "CRITICAL",
+        "warnings_ar": [
+          "افصل مصدر التيار المتردد قبل فك مزود الطاقة.",
+          "انتظر دقيقتين لتفريغ المكثفات الداخلية وتحقق من انعدام الجهد."
+        ],
+        "checklist": [
+          {"id": "ac_power_off", "label_ar": "فصلت مصدر التيار المتردد"},
+          {"id": "voltage_verified_zero", "label_ar": "تحققت من انعدام الجهد بعد الانتظار"},
+          {"id": "lockout_tag", "label_ar": "ركبت بطاقة السلامة (LOTO)"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "افصل أسلاك الدخل والخرج من مزود الطاقة بعد التحقق من انعدام الجهد.",
+          "tool_required_ar": "مفك معزول",
+          "cue": {"cue_type": "DISCONNECT_PLUG", "color_hex": "#EF4444"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "فك براغي التثبيت، ركب المزود الجديد، واربط الأطراف بالعزم المعتمد.",
+          "tool_required_ar": "مفك عزم",
+          "requires_torque": true,
+          "verification_ar": "قِس خرج 24 فولت قبل توصيل الأحمال.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    },
+    {
+      "part_number": "DEMO-S7-RLY-01",
+      "english_name": "Relay Module",
+      "arabic_name": "وحدة ريليه",
+      "equipment_models": ["Siemens S7-1200 Control Panel"],
+      "manual_doc_id": "DEMO-S7-ELEC-03",
+      "manual_page": 52,
+      "section_title": "Control Panel - Relay Module",
+      "torque_nm": 0.8,
+      "symptoms": ["relay not switching", "stuck relay", "control signal fault"],
+      "symptoms_ar": ["الريليه لا يعمل", "ريليه عالق", "خلل في إشارة التحكم"],
+      "related_parts": [],
+      "safety": {
+        "loto_required": true,
+        "severity": "WARNING",
+        "warnings_ar": [
+          "افصل تغذية اللوحة وتحقق من انعدام الجهد قبل فك الوحدة.",
+          "استخدم سوار تفريغ شحنات إلكتروستاتيكية عند التعامل مع الوحدة."
+        ],
+        "checklist": [
+          {"id": "main_breaker_off", "label_ar": "فصلت تغذية اللوحة"},
+          {"id": "voltage_verified_zero", "label_ar": "تحققت من انعدام الجهد"}
+        ]
+      },
+      "steps": [
+        {
+          "step_number": 1,
+          "instruction_ar": "اسحب وحدة الريليه من قاعدتها أو فك براغي التثبيت حسب النوع.",
+          "tool_required_ar": "باليد أو مفك صغير",
+          "cue": {"cue_type": "PULL_ARROW", "direction": "OUT", "color_hex": "#F59E0B"}
+        },
+        {
+          "step_number": 2,
+          "instruction_ar": "ركب الوحدة الجديدة وتأكد من تطابق ترتيب الأطراف، ثم اربط بالعزم المعتمد.",
+          "tool_required_ar": "مفك عزم",
+          "requires_torque": true,
+          "verification_ar": "اختبر إشارة التحكم من شاشة PLC وتأكد من تبديل الريليه.",
+          "cue": {"cue_type": "ROTATE_CW", "color_hex": "#10B981"}
+        }
+      ],
+      "verification_status": "sample"
+    }
+  ]
+}

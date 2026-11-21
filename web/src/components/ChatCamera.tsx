@@ -1,0 +1,216 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertIcon,
+  CameraIcon,
+  CloseIcon,
+  RotateCwIcon,
+  ShieldIcon,
+} from "./Icons";
+
+type CaptureMode = "describe" | "identify";
+
+interface Props {
+  onCapture: (imageBase64: string, mode: CaptureMode) => void;
+  onClose: () => void;
+}
+
+function cameraErrorMessage(error: unknown): string {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError") {
+      return "تم رفض إذن الكاميرا. اسمح بالوصول إلى الكاميرا من إعدادات المتصفح ثم أعد المحاولة.";
+    }
+    if (error.name === "NotFoundError") {
+      return "لم أجد كاميرا متصلة بهذا الجهاز.";
+    }
+    if (error.name === "NotReadableError") {
+      return "الكاميرا مشغولة بتطبيق آخر. أغلق التطبيق الآخر ثم أعد المحاولة.";
+    }
+  }
+  return "تعذر تشغيل الكاميرا. تحقق من الإذن ومن اتصال الكاميرا.";
+}
+
+export function ChatCamera({ onCapture, onClose }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    let stream: MediaStream | null = null;
+    setReady(false);
+    setError(null);
+
+    async function start() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("المتصفح لا يدعم الوصول إلى الكاميرا في هذه الصفحة.");
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facing },
+            width: { ideal: 1280 },
+            height: { ideal: 960 },
+          },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        const video = videoRef.current;
+        if (video) {
+          video.srcObject = stream;
+          await video.play().catch(() => undefined);
+        }
+        setReady(true);
+      } catch (err) {
+        if (!cancelled) setError(cameraErrorMessage(err));
+      }
+    }
+
+    void start();
+
+    return () => {
+      cancelled = true;
+      stream?.getTracks().forEach((track) => track.stop());
+      if (streamRef.current === stream) streamRef.current = null;
+    };
+  }, [facing, attempt]);
+
+  const capture = useCallback(
+    (mode: CaptureMode) => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || !ready || video.videoWidth === 0) {
+        setError("الكاميرا لم تجهز بعد. انتظر لحظة ثم أعد المحاولة.");
+        return;
+      }
+
+      const maxSide = 1280;
+      const scale = Math.min(
+        1,
+        maxSide / Math.max(video.videoWidth, video.videoHeight)
+      );
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        setError("تعذر تجهيز الصورة من الكاميرا.");
+        return;
+      }
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+      onCapture(dataUrl, mode);
+    },
+    [onCapture, ready]
+  );
+
+  return (
+    <div
+      className="chat-camera"
+      role="dialog"
+      aria-modal="true"
+      aria-label="كاميرا المحادثة"
+    >
+      <header className="chat-camera-head">
+        <div>
+          <strong>كاميرا المحادثة</strong>
+          <span>{ready ? "الكاميرا جاهزة — وجّهها نحو الهدف" : "جارٍ تشغيل الكاميرا…"}</span>
+        </div>
+        <button
+          type="button"
+          className="chat-icon-btn"
+          onClick={onClose}
+          aria-label="إغلاق الكاميرا"
+        >
+          <CloseIcon size={22} />
+        </button>
+      </header>
+
+      <div className="chat-camera-stage">
+        <video
+          ref={videoRef}
+          className={`chat-camera-video ${ready ? "is-ready" : ""}`}
+          playsInline
+          muted
+          autoPlay
+        />
+
+        {!ready && !error && (
+          <div className="chat-camera-state">
+            <span className="chat-spinner large" />
+            <p>جارٍ طلب إذن الكاميرا…</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="chat-camera-state is-error">
+            <AlertIcon size={28} />
+            <p>{error}</p>
+            <button
+              type="button"
+              className="chat-camera-retry"
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
+        {ready && !error && (
+          <div className="chat-camera-frame" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+        )}
+      </div>
+
+      <div className="chat-camera-actions">
+        <button
+          type="button"
+          className="chat-capture-btn secondary"
+          onClick={() => capture("identify")}
+          disabled={!ready}
+        >
+          <ShieldIcon size={19} />
+          التقاط وتحديد
+        </button>
+        <button
+          type="button"
+          className="chat-capture-btn primary"
+          onClick={() => capture("describe")}
+          disabled={!ready}
+        >
+          <CameraIcon size={20} />
+          التقاط ووصف
+        </button>
+      </div>
+
+      <footer className="chat-camera-foot">
+        <span>الوصف عام. التحديد يستخدم قاعدة المعرفة ولا يخمّن.</span>
+        <button
+          type="button"
+          className="chat-camera-flip"
+          onClick={() =>
+            setFacing((current) => (current === "environment" ? "user" : "environment"))
+          }
+          disabled={!ready}
+        >
+          <RotateCwIcon size={17} />
+          تبديل الكاميرا
+        </button>
+      </footer>
+
+      <canvas ref={canvasRef} hidden />
+    </div>
+  );
+}

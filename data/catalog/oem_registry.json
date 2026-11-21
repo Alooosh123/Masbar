@@ -1,0 +1,510 @@
+{
+  "schema_version": "1.0",
+  "compiled_at": "2026-11-20",
+  "disclaimer_ar": "هذا السجل يربط المساعد بالصفحات الرسمية للمصنّعين وأسماء عائلات المعدات العامة. وجود الرابط والاسم لا يعني توفر بيانات الصيانة: قيم العزم وخطوات الفك وبنود LOTO لا تُضاف إلا من كتيب خدمة OEM معتمد ومُستورد عبر مسار التحقق. لا تعتمد على أي قيمة غير موسومة بأنها verified.",
+  "manufacturers": [
+    {
+      "id": "caterpillar",
+      "name_ar": "كاتربيلر",
+      "name_en": "Caterpillar",
+      "country_ar": "الولايات المتحدة",
+      "official_url": "https://www.cat.com/",
+      "service_url": "https://www.cat.com/en_US/support/maintenance/service-manuals.html",
+      "parts_url": "https://parts.cat.com/",
+      "data_access": "subscription",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر اشتراك Cat SIS أو شبكة الوكلاء المعتمدين.",
+      "model_families": [
+        {"model": "320", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "336", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "349", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "950M", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "966M", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "D6", "category_ar": "بلدوزر", "category_en": "Dozer"},
+        {"model": "D8", "category_ar": "بلدوزر", "category_en": "Dozer"},
+        {"model": "C15", "category_ar": "محرك ديزل صناعي", "category_en": "Industrial Diesel Engine"}
+      ]
+    },
+    {
+      "id": "komatsu",
+      "name_ar": "كوماتسو",
+      "name_en": "Komatsu",
+      "country_ar": "اليابان",
+      "official_url": "https://www.komatsu.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة متاحة عبر بوابة الوكلاء المعتمدين وKOMTRAX.",
+      "model_families": [
+        {"model": "PC200-8", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "PC210", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "PC300", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "WA320", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "WA380", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "D65", "category_ar": "بلدوزر", "category_en": "Dozer"},
+        {"model": "HD465", "category_ar": "شاحنة قلابة صلبة", "category_en": "Rigid Dump Truck"}
+      ]
+    },
+    {
+      "id": "volvo-ce",
+      "name_ar": "فولفو للمعدات الإنشائية",
+      "name_en": "Volvo Construction Equipment",
+      "country_ar": "السويد",
+      "official_url": "https://www.volvoce.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر بوابة Volvo CE والوكلاء.",
+      "model_families": [
+        {"model": "EC200", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "EC220", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "EC300", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "L60H", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "L90H", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "A40G", "category_ar": "شاحنة قلابة مفصلية", "category_en": "Articulated Dump Truck"}
+      ]
+    },
+    {
+      "id": "hitachi",
+      "name_ar": "هيتاشي للمعدات الإنشائية",
+      "name_en": "Hitachi Construction Machinery",
+      "country_ar": "اليابان",
+      "official_url": "https://www.hitachicm.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة متاحة عبر شبكة الوكلاء وبوابة الدعم.",
+      "model_families": [
+        {"model": "ZX200", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "ZX210", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "ZX300", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "ZX350", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "ZX490", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "EX1200", "category_ar": "حفار تعدين", "category_en": "Mining Excavator"}
+      ]
+    },
+    {
+      "id": "liebherr",
+      "name_ar": "ليبهر",
+      "name_en": "Liebherr",
+      "country_ar": "ألمانيا / سويسرا",
+      "official_url": "https://www.liebherr.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر Liebherr Customer Portal والوكلاء.",
+      "model_families": [
+        {"model": "R920", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "R926", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "R934", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "R946", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
+        {"model": "LTM 1100", "category_ar": "رافعة متحركة", "category_en": "Mobile Crane"},
+        {"model": "PR 736", "category_ar": "بلدوزر", "category_en": "Dozer"}
+      ]
+    },
+    {
+      "id": "john-deere",
+      "name_ar": "جون ديري",
+      "name_en": "John Deere",
+      "country_ar": "الولايات المتحدة",
+      "official_url": "https://www.deere.com/",
+      "service_url": "https://www.deere.com/en/parts-and-service/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة وقطع الغيار متاحة عبر John Deere Parts Catalog والوكلاء.",
+      "model_families": [
+        {"model": "200G", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "210G", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "300G", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "350G", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "644K", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "724K", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "850K", "category_ar": "بلدوزر", "category_en": "Dozer"}
+      ]
+    },
+    {
+      "id": "case-ce",
+      "name_ar": "كيس للمعدات الإنشائية",
+      "name_en": "Case Construction Equipment",
+      "country_ar": "الولايات المتحدة",
+      "official_url": "https://www.casece.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر شبكة وكلاء Case.",
+      "model_families": [
+        {"model": "CX210C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "CX250C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "CX350C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "621F", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "721F", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"}
+      ]
+    },
+    {
+      "id": "new-holland",
+      "name_ar": "نيو هولاند للإنشاءات",
+      "name_en": "New Holland Construction",
+      "country_ar": "إيطاليا",
+      "official_url": "https://www.newholland.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر شبكة الوكلاء.",
+      "model_families": [
+        {"model": "E215C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "E245C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "W170C", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"}
+      ]
+    },
+    {
+      "id": "develon",
+      "name_ar": "ديفيلون",
+      "name_en": "Develon",
+      "country_ar": "كوريا الجنوبية",
+      "official_url": "https://www.develon.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "العلامة التجارية لشركة Doosan السابقة؛ أدلة الخدمة عبر الوكلاء.",
+      "model_families": [
+        {"model": "DX200", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "DX225", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "DX300", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "DX350", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "DL250", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"}
+      ]
+    },
+    {
+      "id": "hyundai-ce",
+      "name_ar": "هيونداي للمعدات الإنشائية",
+      "name_en": "Hyundai Construction Equipment",
+      "country_ar": "كوريا الجنوبية",
+      "official_url": "https://www.hyundai-ce.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر بوابة Hyundai CE والوكلاء.",
+      "model_families": [
+        {"model": "R220LC-9S", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "R300LC-9S", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "R380LC-9S", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "HL760-9S", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"}
+      ]
+    },
+    {
+      "id": "kobelco",
+      "name_ar": "كوبيلكو",
+      "name_en": "Kobelco Construction Machinery",
+      "country_ar": "اليابان",
+      "official_url": "https://www.kobelco-kenki.co.jp/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة متاحة عبر شبكة الوكلاء.",
+      "model_families": [
+        {"model": "SK200", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "SK210", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "SK260", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "SK350", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"}
+      ]
+    },
+    {
+      "id": "jcb",
+      "name_ar": "جي سي بي",
+      "name_en": "JCB",
+      "country_ar": "المملكة المتحدة",
+      "official_url": "https://www.jcb.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر شبكة وكلاء JCB.",
+      "model_families": [
+        {"model": "JS200", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "JS220", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "JS300", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "3CX", "category_ar": "حفار لودر", "category_en": "Backhoe Loader"},
+        {"model": "4CX", "category_ar": "حفار لودر", "category_en": "Backhoe Loader"},
+        {"model": "457", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
+        {"model": "467", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"}
+      ]
+    },
+    {
+      "id": "sany",
+      "name_ar": "ساني",
+      "name_en": "SANY",
+      "country_ar": "الصين",
+      "official_url": "https://www.sanyglobal.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء وبوابة SANY.",
+      "model_families": [
+        {"model": "SY215C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "SY235C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "SY365C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "SY500H", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"}
+      ]
+    },
+    {
+      "id": "xcmg",
+      "name_ar": "إكس سي إم جي",
+      "name_en": "XCMG",
+      "country_ar": "الصين",
+      "official_url": "https://www.xcmg.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "XE215C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "XE270C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "XE370C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "XE490C", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"}
+      ]
+    },
+    {
+      "id": "zoomlion",
+      "name_ar": "زومليون",
+      "name_en": "Zoomlion",
+      "country_ar": "الصين",
+      "official_url": "https://www.zoomlion.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "ZE215E", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "ZE230E", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "ZE335E", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"}
+      ]
+    },
+    {
+      "id": "liugong",
+      "name_ar": "ليوغونغ",
+      "name_en": "LiuGong",
+      "country_ar": "الصين",
+      "official_url": "https://www.liugong.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "CLG920E", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "CLG922E", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "CLG936E", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"}
+      ]
+    },
+    {
+      "id": "shantui",
+      "name_ar": "شانتووي",
+      "name_en": "Shantui",
+      "country_ar": "الصين",
+      "official_url": "https://www.shantui.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "SD16", "category_ar": "بلدوزر", "category_en": "Dozer"},
+        {"model": "SD22", "category_ar": "بلدوزر", "category_en": "Dozer"},
+        {"model": "SD32", "category_ar": "بلدوزر", "category_en": "Dozer"}
+      ]
+    },
+    {
+      "id": "tadano",
+      "name_ar": "تادانو",
+      "name_en": "Tadano",
+      "country_ar": "اليابان",
+      "official_url": "https://www.tadano.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر شبكة الوكلاء.",
+      "model_families": [
+        {"model": "GR-1000XL", "category_ar": "رافعة وعرة", "category_en": "Rough Terrain Crane"},
+        {"model": "GT-800XL", "category_ar": "رافعة وعرة", "category_en": "Rough Terrain Crane"},
+        {"model": "ATF-1100", "category_ar": "رافعة كل التضاريس", "category_en": "All Terrain Crane"}
+      ]
+    },
+    {
+      "id": "manitowoc",
+      "name_ar": "مانيتووك",
+      "name_en": "Manitowoc",
+      "country_ar": "الولايات المتحدة",
+      "official_url": "https://www.manitowoc.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "علامة Grove للرافعات؛ أدلة الخدمة عبر الوكلاء.",
+      "model_families": [
+        {"model": "GMK5150", "category_ar": "رافعة كل التضاريس", "category_en": "All Terrain Crane"},
+        {"model": "GMK5250", "category_ar": "رافعة كل التضاريس", "category_en": "All Terrain Crane"},
+        {"model": "RT540E", "category_ar": "رافعة وعرة", "category_en": "Rough Terrain Crane"}
+      ]
+    },
+    {
+      "id": "terex",
+      "name_ar": "تيريكس",
+      "name_en": "Terex",
+      "country_ar": "الولايات المتحدة",
+      "official_url": "https://www.terex.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "TA300", "category_ar": "شاحنة قلابة مفصلية", "category_en": "Articulated Dump Truck"},
+        {"model": "TA400", "category_ar": "شاحنة قلابة مفصلية", "category_en": "Articulated Dump Truck"},
+        {"model": "TRT35", "category_ar": "رافعة برجية", "category_en": "Tower Crane"}
+      ]
+    },
+    {
+      "id": "bomag",
+      "name_ar": "بوماغ",
+      "name_en": "BOMAG",
+      "country_ar": "ألمانيا",
+      "official_url": "https://www.bomag.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "BW213", "category_ar": "مدحلة أسطوانية", "category_en": "Tandem Roller"},
+        {"model": "BW226", "category_ar": "مدحلة أسطوانية", "category_en": "Tandem Roller"},
+        {"model": "BF800", "category_ar": "راصفة أسفلت", "category_en": "Asphalt Paver"}
+      ]
+    },
+    {
+      "id": "wirtgen",
+      "name_ar": "فيرتكين",
+      "name_en": "Wirtgen",
+      "country_ar": "ألمانيا",
+      "official_url": "https://www.wirtgen-group.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر مجموعة Wirtgen والوكلاء.",
+      "model_families": [
+        {"model": "W200", "category_ar": "ماكينة تفريز أسفلت", "category_en": "Cold Milling Machine"},
+        {"model": "W210", "category_ar": "ماكينة تفريز أسفلت", "category_en": "Cold Milling Machine"},
+        {"model": "W220", "category_ar": "ماكينة تفريز أسفلت", "category_en": "Cold Milling Machine"}
+      ]
+    },
+    {
+      "id": "ammann",
+      "name_ar": "أمان",
+      "name_en": "Ammann",
+      "country_ar": "سويسرا",
+      "official_url": "https://www.ammann.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "ASC110", "category_ar": "مدحلة أسطوانية", "category_en": "Tandem Roller"},
+        {"model": "ARX 36", "category_ar": "مدحلة أسطوانية", "category_en": "Tandem Roller"}
+      ]
+    },
+    {
+      "id": "kubota",
+      "name_ar": "كوبوتا",
+      "name_en": "Kubota",
+      "country_ar": "اليابان",
+      "official_url": "https://www.kubota.com/",
+      "service_url": "https://www.kubotausa.com/service-support",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "KX040-4", "category_ar": "حفار صغير", "category_en": "Mini Excavator"},
+        {"model": "U35-4", "category_ar": "حفار صغير", "category_en": "Mini Excavator"},
+        {"model": "SVL75-2", "category_ar": "لودر مجنزر مدمج", "category_en": "Compact Track Loader"}
+      ]
+    },
+    {
+      "id": "yanmar",
+      "name_ar": "يانمار",
+      "name_en": "Yanmar",
+      "country_ar": "اليابان",
+      "official_url": "https://www.yanmar.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "VIO35", "category_ar": "حفار صغير", "category_en": "Mini Excavator"},
+        {"model": "SV100", "category_ar": "لودر مجنزر مدمج", "category_en": "Compact Track Loader"}
+      ]
+    },
+    {
+      "id": "takeuchi",
+      "name_ar": "تاكوتشي",
+      "name_en": "Takeuchi",
+      "country_ar": "اليابان",
+      "official_url": "https://www.takeuchi-us.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "TB235", "category_ar": "حفار صغير", "category_en": "Mini Excavator"},
+        {"model": "TB260", "category_ar": "حفار صغير", "category_en": "Mini Excavator"},
+        {"model": "TL10", "category_ar": "لودر مجنزر مدمج", "category_en": "Compact Track Loader"}
+      ]
+    },
+    {
+      "id": "bobcat",
+      "name_ar": "بوبكات",
+      "name_en": "Bobcat",
+      "country_ar": "الولايات المتحدة",
+      "official_url": "https://www.bobcat.com/",
+      "service_url": "https://www.bobcat.com/owners/manuals",
+      "data_access": "public_catalog",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة المالك متاحة للتحميل من الموقع الرسمي بعد تسجيل المعدة.",
+      "model_families": [
+        {"model": "E35", "category_ar": "حفار صغير", "category_en": "Mini Excavator"},
+        {"model": "E50", "category_ar": "حفار صغير", "category_en": "Mini Excavator"},
+        {"model": "T76", "category_ar": "لودر مجنزر مدمج", "category_en": "Compact Track Loader"},
+        {"model": "S76", "category_ar": "لودر انزلاقي", "category_en": "Skid-Steer Loader"}
+      ]
+    },
+    {
+      "id": "mecalac",
+      "name_ar": "ميكالاك",
+      "name_en": "Mecalac",
+      "country_ar": "فرنسا",
+      "official_url": "https://www.mecalac.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "8MCR", "category_ar": "حفار مدمج", "category_en": "Compact Excavator"},
+        {"model": "10MSX", "category_ar": "حفار بعجلات", "category_en": "Wheeled Excavator"},
+        {"model": "12MTX", "category_ar": "حفار بعجلات", "category_en": "Wheeled Excavator"}
+      ]
+    },
+    {
+      "id": "hidromek",
+      "name_ar": "هيدروميك",
+      "name_en": "Hidromek",
+      "country_ar": "تركيا",
+      "official_url": "https://www.hidromek.com.tr/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "HMK 140", "category_ar": "حفار لودر", "category_en": "Backhoe Loader"},
+        {"model": "HMK 220", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"},
+        {"model": "HMK 300", "category_ar": "حفار هيدروليكي", "category_en": "Excavator"}
+      ]
+    },
+    {
+      "id": "dressta",
+      "name_ar": "دريسستا",
+      "name_en": "Dressta",
+      "country_ar": "بولندا",
+      "official_url": "https://www.dressta.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "TD-15", "category_ar": "بلدوزر", "category_en": "Dozer"},
+        {"model": "TD-20", "category_ar": "بلدوزر", "category_en": "Dozer"},
+        {"model": "TD-25", "category_ar": "بلدوزر", "category_en": "Dozer"}
+      ]
+    },
+    {
+      "id": "bell",
+      "name_ar": "بيل إيكويبمنت",
+      "name_en": "Bell Equipment",
+      "country_ar": "جنوب أفريقيا",
+      "official_url": "https://www.bell-equipment.com/",
+      "data_access": "dealer_portal",
+      "verified_at": "2026-11-20",
+      "notes_ar": "أدلة الخدمة والقطع متاحة عبر الوكلاء.",
+      "model_families": [
+        {"model": "B30E", "category_ar": "شاحنة قلابة مفصلية", "category_en": "Articulated Dump Truck"},
+        {"model": "B40E", "category_ar": "شاحنة قلابة مفصلية", "category_en": "Articulated Dump Truck"},
+        {"model": "B50E", "category_ar": "شاحنة قلابة مفصلية", "category_en": "Articulated Dump Truck"}
+      ]
+    }
+  ]
+}
