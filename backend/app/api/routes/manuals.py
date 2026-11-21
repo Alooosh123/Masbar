@@ -24,7 +24,7 @@ def search_manuals(
     This is lexical retrieval, not vector retrieval, OCR, or authorization to
     execute a maintenance procedure.
     """
-    if not get_settings().manual_search_enabled:
+    if not get_settings().manual_search_available:
         raise HTTPException(
             status_code=404,
             detail={
