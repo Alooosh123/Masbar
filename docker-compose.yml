@@ -13,6 +13,7 @@ services:
     environment:
       ENVIRONMENT: production
       CORS_ORIGINS: "*"
+      MANUAL_SEARCH_ENABLED: "false"
     volumes:
       - ./data/manual_index:/app/data/manual_index:ro
     restart: unless-stopped
