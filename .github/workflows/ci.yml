@@ -64,10 +64,12 @@ jobs:
         run: npm run build
 
   compose:
-    name: Docker Compose configuration
+    name: Docker Compose configuration and image build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Validate Compose configuration
         run: docker compose config --quiet
+      - name: Build production images
+        run: docker compose build
