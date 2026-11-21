@@ -75,11 +75,19 @@ jobs:
         run: docker compose build
       - name: Run containers and verify persistent session recovery
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           docker compose up -d
 
           cleanup() {
-            docker compose down --volumes
+            exit_code=$?
+            trap - EXIT
+            if [ "$exit_code" -ne 0 ]; then
+              echo "Container smoke test failed; dumping service state before cleanup."
+              docker compose ps || true
+              docker compose logs backend web || true
+            fi
+            docker compose down --volumes || true
+            exit "$exit_code"
           }
           trap cleanup EXIT
 
@@ -95,12 +103,16 @@ jobs:
           }
 
           wait_for_backend
+          echo 'Backend health endpoint is reachable.'
           curl --fail --silent http://127.0.0.1:8080/ >/dev/null
+          echo 'Frontend is reachable.'
 
           backend_uid="$(docker compose exec -T backend id -u | tr -d '\r')"
+          echo "Backend UID: $backend_uid"
           test "$backend_uid" = "10001"
 
           readonly_root="$(docker inspect "$(docker compose ps -q backend)" --format '{{.HostConfig.ReadonlyRootfs}}')"
+          echo "Backend read-only root filesystem: $readonly_root"
           test "$readonly_root" = "true"
 
           session_response="$(curl --fail --silent --show-error \
@@ -109,8 +121,10 @@ jobs:
             -d '{"equipment_model":"Caterpillar C15 ACERT"}')"
           session_id="$(python -c 'import json,sys; print(json.load(sys.stdin)["session_id"])' <<< "$session_response")"
 
+          echo "Created session $session_id"
           docker compose restart backend
           wait_for_backend
+          echo 'Backend restarted; checking restored session.'
 
           curl --fail --silent --show-error \
             "http://127.0.0.1:8010/api/v1/sessions/$session_id" \
