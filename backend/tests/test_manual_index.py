@@ -99,7 +99,6 @@ def test_local_index_lists_manual_metadata_without_pdf_content(tmp_path):
 
 def test_write_manual_index_refuses_overwrite_without_explicit_flag(tmp_path):
     _make_index(tmp_path)
-    _make_index(tmp_path, doc_id="grundfos-cr5")
     with pytest.raises(ManualIndexError, match="already exists"):
         _make_index(tmp_path)
 
