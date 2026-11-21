@@ -41,7 +41,10 @@ def get_retriever() -> HybridRetriever:
 @lru_cache
 def get_store() -> SessionStore:
     settings = get_settings()
-    return SessionStore(ttl_minutes=settings.session_ttl_minutes)
+    return SessionStore(
+        ttl_minutes=settings.session_ttl_minutes,
+        db_path=settings.session_db_path,
+    )
 
 
 @lru_cache

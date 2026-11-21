@@ -26,6 +26,10 @@ data/manual_index/*.json
 
 # Logs and local runtime data
 logs/
+data/sessions/*.sqlite3
+data/sessions/*.sqlite3-shm
+data/sessions/*.sqlite3-wal
+!data/sessions/.gitkeep
 *.log
 data/cache/tts/*.mp3
 !data/cache/tts/.gitkeep

@@ -236,6 +236,7 @@ backend/
 data/kb/             # 3 ملفات معرفة تجريبية (9 قطع)
 data/catalog/        # سجل مصادر OEM الرسمية (31 شركة / 126 موديلًا)
 data/cache/tts/      # ذاكرة MP3 عربية للعمل دون اتصال
+data/sessions/        # قاعدة SQLite محلية للجلسات (مستثناة من Git)
 web/                 # PWA (React + Vite) — ChatScreen + ChatCamera
 docs/blueprint/      # خطة النظام الأصلية (6 مراحل)
 docs/test-results/   # تقارير الاختبار الفعلي (JSON)

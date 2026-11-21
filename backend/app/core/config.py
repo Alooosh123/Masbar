@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> core -> app -> backend -> project root
@@ -34,7 +34,8 @@ class Settings(BaseSettings):
     demo_mode: bool = True
 
     # Sessions
-    session_ttl_minutes: int = 240
+    session_ttl_minutes: int = Field(default=240, ge=1, le=10080)
+    session_db_path: Path = PROJECT_ROOT / "data" / "sessions" / "sessions.sqlite3"
 
     # Vision provider: "mock" | "openai" | "cohere"
     vision_provider: str = "mock"
