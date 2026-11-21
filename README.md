@@ -78,7 +78,7 @@ cd web; npm.cmd install; cd ..
 Invoke-RestMethod http://localhost:8010/health
 ```
 
-المتوقع: `status=online`، `components=9`، `equipment=3`، `vision_provider=cohere`، `chat_provider=cohere` مع `chat_ready=true`، و`tts_provider=edge` مع `tts_ready=true`، و`manufacturers=31`.
+المتوقع: `status=online`، `components=9`، `equipment=3`، `vision_provider=cohere`، `chat_provider=cohere` مع `chat_ready=true`، و`tts_provider=edge` مع `tts_ready=true`، و`manufacturers=31`، و`manual_documents=0` و`manual_chunks=0` قبل إضافة فهارس محلية.
 
 ### اختبار سريع لواجهة الـ API
 
