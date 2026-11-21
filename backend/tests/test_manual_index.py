@@ -37,6 +37,7 @@ def _make_index(index_dir, doc_id="grundfos-cr5", model="Grundfos CR 5 Model A")
         ManualChunk(
             chunk_id="1" * 64,
             doc_id=doc_id,
+            pdf_page_index=3,
             pdf_page_number=4,
             printed_page_number=4,
             chunk_index=0,
@@ -49,6 +50,7 @@ def _make_index(index_dir, doc_id="grundfos-cr5", model="Grundfos CR 5 Model A")
         ManualChunk(
             chunk_id="2" * 64,
             doc_id=doc_id,
+            pdf_page_index=8,
             pdf_page_number=9,
             printed_page_number=9,
             chunk_index=0,
@@ -71,6 +73,7 @@ def test_manual_search_returns_page_and_document_citation(tmp_path):
     assert hits
     assert hits[0].document_id == "grundfos-cr5"
     assert hits[0].document_number == "96546866 0407"
+    assert hits[0].pdf_page_index == 8
     assert hits[0].pdf_page_number == 9
     assert hits[0].printed_page_number == 9
     assert hits[0].section_title == "Replacement of shaft seal"
