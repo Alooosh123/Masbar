@@ -14,8 +14,10 @@ services:
       ENVIRONMENT: production
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:8080}"
       MANUAL_SEARCH_ENABLED: "false"
+      SESSION_DB_PATH: /app/data/sessions/sessions.sqlite3
     volumes:
       - ./data/manual_index:/app/data/manual_index:ro
+      - misbar_sessions:/app/data/sessions
     restart: unless-stopped
 
   web:
@@ -31,4 +33,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-\nvolumes:\n  misbar_sessions:\n
+
+volumes:
+  misbar_sessions:
