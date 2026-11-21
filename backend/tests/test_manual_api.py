@@ -32,6 +32,7 @@ def _seed_manual_index(index_dir):
         ManualChunk(
             chunk_id="3" * 64,
             doc_id=document.doc_id,
+            pdf_page_index=8,
             pdf_page_number=9,
             printed_page_number=9,
             chunk_index=0,
@@ -65,6 +66,7 @@ def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, mo
     body = search.json()
     assert body["retrieval_method"] == "bm25_lexical"
     assert body["vector_search_enabled"] is False
+    assert body["hits"][0]["pdf_page_index"] == 8
     assert body["hits"][0]["printed_page_number"] == 9
     assert body["hits"][0]["pdf_page_number"] == 9
     assert health.json()["manual_documents"] == 1
