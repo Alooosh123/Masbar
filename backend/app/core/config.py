@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     kb_dir: Path = PROJECT_ROOT / "data" / "kb"
     oem_registry_path: Path = PROJECT_ROOT / "data" / "catalog" / "oem_registry.json"
     manual_index_dir: Path = PROJECT_ROOT / "data" / "manual_index"
-    min_visual_confidence: float = 0.85
+    # Public manual excerpts stay disabled until the runtime is private or authenticated.\n    manual_search_enabled: bool = False\n    min_visual_confidence: float = 0.85
     demo_mode: bool = True
 
     # Sessions
