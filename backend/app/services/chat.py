@@ -572,10 +572,10 @@ class ChatService:
         from app.deps import get_manual_library
 
         patterns = (
-            r"ابحث\\s+في\\s+الكتيبات?\\s+(?:عن|حول)\\s+",
-            r"ابحث\\s+في\\s+الدليل\\s+(?:عن|حول)\\s+",
-            r"ابحث\\s+بالكتيب\\s+(?:عن|حول)\\s+",
-            r"(?:search|find)\\s+(?:in\\s+)?manuals?\\s+(?:for|about)\\s+",
+            r"ابحث\s+في\s+الكتيبات?\s+(?:عن|حول)\s+",
+            r"ابحث\s+في\s+الدليل\s+(?:عن|حول)\s+",
+            r"ابحث\s+بالكتيب\s+(?:عن|حول)\s+",
+            r"(?:search|find)\s+(?:in\s+)?manuals?\s+(?:for|about)\s+",
         )
         query = message
         for pattern in patterns:
@@ -618,8 +618,8 @@ class ChatService:
             revision = f" — الإصدار: {hit.revision}" if hit.revision else ""
             section = f" — القسم: {hit.section_title}" if hit.section_title else ""
             lines.append(
-                f"{index}. {hit.manufacturer} — {hit.title}{revision}\\n"
-                f"المرجع: {doc_ref} — {page}{section}\\n"
+                f"{index}. {hit.manufacturer} — {hit.title}{revision}\n"
+                f"المرجع: {doc_ref} — {page}{section}\n"
                 f"المقتطف: {hit.excerpt}"
             )
             if hit.source_url:
@@ -627,9 +627,9 @@ class ChatService:
 
         return ChatResponse(
             message_ar=(
-                f"وجدت {len(hits)} مقطعاً ذا صلة بموضوع «{query}»:\\n\\n"
-                + "\\n\\n".join(lines)
-                + "\\n\\nتنبيه: هذا بحث نصي في صفحات الكتيبات، وليس اعتماداً فنياً "
+                f"وجدت {len(hits)} مقطعاً ذا صلة بموضوع «{query}»:\n\n"
+                + "\n\n".join(lines)
+                + "\n\nتنبيه: هذا بحث نصي في صفحات الكتيبات، وليس اعتماداً فنياً "
                 "ولا تحققاً من مطابقة رقم الطراز أو الإصدار. لا تنفذ خطوة صيانة أو "
                 "تستخدم قيمة عزم من المقتطف وحده؛ يجب مراجعة الصفحة الأصلية ومطابقة "
                 "لوحة بيانات المعدة واعتماد المعلومة من مختص مؤهل."
