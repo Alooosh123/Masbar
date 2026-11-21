@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import json
 
 import pytest
 
@@ -118,6 +119,38 @@ def test_long_page_is_split_with_overlap():
     assert len(chunks) > 1
     assert all(0 < len(chunk) <= 360 for chunk in chunks)
     assert set(chunks[0].splitlines()) & set(chunks[1].splitlines())
+
+
+def test_index_refuses_chunk_from_another_document(tmp_path):
+    path = _make_index(tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["chunks"][0]["doc_id"] = "some-other-manual"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ManualIndexError, match="Every chunk must reference"):
+        ManualLibrary.load(tmp_path)
+
+
+def test_index_refuses_duplicate_chunk_ids(tmp_path):
+    path = _make_index(tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["chunks"][1]["chunk_id"] = payload["chunks"][0]["chunk_id"]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ManualIndexError, match="Duplicate chunk_id"):
+        ManualLibrary.load(tmp_path)
+
+
+def test_configured_chunk_sizes_above_default_are_supported():
+    chunk = ManualChunk(
+        chunk_id="3" * 64,
+        doc_id="grundfos-cr5",
+        pdf_page_index=0,
+        pdf_page_number=1,
+        chunk_index=0,
+        text="x" * 3000,
+    )
+    assert len(chunk.text) == 3000
 
 
 def test_pdf_ingestion_requires_rights_confirmation(tmp_path):
