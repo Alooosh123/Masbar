@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError, model_validator
 from pypdf import PdfReader
 
 from app.core.arabic import normalize_arabic
@@ -56,6 +56,12 @@ class ManualChunk(BaseModel):
     chunk_index: int = Field(ge=0)
     section_title: str | None = Field(default=None, max_length=240)
     text: str = Field(min_length=20, max_length=DEFAULT_CHUNK_CHARS + 100)
+
+    @model_validator(mode="after")
+    def validate_pdf_page_numbers(self) -> "ManualChunk":
+        if self.pdf_page_number != self.pdf_page_index + 1:
+            raise ValueError("pdf_page_number must equal pdf_page_index + 1")
+        return self
 
 
 class ManualIndex(BaseModel):
