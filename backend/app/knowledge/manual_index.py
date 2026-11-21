@@ -7,7 +7,6 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError, model_validator
 from pypdf import PdfReader
@@ -55,7 +54,7 @@ class ManualChunk(BaseModel):
     printed_page_number: int | None = Field(default=None, ge=1)
     chunk_index: int = Field(ge=0)
     section_title: str | None = Field(default=None, max_length=240)
-    text: str = Field(min_length=20, max_length=DEFAULT_CHUNK_CHARS + 100)
+    text: str = Field(min_length=20, max_length=5100)
 
     @model_validator(mode="after")
     def validate_pdf_page_numbers(self) -> "ManualChunk":
@@ -69,7 +68,22 @@ class ManualIndex(BaseModel):
 
     schema_version: str = "1.0"
     document: ManualDocument
-    chunks: list[ManualChunk]
+    chunks: list[ManualChunk] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_chunks_match_document(self) -> "ManualIndex":
+        chunk_ids: set[str] = set()
+        for chunk in self.chunks:
+            if chunk.doc_id != self.document.doc_id:
+                raise ValueError("Every chunk must reference the parent document doc_id")
+            if chunk.pdf_page_number > self.document.page_count:
+                raise ValueError("Chunk PDF page number exceeds the document page count")
+            if chunk.chunk_id in chunk_ids:
+                raise ValueError("Duplicate chunk_id in manual index")
+            chunk_ids.add(chunk.chunk_id)
+        if self.document.text_pages + self.document.pages_requiring_ocr > self.document.page_count:
+            raise ValueError("Text and OCR page counts cannot exceed PDF page count")
+        return self
 
 
 class ManualDocumentSummary(BaseModel):
@@ -201,7 +215,7 @@ def build_manual_index(
     raw_pdf = path.read_bytes()
     digest = hashlib.sha256(raw_pdf).hexdigest()
     try:
-        reader = PdfReader(path, strict=True)
+        reader = PdfReader(path)
     except Exception as exc:
         raise ManualIndexError(f"Unable to read PDF: {type(exc).__name__}") from exc
 
