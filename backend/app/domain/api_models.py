@@ -59,7 +59,7 @@ class TorqueSpecification(BaseModel):
     value_nm: float
     value_lbft: float
     tightening_sequence: str | None = None
-    verified_from_manual: bool = True
+    verified_from_manual: bool = False
     source_document_id: str
     source_page: int
     source_status: str = "sample"
