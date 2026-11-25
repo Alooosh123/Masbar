@@ -6,8 +6,6 @@ import type {
   ComponentSummary,
   EquipmentSummary,
   HealthResponse,
-  AuthMeResponse,
-  AuthUser,
 } from "../types";
 
 function inferApiUrl(): string {
@@ -78,16 +76,6 @@ export interface IdentifyPayload {
 
 export const api = {
   health: () => request<HealthResponse>("/health"),
-
-  me: () => request<AuthMeResponse>("/api/v1/auth/me"),
-
-  login: (email: string, password: string) =>
-    request<{ authenticated: boolean; user: AuthUser }>("/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    }),
-
-  logout: () => request<{ authenticated: boolean }>("/api/v1/auth/logout", { method: "POST" }),
 
   chat: (payload: ChatRequest) =>
     request<ChatResponse>("/api/v1/chat", {

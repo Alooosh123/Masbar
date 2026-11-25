@@ -28,7 +28,6 @@ def health() -> HealthResponse:
         manufacturers=get_oem_registry().count,
         manual_documents=len(get_manual_library().documents),
         manual_chunks=len(get_manual_library().chunks),
-        auth_required=settings.auth_required,
     )
 
 

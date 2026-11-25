@@ -203,7 +203,6 @@ class HealthResponse(BaseModel):
     manufacturers: int = 0
     manual_documents: int = 0
     manual_chunks: int = 0
-    auth_required: bool = False
 
 
 class ManufacturerSummary(BaseModel):
