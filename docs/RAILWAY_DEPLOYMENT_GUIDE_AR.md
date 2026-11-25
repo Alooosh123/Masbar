@@ -31,11 +31,16 @@
 | `ENVIRONMENT` | `production` |
 | `PORT` | `8000` |
 | `CORS_ORIGINS` | عنوان الواجهة بعد إنشائه، مثل `https://<frontend-domain>` |
-| `VISION_PROVIDER` | `mock` إلى أن يضاف مفتاح Cohere أو OpenAI |
-| `CHAT_PROVIDER` | `off` إلى أن يضاف مفتاح Cohere |
-| `DEMO_MODE` | `false` عند تفعيل مزود الرؤية الحقيقي |
+| `VISION_PROVIDER` | `cohere` عند استخدام مفتاح Cohere |
+| `CHAT_PROVIDER` | `cohere` عند استخدام مفتاح Cohere |
+| `DEMO_MODE` | `false` |
 | `MANUAL_SEARCH_ENABLED` | `false` |
 | `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |
+| `AUTH_REQUIRED` | `true` |
+| `JWT_SECRET_KEY` | سر عشوائي لا يقل عن 32 حرفًا |
+| `AUTH_TOKEN_TTL_MINUTES` | `480` |
+| `BOOTSTRAP_ADMIN_EMAIL` | بريد حساب المالك الأول |
+| `BOOTSTRAP_ADMIN_PASSWORD` | كلمة مرور أولية لا تقل عن 20 حرفًا |
 | `RAILWAY_RUN_UID` | `0` عند استخدام Volume، لتهيئة صلاحياته فقط |
 
 4. اجعل Healthcheck Path هو `/health`.
@@ -43,7 +48,7 @@
 
 ### تخزين SQLite الدائم
 
-أنشئ Volume واحدًا لخدمة Backend واربطه بالمسار الدقيق:
+استخدم الـVolume الدائم الموجود بالفعل في خدمة Backend باسم `masbar-sessions` واربطه بالمسار الدقيق التالي (لا تنشئ Volume آخر للخدمة نفسها):
 
 ```text
 /app/data/sessions
@@ -63,7 +68,20 @@ Railway يركّب Volume مملوكًا لـroot. لذلك أضيف إلى صو
 - يمكن إنشاء جلسة واستعادتها بعد إعادة نشر Backend.
 - ملف SQLite موجود داخل Volume وليس في طبقة الحاوية المؤقتة.
 
-حجم Railway الافتراضي يعتمد على الخطة، وتُحاسب مساحة Volume بحسب الحجم المستخدم؛ تحقق من حدود خطتك قبل الإنشاء. SQLite يظل مناسبًا لنسخة واحدة على مضيف واحد، وليس لتعدد النسخ أو المضيفين.
+الـVolume الحالي حجمه 500MB ومربوط بالفعل بالخدمة. SQLite يظل مناسبًا لنسخة واحدة على مضيف واحد، وليس لتعدد النسخ أو المضيفين. لا تحذف Volume أو تعِد إنشاءه أثناء التحديث حتى لا تفقد الجلسات.
+
+### المصادقة وحساب المالك الأول
+
+يستخدم المشروع حاليًا نظام المصادقة الموجود على `main`، وليس تسجيل دخول مبنيًا على Local Storage:
+
+- جلسة الدخول تحفظ في Cookie من نوع HttpOnly وSecure في الإنتاج.
+- يتم تخزين كلمات المرور بصيغة PBKDF2 مع salt.
+- بعد خمس محاولات فاشلة، يتم تعليق الدخول لمدة 15 دقيقة.
+- الأدوار المعتمدة: `owner` و`admin` و`technician` و`viewer`.
+- ينشئ الخادم حساب المالك الأول مرة واحدة من `BOOTSTRAP_ADMIN_EMAIL` و`BOOTSTRAP_ADMIN_PASSWORD` إذا لم يوجد أي مستخدم في قاعدة `SESSION_DB_PATH`.
+- كلمة المرور الأولية يجب أن تكون 20 حرفًا على الأقل؛ بعد إنشاء الحساب بنجاح يمكن إزالة متغير كلمة المرور الأولية من Railway للحماية.
+
+لا توجد صفحة تسجيل عام. لا تفعّل `AUTH_REQUIRED=true` قبل ضبط `JWT_SECRET_KEY` وبيانات حساب المالك الأول وعنوان الواجهة في `CORS_ORIGINS`.
 
 ## 2. إعداد Frontend
 
