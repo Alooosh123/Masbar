@@ -279,7 +279,7 @@ function SessionCards({
   );
 }
 
-export function ChatScreen() {
+export function ChatScreen({ onLogout }: { onLogout?: () => void }) {
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -757,6 +757,16 @@ export function ChatScreen() {
           >
             <RotateCcwIcon size={19} />
           </button>
+          {onLogout && (
+            <button
+              type="button"
+              className="chat-logout-btn"
+              onClick={onLogout}
+              aria-label="تسجيل الخروج"
+            >
+              خروج
+            </button>
+          )}
         </div>
       </header>
 
