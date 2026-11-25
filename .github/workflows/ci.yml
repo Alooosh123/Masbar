@@ -86,6 +86,8 @@ jobs:
               docker compose ps || true
               docker compose logs backend web || true
             fi
+            docker rm -f masbar-railway-volume-smoke >/dev/null 2>&1 || true
+            docker volume rm masbar-railway-volume-smoke >/dev/null 2>&1 || true
             docker compose down --volumes || true
             exit "$exit_code"
           }
@@ -158,3 +160,35 @@ jobs:
           assert audit["session_id"] == os.environ["SESSION_ID"]
           assert any(item["event"] == "session_created" for item in audit["entries"])
           PY
+
+          echo 'Simulating Railway volume ownership and privilege drop.'
+          docker volume create masbar-railway-volume-smoke
+          docker run -d --name masbar-railway-volume-smoke \
+            --user 0 \
+            -p 8011:8000 \
+            -e PORT=8000 \
+            -e SESSION_DB_PATH=/app/data/sessions/sessions.sqlite3 \
+            -v masbar-railway-volume-smoke:/app/data/sessions \
+            industrial-spatial-ai-backend:0.1.0
+
+          for attempt in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8011/health >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl --fail --silent --show-error http://127.0.0.1:8011/health >/dev/null
+
+          runtime_uid="$(docker exec masbar-railway-volume-smoke sh -c "awk '/^Uid:/{print \$2}' /proc/1/status")"
+          volume_owner="$(docker exec masbar-railway-volume-smoke stat -c '%u:%g' /app/data/sessions)"
+          test "$runtime_uid" = "10001"
+          test "$volume_owner" = "10001:10001"
+
+          curl --fail --silent --show-error \
+            -X POST http://127.0.0.1:8011/api/v1/sessions \
+            -H 'Content-Type: application/json' \
+            -d '{"equipment_model":"Caterpillar C15 ACERT"}' >/tmp/railway-volume-session.json
+
+          db_owner="$(docker exec masbar-railway-volume-smoke stat -c '%u:%g' /app/data/sessions/sessions.sqlite3)"
+          test "$db_owner" = "10001:10001"
+          echo 'Railway-style root-owned volume is writable while FastAPI runs as UID 10001.'
