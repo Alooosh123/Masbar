@@ -11,21 +11,37 @@ import type {
 function inferApiUrl(): string {
   const configured = import.meta.env.VITE_API_URL as string | undefined;
   if (configured && configured.trim()) return configured.trim().replace(/\/$/, "");
-
   if (typeof window !== "undefined") {
-    // Vite development server runs separately from the local API.
     if (import.meta.env.DEV && window.location.hostname) {
       return `http://${window.location.hostname}:8010`;
     }
-
-    // Production frontend proxies /api, /health and /ws to the private backend.
     return window.location.origin;
   }
-
   return "http://localhost:8010";
 }
 
 export const API_URL = inferApiUrl();
+const AUTH_TOKEN_KEY = "masbar.access_token";
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: "owner" | "manager" | "engineer" | "technician" | "viewer";
+}
+
+export interface AuthStatus {
+  auth_enabled: boolean;
+  initialized: boolean;
+  initial_setup_required: boolean;
+}
+
+export interface AuthResult {
+  access_token: string;
+  token_type: "bearer";
+  expires_in: number;
+  user: AuthUser;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -39,13 +55,28 @@ export class ApiError extends Error {
   }
 }
 
+export function getAuthToken(): string | null {
+  return typeof window === "undefined" ? null : window.sessionStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  window.sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearAuthToken(): void {
+  if (typeof window !== "undefined") window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, {
-      headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-      ...init,
-    });
+    const headers = new Headers(init?.headers);
+    if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+    const token = getAuthToken();
+    if (token && !headers.has("Authorization")) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    response = await fetch(`${API_URL}${path}`, { ...init, headers });
   } catch {
     throw new ApiError(
       "تعذر الاتصال بالخادم. تحقق من تشغيل الخادم الخلفي واتصال الواجهة به.",
@@ -75,6 +106,28 @@ export interface IdentifyPayload {
 }
 
 export const api = {
+  authStatus: () => request<AuthStatus>("/api/v1/auth/status"),
+
+  initializeOwner: (payload: {
+    setup_token: string;
+    email: string;
+    full_name: string;
+    password: string;
+  }) =>
+    request<AuthResult>("/api/v1/auth/initialize", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  login: (email: string, password: string) =>
+    request<AuthResult>("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  me: () =>
+    request<{ authenticated: boolean; user: AuthUser | null }>("/api/v1/auth/me"),
+
   health: () => request<HealthResponse>("/health"),
 
   chat: (payload: ChatRequest) =>
