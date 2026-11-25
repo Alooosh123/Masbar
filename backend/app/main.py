@@ -3,14 +3,15 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import catalog, chat, health, manuals, sessions, tts, ws
+from app.api.routes import auth, catalog, chat, health, manuals, sessions, tts, ws
 from app.core.config import get_settings
 from app.deps import get_assistant, get_kb
 from app.safety.guard import SafetyViolation
+from app.security.auth import get_current_user
 from app.services.session import SessionNotFound
 
 logging.basicConfig(level=logging.INFO)
@@ -21,17 +22,18 @@ logger = logging.getLogger("industrial-spatial-ai")
 async def lifespan(app: FastAPI):
     settings = get_settings()
     kb = get_kb()
-    get_assistant()  # fail fast on bad vision configuration
+    get_assistant()
     logger.info(
         "Knowledge base loaded: %s components across %s equipment models",
         len(kb.components),
         len(kb.equipment),
     )
     logger.info(
-        "Vision provider=%s | demo_mode=%s | min_confidence=%.2f",
+        "Vision provider=%s | chat_provider=%s | auth_enabled=%s | demo_mode=%s",
         settings.vision_provider,
+        settings.chat_provider,
+        settings.auth_enabled,
         settings.demo_mode,
-        settings.min_visual_confidence,
     )
     yield
 
@@ -52,8 +54,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -79,9 +81,11 @@ async def session_not_found_handler(request: Request, exc: SessionNotFound) -> J
 
 
 app.include_router(health.router)
-app.include_router(catalog.router)
-app.include_router(manuals.router)
-app.include_router(sessions.router)
-app.include_router(chat.router)
-app.include_router(tts.router)
+app.include_router(auth.router)
+protected = [Depends(get_current_user)]
+app.include_router(catalog.router, dependencies=protected)
+app.include_router(manuals.router, dependencies=protected)
+app.include_router(sessions.router, dependencies=protected)
+app.include_router(chat.router, dependencies=protected)
+app.include_router(tts.router, dependencies=protected)
 app.include_router(ws.router)
