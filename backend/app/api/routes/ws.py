@@ -1,6 +1,8 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.core.config import get_settings
 from app.deps import get_assistant
+from app.security.auth import user_from_token
 from app.services.session import SessionNotFound
 
 router = APIRouter(tags=["stream"])
@@ -8,13 +10,14 @@ router = APIRouter(tags=["stream"])
 
 @router.websocket("/api/v1/sessions/{session_id}/events")
 async def session_events(websocket: WebSocket, session_id: str) -> None:
-    """
-    Lightweight real-time channel: sends the current session snapshot on connect,
-    then echoes pings. Mutations happen over HTTP and the client refetches.
+    """Read-only session events. Authenticated with a short-lived bearer token."""
+    settings = get_settings()
+    if settings.auth_enabled:
+        token = websocket.query_params.get("access_token")
+        if not token or user_from_token(token) is None:
+            await websocket.close(code=4401, reason="authentication_required")
+            return
 
-    This keeps Milestone 1 dependency-free; a later iteration can push deltas
-    from a shared event bus without changing the client contract.
-    """
     await websocket.accept()
     try:
         response = get_assistant().get_session(session_id)
