@@ -151,6 +151,15 @@ class AuthStore:
                 "CREATE INDEX IF NOT EXISTS idx_auth_events_created_at ON auth_events(created_at)"
             )
 
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS auth_recovery_uses (
+                    token_hash TEXT PRIMARY KEY,
+                    used_at TEXT NOT NULL
+                )
+                """
+            )
+
     @staticmethod
     def _now() -> datetime:
         return datetime.now(timezone.utc)
@@ -235,6 +244,52 @@ class AuthStore:
             role="owner",
             event="bootstrap_owner_created",
         )
+
+    def reset_primary_owner_password_once(self, token: str, new_password: str) -> AuthUser | None:
+        """Consume a one-time recovery token to rotate the existing primary owner's password."""
+        if len(token) < 32:
+            raise ValueError("OWNER_PASSWORD_RESET_TOKEN must contain at least 32 characters")
+        if len(new_password) < 20:
+            raise ValueError("OWNER_PASSWORD_RESET_PASSWORD must contain at least 20 characters")
+
+        token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        with self._connect() as connection:
+            used = connection.execute(
+                "SELECT 1 FROM auth_recovery_uses WHERE token_hash = ?",
+                (token_hash,),
+            ).fetchone()
+            if used is not None:
+                return None
+
+            owner = connection.execute(
+                """
+                SELECT id FROM auth_users
+                WHERE role = 'owner' AND is_active = 1
+                ORDER BY created_at ASC
+                LIMIT 1
+                """
+            ).fetchone()
+            if owner is None:
+                raise RuntimeError("Cannot reset the owner password: no active owner account exists")
+
+            password_hash = self._hash_password(new_password)
+            user_id = str(owner["id"])
+            connection.execute(
+                """
+                UPDATE auth_users
+                SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL,
+                    token_version = token_version + 1
+                WHERE id = ?
+                """,
+                (password_hash, user_id),
+            )
+            self._event(connection, user_id, "owner_password_recovered", "one_time_environment_recovery")
+            connection.execute(
+                "INSERT INTO auth_recovery_uses(token_hash, used_at) VALUES(?, ?)",
+                (token_hash, self._now().isoformat()),
+            )
+
+        return self.get_user(user_id)
 
     def create_user(
         self,

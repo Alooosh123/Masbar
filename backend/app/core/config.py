@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     auth_token_ttl_minutes: int = Field(default=480, ge=5, le=1440)
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None
+    owner_password_reset_token: str | None = None
+    owner_password_reset_password: str | None = None
 
     # Knowledge base
     kb_dir: Path = PROJECT_ROOT / "data" / "kb"
