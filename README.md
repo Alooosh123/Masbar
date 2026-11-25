@@ -105,7 +105,7 @@ Invoke-RestMethod http://localhost:8010/health
 cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-آخر CI ناجح على head الحالي `3c2e02e6f423424068e88d67b47131552db7e18e`: **91 passed** في Backend، وبناء TypeScript/Vite ناجح، و`npm ci` أظهر **0 vulnerabilities**. بُنيت صور Docker وشُغلت الخدمتان في CI، واختُبرت استعادة جلسة وسجل تدقيق بعد إعادة تشغيل Backend. [عرض CI](https://github.com/Alooosh123/Masbar/actions/runs/44949976256).
+آخر CI ناجح على `main` (commit `d0d729ab77335fa20e37a77092c4227f897a94b7`): **91 passed** في Backend، وبناء TypeScript/Vite ناجح، و`npm ci` أظهر **0 vulnerabilities**. بُنيت صور Docker وشُغّلت الخدمتان في CI، واختُبرت وساطة API من نفس نطاق الواجهة واستعادة الجلسة بعد إعادة تشغيل Backend. [عرض CI](https://github.com/Alooosh123/Masbar/actions/runs/45672867388).
 
 ### اختبار E2E فعلي للواجهة
 
