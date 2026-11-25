@@ -4,7 +4,6 @@ from pathlib import Path
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# backend/app/core/config.py -> core -> app -> backend -> project root
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -28,14 +27,18 @@ class Settings(BaseSettings):
     kb_dir: Path = PROJECT_ROOT / "data" / "kb"
     oem_registry_path: Path = PROJECT_ROOT / "data" / "catalog" / "oem_registry.json"
     manual_index_dir: Path = PROJECT_ROOT / "data" / "manual_index"
-    # Public manual excerpts stay disabled until the runtime is private or authenticated.
     manual_search_enabled: bool = False
     min_visual_confidence: float = 0.85
     demo_mode: bool = True
 
-    # Sessions
+    # Sessions and identities share the persistent data mount in production.
     session_ttl_minutes: int = Field(default=240, ge=1, le=10080)
     session_db_path: Path = PROJECT_ROOT / "data" / "sessions" / "sessions.sqlite3"
+    auth_db_path: Path = PROJECT_ROOT / "data" / "sessions" / "auth.sqlite3"
+    auth_enabled: bool = False
+    auth_token_secret: str | None = None
+    auth_setup_token: str | None = None
+    auth_token_ttl_hours: int = Field(default=12, ge=1, le=168)
 
     # Vision provider: "mock" | "openai" | "cohere"
     vision_provider: str = "mock"
@@ -63,11 +66,9 @@ class Settings(BaseSettings):
 
     @property
     def manual_search_available(self) -> bool:
-        """Manual excerpts are unavailable in production until auth/RBAC exists."""
-        return self.manual_search_enabled and self.environment.strip().lower() not in {
-            "production",
-            "prod",
-        }
+        """In production, manual excerpts are available only after auth is enabled."""
+        production = self.environment.strip().lower() in {"production", "prod"}
+        return self.manual_search_enabled and (not production or self.auth_enabled)
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -76,14 +77,17 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @model_validator(mode="after")
-    def reject_wildcard_cors_in_production(self) -> "Settings":
-        if (
-            self.environment.strip().lower() in {"production", "prod"}
-            and "*" in self.cors_origin_list
-        ):
+    def validate_production_security(self) -> "Settings":
+        production = self.environment.strip().lower() in {"production", "prod"}
+        if production and "*" in self.cors_origin_list:
             raise ValueError(
                 "CORS_ORIGINS must list explicit trusted origins in production; wildcard CORS is refused"
             )
+        if production and self.auth_enabled:
+            if not self.auth_token_secret or len(self.auth_token_secret) < 32:
+                raise ValueError("AUTH_TOKEN_SECRET must contain at least 32 characters in production")
+            if not self.auth_setup_token or len(self.auth_setup_token) < 24:
+                raise ValueError("AUTH_SETUP_TOKEN must contain at least 24 characters in production")
         return self
 
 
