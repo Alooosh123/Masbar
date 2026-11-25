@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     cors_origins: str = "*"
 
+    # Application identity and signed-session configuration
+    auth_required: bool = False
+    jwt_secret_key: str | None = None
+    auth_token_ttl_minutes: int = Field(default=480, ge=5, le=1440)
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
+
     # Knowledge base
     kb_dir: Path = PROJECT_ROOT / "data" / "kb"
     oem_registry_path: Path = PROJECT_ROOT / "data" / "catalog" / "oem_registry.json"
@@ -64,10 +71,10 @@ class Settings(BaseSettings):
     @property
     def manual_search_available(self) -> bool:
         """Manual excerpts are unavailable in production until auth/RBAC exists."""
-        return self.manual_search_enabled and self.environment.strip().lower() not in {
-            "production",
-            "prod",
-        }
+        return self.manual_search_enabled and (
+            self.auth_required
+            or self.environment.strip().lower() not in {"production", "prod"}
+        )
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -77,6 +84,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def reject_wildcard_cors_in_production(self) -> "Settings":
+        if self.auth_required and "*" in self.cors_origin_list:
+            raise ValueError("AUTH_REQUIRED requires explicit CORS_ORIGINS for credentialed requests")
+        if self.auth_required and (not self.jwt_secret_key or len(self.jwt_secret_key) < 32):
+            raise ValueError("JWT_SECRET_KEY must contain at least 32 characters when AUTH_REQUIRED=true")
         if (
             self.environment.strip().lower() in {"production", "prod"}
             and "*" in self.cors_origin_list
