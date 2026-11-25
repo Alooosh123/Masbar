@@ -195,6 +195,7 @@ class HealthResponse(BaseModel):
     components: int
     equipment: int
     vision_provider: str
+    vision_ready: bool = False
     demo_mode: bool
     chat_provider: str = "disabled"
     chat_ready: bool = False
