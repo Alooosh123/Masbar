@@ -33,10 +33,10 @@ def test_health_reports_cohere_vision_as_configured(monkeypatch):
 def test_health_reports_missing_vision_key(monkeypatch):
     health = _health_with_env(
         monkeypatch,
-        VISION_PROVIDER="cohere",
+        VISION_PROVIDER="mock",
         COHERE_API_KEY="",
         CHAT_PROVIDER="off",
     )
 
-    assert health["vision_provider"] == "cohere"
+    assert health["vision_provider"] == "mock"
     assert health["vision_ready"] is False
