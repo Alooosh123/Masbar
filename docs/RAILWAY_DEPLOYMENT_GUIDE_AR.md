@@ -31,11 +31,11 @@
 | `ENVIRONMENT` | `production` |
 | `PORT` | `8000` |
 | `CORS_ORIGINS` | عنوان الواجهة بعد إنشائه، مثل `https://<frontend-domain>` |
-| `VISION_PROVIDER` | `mock` إلى أن يضاف مفتاح Cohere أو OpenAI |
-| `CHAT_PROVIDER` | `off` إلى أن يضاف مفتاح Cohere |
+| `VISION_PROVIDER` | `cohere` عند توفر `COHERE_API_KEY` |
+| `CHAT_PROVIDER` | `cohere` عند توفر `COHERE_API_KEY` |
 | `DEMO_MODE` | `false` عند تفعيل مزود الرؤية الحقيقي |
 | `MANUAL_SEARCH_ENABLED` | `false` |
-| `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |
+| `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |\n| `AUTH_DB_PATH` | `/app/data/sessions/auth.sqlite3` |\n| `AUTH_ENABLED` | `true` |\n| `AUTH_TOKEN_SECRET` | سر عشوائي لا يقل عن 32 حرفًا |\n| `AUTH_SETUP_TOKEN` | رمز تهيئة عشوائي طويل يُستخدم مرة واحدة |\n| `RAILWAY_RUN_UID` | `0` لتهيئة المجلد ثم خفض صلاحيات التطبيق |
 | `RAILWAY_RUN_UID` | `0` عند استخدام Volume، لتهيئة صلاحياته فقط |
 
 4. اجعل Healthcheck Path هو `/health`.
@@ -64,6 +64,18 @@ Railway يركّب Volume مملوكًا لـroot. لذلك أضيف إلى صو
 - ملف SQLite موجود داخل Volume وليس في طبقة الحاوية المؤقتة.
 
 حجم Railway الافتراضي يعتمد على الخطة، وتُحاسب مساحة Volume بحسب الحجم المستخدم؛ تحقق من حدود خطتك قبل الإنشاء. SQLite يظل مناسبًا لنسخة واحدة على مضيف واحد، وليس لتعدد النسخ أو المضيفين.
+
+## 2.1 حساب المالك والصلاحيات
+
+بعد نشر الواجهة والـBackend وإرفاق Volume:
+
+1. افتح نطاق الواجهة. عند عدم وجود حسابات، تظهر شاشة تهيئة المالك الأول.
+2. أدخل رمز `AUTH_SETUP_TOKEN` الذي تحتفظ به خارج المستودع، ثم البريد والاسم وكلمة مرور لا تقل عن 12 حرفًا.
+3. بعد إنشاء المالك، تصبح التهيئة الأولى مغلقة تلقائيًا؛ سجّل الدخول بالبريد وكلمة المرور.
+4. يستطيع المالك إنشاء حسابات بأدوار `manager` و`engineer` و`technician` و`viewer`. لا تمنح دور المالك لحسابات أخرى من واجهة التهيئة.
+5. صلاحية رمز الدخول 12 ساعة، ويُحفظ في `sessionStorage` للمتصفح الحالي.
+
+تُخزن كلمات المرور كقيم PBKDF2 مشتقة ومملحة، وتُوقع رموز الوصول بمفتاح `AUTH_TOKEN_SECRET`. لا تسجل هذه الأسرار في Logs أو GitHub.
 
 ## 2. إعداد Frontend
 
