@@ -369,6 +369,15 @@ docker compose up --build
 - توثيق الـ API التفاعلي: http://localhost:8010/docs
 
 
-## 13. نشر نموذج سحابي أولي
+## 13. النشر السحابي ومفاتيح الذكاء الاصطناعي
 
-أضيف مسار للنشر على Railway بخدمتين (Backend وFrontend) مع اتصال API من نفس نطاق الواجهة عبر Nginx والشبكة الخاصة. اتبع [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md). يتطلب النشر اتصال حساب Railway وGitHub وإنشاء الخدمات والنطاق من لوحة المنصة. لا يتم تفعيل بيانات صيانة حقيقية أو بحث الكتيبات في العرض.
+يستخدم نشر Railway خدمتين: Backend خاص وFrontend عام، مع تمرير `/api` و`/health` و`/ws` عبر Nginx من نفس نطاق الواجهة.
+
+- مزود الرؤية والمحادثة المدعوم في الإعداد الحالي: Cohere. تحفظ `COHERE_API_KEY` في متغيرات Railway السرية فقط، وليس في Git أو ملفات الواجهة.
+- يتطلب التفعيل `VISION_PROVIDER=cohere` و`CHAT_PROVIDER=cohere`، مع `DEMO_MODE=false`.
+- المصادقة الحالية على `main` تستخدم Cookie آمنًا HttpOnly، وتُفعّل عبر `AUTH_REQUIRED=true` و`JWT_SECRET_KEY` وبيانات المالك الأول الموضحة في دليل Railway.
+- يستخدم الخادم Volume دائمًا في `/app/data/sessions` لقاعدة SQLite. التخزين مناسب لنسخة Backend واحدة، وليس لتشغيل عدة نسخ متزامنة.
+- بيانات الصيانة التسع ما زالت `sample`؛ لا تستخدم عزمًا أو إجراءً صناعيًا قبل استيراد كتيب OEM مرخّص ومراجعته من شخصين مستقلين.
+- اختبارات الكاميرا والميكروفون الآلية تستخدم أجهزة وهمية. اختبار الأجهزة الفعلية موثق في `docs/REAL_DEVICE_TEST_CHECKLIST_AR.md`.
+
+التفاصيل في [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md).
