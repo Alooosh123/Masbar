@@ -35,7 +35,12 @@
 | `CHAT_PROVIDER` | `cohere` عند توفر `COHERE_API_KEY` |
 | `DEMO_MODE` | `false` عند تفعيل مزود الرؤية الحقيقي |
 | `MANUAL_SEARCH_ENABLED` | `false` |
-| `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |\n| `AUTH_DB_PATH` | `/app/data/sessions/auth.sqlite3` |\n| `AUTH_ENABLED` | `true` |\n| `AUTH_TOKEN_SECRET` | سر عشوائي لا يقل عن 32 حرفًا |\n| `AUTH_SETUP_TOKEN` | رمز تهيئة عشوائي طويل يُستخدم مرة واحدة |\n| `RAILWAY_RUN_UID` | `0` لتهيئة المجلد ثم خفض صلاحيات التطبيق |
+| `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |
+| `AUTH_DB_PATH` | `/app/data/sessions/auth.sqlite3` |
+| `AUTH_ENABLED` | `true` |
+| `AUTH_TOKEN_SECRET` | سر عشوائي لا يقل عن 32 حرفًا |
+| `AUTH_SETUP_TOKEN` | رمز تهيئة عشوائي طويل يُستخدم مرة واحدة |
+| `RAILWAY_RUN_UID` | `0` لتهيئة المجلد ثم خفض صلاحيات التطبيق |
 | `RAILWAY_RUN_UID` | `0` عند استخدام Volume، لتهيئة صلاحياته فقط |
 
 4. اجعل Healthcheck Path هو `/health`.
