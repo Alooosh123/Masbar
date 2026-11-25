@@ -133,7 +133,7 @@ class AuthStore:
             ).fetchone()
         if row is None:
             return None
-        salt = base64.urlsafe_b64decode(row["password_salt"] + "==")
+        salt = base64.urlsafe_b64decode(row["password_salt"])
         expected = self._password(password, salt)
         if not hmac.compare_digest(expected, row["password_hash"]):
             return None
@@ -207,7 +207,7 @@ def user_from_token(token: str) -> dict[str, Any] | None:
         return None
 
 
-def get_auth_store() -> AuthStore:
+@lru_cache\ndef get_auth_store() -> AuthStore:
     settings = get_settings()
     return AuthStore(settings.auth_db_path)
 
