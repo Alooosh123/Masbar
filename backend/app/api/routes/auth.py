@@ -6,12 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 
 from app.core.config import get_settings
-from app.security.auth import (
-    AuthStore,
-    get_auth_store,
-    get_current_user,
-    issue_token,
-)
+from app.security.auth import AuthStore, get_auth_store, get_current_user, issue_token
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 
@@ -35,6 +30,17 @@ class CreateUserRequest(BaseModel):
     role: Literal["manager", "engineer", "technician", "viewer"]
 
 
+def _require_owner(user: dict | None = Depends(get_current_user)):
+    if user is None and not get_settings().auth_enabled:
+        return None
+    if user is None or user.get("role") != "owner":
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "owner_required", "message_ar": "هذه العملية متاحة لمالك النظام فقط."},
+        )
+    return user
+
+
 def _token_result(user: dict, store: AuthStore) -> dict:
     settings = get_settings()
     return {
@@ -48,10 +54,11 @@ def _token_result(user: dict, store: AuthStore) -> dict:
 @router.get("/status")
 def auth_status(store: AuthStore = Depends(get_auth_store)) -> dict:
     initialized = store.count() > 0
+    settings = get_settings()
     return {
-        "auth_enabled": get_settings().auth_enabled,
+        "auth_enabled": settings.auth_enabled,
         "initialized": initialized,
-        "initial_setup_required": get_settings().auth_enabled and not initialized,
+        "initial_setup_required": settings.auth_enabled and not initialized,
     }
 
 
@@ -73,18 +80,16 @@ def initialize_owner(
         )
     except ValueError as exc:
         code = str(exc)
-        if code == "already_initialized":
-            status_code = 409
-            message = "تم إنشاء حساب المالك مسبقًا. استخدم تسجيل الدخول."
-        elif code == "invalid_setup_token":
-            status_code = 403
-            message = "رمز التهيئة غير صحيح."
-        elif code == "password_too_short":
-            status_code = 422
-            message = "يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل."
-        else:
-            status_code = 422
-            message = "بيانات الحساب غير صالحة."
+        status_code = {
+            "already_initialized": 409,
+            "invalid_setup_token": 403,
+            "password_too_short": 422,
+        }.get(code, 422)
+        message = {
+            "already_initialized": "تم إنشاء حساب المالك مسبقًا. استخدم تسجيل الدخول.",
+            "invalid_setup_token": "رمز التهيئة غير صحيح.",
+            "password_too_short": "يجب أن تتكون كلمة المرور من 12 حرفًا على الأقل.",
+        }.get(code, "بيانات الحساب غير صالحة.")
         raise HTTPException(
             status_code=status_code,
             detail={"code": code, "message_ar": message},
@@ -135,14 +140,3 @@ def create_user(
             detail={"code": code, "message_ar": "تعذر إنشاء الحساب. تحقق من البيانات."},
         ) from exc
     return {"user": user}
-
-
-def _require_owner(user: dict | None = Depends(get_current_user)):
-    if user is None and not get_settings().auth_enabled:
-        return None
-    if user is None or user.get("role") != "owner":
-        raise HTTPException(
-            status_code=403,
-            detail={"code": "owner_required", "message_ar": "هذه العملية متاحة لمالك النظام فقط."},
-        )
-    return user
