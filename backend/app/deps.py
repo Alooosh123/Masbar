@@ -13,6 +13,18 @@ from app.safety.guard import SafetyGuard
 from app.services.assistant import AssistantService
 from app.services.chat import ChatService
 from app.services.session import SessionStore
+from app.security.auth import AuthStore
+
+
+@lru_cache
+def get_auth_store() -> AuthStore:
+    settings = get_settings()
+    return AuthStore(
+        settings.session_db_path,
+        auth_required=settings.auth_required,
+        bootstrap_email=settings.bootstrap_admin_email,
+        bootstrap_password=settings.bootstrap_admin_password,
+    )
 
 
 @lru_cache
@@ -86,6 +98,7 @@ def get_tts_adapter() -> EdgeTtsAdapter:
 
 def reset_caches() -> None:
     """Used by tests when environment variables change between cases."""
+    get_auth_store.cache_clear()
     get_kb.cache_clear()
     get_oem_registry.cache_clear()
     get_manual_library.cache_clear()

@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import catalog, chat, health, manuals, sessions, tts, ws
+from app.api.routes import auth, catalog, chat, health, manuals, sessions, tts, ws
 from app.core.config import get_settings
-from app.deps import get_assistant, get_kb
+from app.deps import get_assistant, get_auth_store, get_kb
+from app.security.auth import get_current_user
 from app.safety.guard import SafetyViolation
 from app.services.session import SessionNotFound
 
@@ -21,6 +22,8 @@ logger = logging.getLogger("industrial-spatial-ai")
 async def lifespan(app: FastAPI):
     settings = get_settings()
     kb = get_kb()
+    if settings.auth_required:
+        get_auth_store()
     get_assistant()  # fail fast on bad vision configuration
     logger.info(
         "Knowledge base loaded: %s components across %s equipment models",
@@ -51,10 +54,87 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=False,
+    allow_credentials=settings.auth_required,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def enforce_api_auth(request: Request, call_next):
+    runtime_settings = get_settings()
+    path = request.url.path
+
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and runtime_settings.auth_required:
+        origin = request.headers.get("origin")
+        if origin:
+            from app.security.auth import origin_is_trusted
+            if not origin_is_trusted(origin, runtime_settings.cors_origin_list):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": {"code": "untrusted_origin", "message_ar": "مصدر الطلب غير موثوق."}},
+                )
+
+    public_auth_paths = {
+        "/api/v1/auth/login",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/me",
+    }
+    if path in public_auth_paths or request.method == "OPTIONS":
+        return await call_next(request)
+
+    is_user_admin = path.startswith("/api/v1/auth/users")
+    is_change_password = path == "/api/v1/auth/change-password"
+    protected_prefixes = (
+        "/api/v1/chat",
+        "/api/v1/sessions",
+        "/api/v1/manuals",
+        "/api/v1/tts",
+    )
+    is_protected = is_user_admin or is_change_password or path.startswith(protected_prefixes)
+
+    if not is_protected:
+        return await call_next(request)
+    if not runtime_settings.auth_required:
+        if is_user_admin or is_change_password:
+            return JSONResponse(
+                status_code=503,
+                content={"detail": {"code": "auth_disabled", "message_ar": "فعّل المصادقة أولاً لإدارة المستخدمين."}},
+            )
+        return await call_next(request)
+
+    try:
+        user = get_current_user(request)
+    except HTTPException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+            headers=exc.headers,
+        )
+
+    if user is None:
+        return JSONResponse(
+            status_code=401,
+            content={"detail": {"code": "authentication_required", "message_ar": "سجّل الدخول للمتابعة."}},
+        )
+
+    if is_user_admin and user.role not in {"owner", "admin"}:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": {"code": "insufficient_role", "message_ar": "إدارة الحسابات تتطلب صلاحية المالك أو المدير."}},
+        )
+
+    if (
+        (path.startswith("/api/v1/chat") or (path.startswith("/api/v1/sessions") and request.method != "GET"))
+        and user.role not in {"owner", "admin", "technician"}
+    ):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": {"code": "read_only_role", "message_ar": "حساب المشاهدة لا يملك صلاحية تعديل جلسات الصيانة."}},
+        )
+
+    request.state.auth_user = user
+    return await call_next(request)
 
 
 @app.exception_handler(SafetyViolation)
@@ -79,6 +159,7 @@ async def session_not_found_handler(request: Request, exc: SessionNotFound) -> J
 
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(catalog.router)
 app.include_router(manuals.router)
 app.include_router(sessions.router)

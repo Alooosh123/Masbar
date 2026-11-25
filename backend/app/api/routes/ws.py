@@ -2,6 +2,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.deps import get_assistant
 from app.services.session import SessionNotFound
+from app.core.config import get_settings
+from app.security.auth import websocket_user
 
 router = APIRouter(tags=["stream"])
 
@@ -15,6 +17,10 @@ async def session_events(websocket: WebSocket, session_id: str) -> None:
     This keeps Milestone 1 dependency-free; a later iteration can push deltas
     from a shared event bus without changing the client contract.
     """
+    settings = get_settings()
+    if settings.auth_required and websocket_user(websocket) is None:
+        await websocket.close(code=4401)
+        return
     await websocket.accept()
     try:
         response = get_assistant().get_session(session_id)
