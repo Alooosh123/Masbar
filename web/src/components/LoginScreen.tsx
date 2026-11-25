@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ApiError, api, type AuthUser } from "../lib/api";
+import type { FormEvent } from "react";
+import { ApiError, api, setAuthToken, type AuthUser } from "../lib/api";
 
 interface Props {
   initialSetupRequired: boolean;
@@ -14,7 +15,7 @@ export function LoginScreen({ initialSetupRequired, onAuthenticated }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError("");
@@ -27,7 +28,7 @@ export function LoginScreen({ initialSetupRequired, onAuthenticated }: Props) {
             password,
           })
         : await api.login(email.trim(), password);
-      window.sessionStorage.setItem("masbar.access_token", result.access_token);
+      setAuthToken(result.access_token);
       onAuthenticated(result.user);
     } catch (err) {
       setError(
