@@ -82,14 +82,26 @@ class SafetyGuard:
             return None
 
         sequence = step.tightening_sequence or record.tightening_sequence
+        source_status = self.kb.data_status_for(record.part_number)
+        evidence = record.verification_evidence
+        required_scopes = {"identity", "procedure", "torque"}
+        verified_from_manual = (
+            source_status == "verified"
+            and record.verification_status == "verified"
+            and evidence is not None
+            and required_scopes.issubset(set(evidence.reviewed_scopes))
+            and evidence.source_document_id == record.manual_doc_id
+            and evidence.source_page == record.manual_page
+            and evidence.equipment_model in record.equipment_models
+        )
         return TorqueSpecification(
             value_nm=float(value),
             value_lbft=round(float(value) * NM_TO_LBFT, 1),
             tightening_sequence=sequence,
-            verified_from_manual=True,
+            verified_from_manual=verified_from_manual,
             source_document_id=record.manual_doc_id,
             source_page=record.manual_page,
-            source_status=self.kb.data_status_for(record.part_number),
+            source_status="verified" if verified_from_manual else "sample",
         )
 
     # ------------------------------------------------------------------ safety

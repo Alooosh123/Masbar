@@ -7,9 +7,10 @@ from app.main import app
 
 
 @pytest.fixture(autouse=True)
-def isolated_tts_cache(tmp_path, monkeypatch):
-    """Keep synthetic test audio out of the real Arabic voice cache."""
+def isolated_runtime_data(tmp_path, monkeypatch):
+    """Keep session databases and generated test audio outside real runtime data."""
     monkeypatch.setenv("TTS_CACHE_DIR", str(tmp_path / "tts-cache"))
+    monkeypatch.setenv("SESSION_DB_PATH", str(tmp_path / "sessions.sqlite3"))
     get_settings.cache_clear()
     reset_caches()
     yield

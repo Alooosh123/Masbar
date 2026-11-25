@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> core -> app -> backend -> project root
@@ -26,11 +27,15 @@ class Settings(BaseSettings):
     # Knowledge base
     kb_dir: Path = PROJECT_ROOT / "data" / "kb"
     oem_registry_path: Path = PROJECT_ROOT / "data" / "catalog" / "oem_registry.json"
+    manual_index_dir: Path = PROJECT_ROOT / "data" / "manual_index"
+    # Public manual excerpts stay disabled until the runtime is private or authenticated.
+    manual_search_enabled: bool = False
     min_visual_confidence: float = 0.85
     demo_mode: bool = True
 
     # Sessions
-    session_ttl_minutes: int = 240
+    session_ttl_minutes: int = Field(default=240, ge=1, le=10080)
+    session_db_path: Path = PROJECT_ROOT / "data" / "sessions" / "sessions.sqlite3"
 
     # Vision provider: "mock" | "openai" | "cohere"
     vision_provider: str = "mock"
@@ -57,10 +62,29 @@ class Settings(BaseSettings):
     tts_cache_dir: Path = PROJECT_ROOT / "data" / "cache" / "tts"
 
     @property
+    def manual_search_available(self) -> bool:
+        """Manual excerpts are unavailable in production until auth/RBAC exists."""
+        return self.manual_search_enabled and self.environment.strip().lower() not in {
+            "production",
+            "prod",
+        }
+
+    @property
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":
             return ["*"]
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def reject_wildcard_cors_in_production(self) -> "Settings":
+        if (
+            self.environment.strip().lower() in {"production", "prod"}
+            and "*" in self.cors_origin_list
+        ):
+            raise ValueError(
+                "CORS_ORIGINS must list explicit trusted origins in production; wildcard CORS is refused"
+            )
+        return self
 
 
 @lru_cache

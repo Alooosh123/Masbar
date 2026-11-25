@@ -13,7 +13,7 @@
 
 | المكوّن | الحالة |
 | --- | --- |
-| Backend (FastAPI + Pydantic) | ✅ يعمل — **64 اختبار pytest ناجحًا** |
+| Backend (FastAPI + Pydantic) | ✅ يعمل — **91 اختبار pytest ناجحًا على فرع التطوير (CI)** |
 | واجهة المحادثة (Chat-first) | ✅ فقاعات، ردود سريعة، بطاقات قطعة/سلامة/خطوة، صور، وضع داكن RTL |
 | نقطة المحادثة الموحّدة `/api/v1/chat` | ✅ أوامر + جلسة + تحديد + وصف صور + محادثة عامة |
 | محرك السلامة الحتمي (LOTO + العزم) | ✅ يُفرض على الخادم ولا يمكن تجاوزه من الواجهة أو المحادثة |
@@ -23,9 +23,10 @@
 | وصف الصور العامة | ✅ Cohere Command A Vision — مستقل عن تاريخ الكاميرا |
 | الكاميرا داخل المحادثة | ✅ فتح/إغلاق بالأمر، التقاط ووصف، والتقاط وتحديد صريح |
 | الصوت العربي (ASR/TTS) | ✅ TTS عصبي عربي من الخادم (`ar-SA-ZariyahNeural`) + ذاكرة صوتية محلية + ASR عربي في المتصفح |
-| الجلسات وسجل التدقيق | ✅ في الذاكرة مع TTL وسجل أحداث لكل جلسة |
-| اختبار E2E فعلي | ✅ **34/34 فحصًا ناجحًا** عبر Chrome/CDP وكاميرا وصوت وهميين |
-| Docker | ✅ ملفات جاهزة — تم التحقق من التكوين، ولم تُشغَّل الحاويات بعد |
+| الجلسات وسجل التدقيق | ✅ SQLite محلي دائم مع TTL واستعادة بعد إعادة تشغيل الخادم؛ Docker volume |
+| اختبار E2E آلي | ✅ **34/34 فحصًا مسجلاً** عبر Chrome/CDP؛ كاميرا canvas وميكروفون وهميان وليسا أجهزة ميدانية |
+| كتيبات OEM (PDF) | ✅ استيعاب محلي + بحث BM25 مع مراجع صفحات؛ مقتطفات البحث معطلة افتراضياً في الإنتاج |
+| Docker | ✅ صورتا Backend وFrontend بُنيتا؛ اختبار تشغيل CI أثبت وصول الواجهتين وعمل Backend بصلاحيات غير root مع استعادة الجلسة بعد إعادة التشغيل |
 
 ### لقطات من واجهة المحادثة (عرض جوال 430px)
 
@@ -78,7 +79,7 @@ cd web; npm.cmd install; cd ..
 Invoke-RestMethod http://localhost:8010/health
 ```
 
-المتوقع: `status=online`، `components=9`، `equipment=3`، `vision_provider=cohere`، `chat_provider=cohere` مع `chat_ready=true`، و`tts_provider=edge` مع `tts_ready=true`، و`manufacturers=31`.
+المتوقع: `status=online`، `components=9`، `equipment=3`، `vision_provider=cohere`، `chat_provider=cohere` مع `chat_ready=true`، و`tts_provider=edge` مع `tts_ready=true`، و`manufacturers=31`، و`manual_documents=0` و`manual_chunks=0` قبل إضافة فهارس محلية.
 
 ### اختبار سريع لواجهة الـ API
 
@@ -104,7 +105,7 @@ Invoke-RestMethod http://localhost:8010/health
 cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
-النتيجة الحالية: **64 passed**.
+آخر CI ناجح على head الحالي `3c2e02e6f423424068e88d67b47131552db7e18e`: **91 passed** في Backend، وبناء TypeScript/Vite ناجح، و`npm ci` أظهر **0 vulnerabilities**. بُنيت صور Docker وشُغلت الخدمتان في CI، واختُبرت استعادة جلسة وسجل تدقيق بعد إعادة تشغيل Backend. [عرض CI](https://github.com/Alooosh123/Masbar/actions/runs/44949976256).
 
 ### اختبار E2E فعلي للواجهة
 
@@ -116,7 +117,7 @@ cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 
 يشغّل Chrome بكاميرا وميكروفون وهميين، يحقن صورة اختبارية كبث كاميرا، ثم ينفّذ السيناريو كاملًا: ترحيب → اختبار الصوت العربي → عرض شركات OEM → فتح كاميرا → وصف صورة → بدء جلسة C15 → عرض القطع → تحديد بصري → LOTO → الخطوة التالية → العزم → اختبار الميكروفون وTTS. يحفظ اللقطات في `docs/screenshots/` والنتائج في `docs/test-results/chat-e2e.json`.
 
-النتيجة الحالية: **34/34 فحصًا ناجحًا**. التفاصيل والقيود في [docs/TEST_RESULTS.md](docs/TEST_RESULTS.md).
+النتيجة المسجلة: **34/34 فحصًا ناجحًا** في سيناريو آلي سابق. الكاميرا والميكروفون في هذا السيناريو وهميان؛ هذا ليس اختباراً ميدانياً. التفاصيل والقيود في [docs/TEST_RESULTS.md](docs/TEST_RESULTS.md).
 
 ---
 
@@ -231,10 +232,11 @@ backend/
       chat/          # cohere chat + vision descriptions
       tts/           # Arabic neural TTS (Edge) + disk cache
       vision/        # mock + OpenAI-compatible + Cohere VLM
-  tests/             # 64 tests
+  tests/             # 91 tests في آخر تشغيل CI
 data/kb/             # 3 ملفات معرفة تجريبية (9 قطع)
 data/catalog/        # سجل مصادر OEM الرسمية (31 شركة / 126 موديلًا)
 data/cache/tts/      # ذاكرة MP3 عربية للعمل دون اتصال
+data/sessions/        # قاعدة SQLite محلية للجلسات (مستثناة من Git)
 web/                 # PWA (React + Vite) — ChatScreen + ChatCamera
 docs/blueprint/      # خطة النظام الأصلية (6 مراحل)
 docs/test-results/   # تقارير الاختبار الفعلي (JSON)
@@ -288,9 +290,33 @@ scripts/             # تشغيل + اختبار + smoke + e2e_chat.py
 
 وجود الشركة والرابط والموديل **لا يعني** توفر كتيب الصيانة. قيم العزم وخطوات الفك وLOTO تبقى `sample` حتى استيراد كتيب OEM معتمد؛ المساعد لا يخترع أي قيمة.
 
+### استيعاب كتيبات OEM والبحث داخلها (أول نسخة)
+
+أضيف مسار محلي لاستيعاب ملفات PDF المصرح بمعالجتها، واستخراج النص وتقسيمه إلى مقاطع مرتبطة بمرجع الوثيقة والصفحة:
+
+- أداة الاستيعاب: `scripts/ingest_manual.py`.
+- فهرس التشغيل المحلي: `data/manual_index/` (مستثنى من Git).
+- قائمة المستندات: `GET /api/v1/manuals`.
+- البحث: `GET /api/v1/manuals/search?q=shaft%20seal`.
+- من المحادثة: **«ابحث في الكتيبات عن shaft seal»**.
+
+كل نتيجة تحفظ `pdf_page_index` و`pdf_page_number` و`printed_page_number` منفصلة عند توفرها. يتطلب الاستيعاب تأكيد حق معالجة الملف وتوضيح أساس الإذن؛ لا ترفع ملفات OEM أو مفهرساتها المحمية إلى GitHub.
+
+**التحكم في الوصول:** بحث المقتطفات معطل افتراضياً عبر `MANUAL_SEARCH_ENABLED=false`. يمكن تفعيله فقط في تشغيل محلي/خاص بإضافة `MANUAL_SEARCH_ENABLED=true` إلى ملف `.env`. لا تفعّله على خادم مكشوف للإنترنت؛ التطبيق لا يملك حالياً مصادقة وصلاحيات لحماية نصوص الكتيبات. إعداد Docker Compose يبقيه معطلاً دائماً.
+
+**حدود النسخة الحالية:** البحث نصي BM25/lexical فقط؛ لا يوجد Qdrant أو embeddings أو OCR أو استخراج آلي لجداول العزم أو تحليل رسومات تفجيرية حتى الآن. الصفحات التي لا يُستخرج منها نص كافٍ تُعلّم للمراجعة لتحديد الحاجة إلى OCR؛ وقد تكون صفحات فارغة أو رسومات وليست بالضرورة صفحات ممسوحة. نتائج البحث مقتطفات موثقة وليست تعليمات صيانة معتمدة، ولا تتحول إلى قيم عزم أو إجراءات LOTO تشغيلية تلقائياً.
+
+الدليل التفصيلي: [docs/MANUAL_INGESTION_GUIDE_AR.md](docs/MANUAL_INGESTION_GUIDE_AR.md). وسجل مصدر Grundfos CR 5 Model A: [docs/equipment/GRUNDFOS_CR5_MODEL_A_SOURCE_REGISTER_AR.md](docs/equipment/GRUNDFOS_CR5_MODEL_A_SOURCE_REGISTER_AR.md).
+
 ---
 
-## 8. Docker
+## 8. تخزين الجلسات
+
+يحفظ مِسبار الجلسات وسجل التدقيق في SQLite محلياً داخل `data/sessions/sessions.sqlite3` افتراضياً (`SESSION_DB_PATH`). في Docker يستخدم volume دائم باسم `misbar_sessions`، حتى تبقى البيانات بعد استبدال الحاوية. مدة الصلاحية الافتراضية 240 دقيقة (`SESSION_TTL_MINUTES`).
+
+هذا التخزين مخصص لنسخة تطبيق واحدة على مضيف واحد؛ لا يوفر مشاركة آمنة بين عدة workers أو hosts، ولا نسخاً احتياطياً آلياً أو استعادة مجربة. عند التوسع يلزم تخزين مشترك وإعداد نسخ احتياطية واختبار الاستعادة.
+
+## 9. Docker
 
 ```powershell
 docker compose up --build
@@ -300,11 +326,11 @@ docker compose up --build
 - الخادم: http://localhost:8010
 - لتفعيل OpenAI: أنشئ `.env` بجانب `docker-compose.yml` بنفس متغيرات القسم 4 (يُقرأ عبر `env_file`).
 
-> ملاحظة: تم التحقق من صحة `docker-compose.yml` ومن ملفات Dockerfiles، لكن بناء الصور وتشغيل الحاويات لم يُختبرا بعد على هذا الجهاز. إذا كان المنفذ 8010 مستخدمًا من التشغيل المحلي، أوقف الخادم المحلي أولًا.
+تم بناء صورتي Backend وFrontend وتشغيلهما في GitHub Actions على Linux runner. تحقق الاختبار من استجابة /health والواجهة، ومن أن Backend يعمل بالمستخدم UID 10001 وجذر ملفات للقراءة فقط، ثم أنشأ جلسة وأعاد تشغيل الحاوية وتحقق من استعادة الجلسة وسجل التدقيق من Docker volume. هذه نتيجة اختبار CI وليست نشراً على جهازك أو على خادم إنتاج. إذا كان المنفذ 8010 مستخدماً من التشغيل المحلي، أوقف الخادم المحلي أولاً.
 
 ---
 
-## 9. استكشاف الأخطاء
+## 10. استكشاف الأخطاء
 
 | المشكلة | الحل |
 | --- | --- |
@@ -321,7 +347,7 @@ docker compose up --build
 
 ---
 
-## 10. خارطة الطريق
+## 11. خارطة الطريق
 
 - [x] المرحلة 1: معمارية + Backend + قاعدة معرفة + محرك سلامة.
 - [x] المرحلة 2: استرجاع هجين + تطبيع عربي + جلسات + تدقيق.
@@ -336,7 +362,7 @@ docker compose up --build
 
 ---
 
-## 11. المراجع
+## 12. المراجع
 
 - خطة النظام الأصلية: `docs/blueprint/`
 - تقرير التقدم التفصيلي: `docs/PROGRESS.md`

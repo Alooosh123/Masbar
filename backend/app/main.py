@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import catalog, chat, health, sessions, tts, ws
+from app.api.routes import catalog, chat, health, manuals, sessions, tts, ws
 from app.core.config import get_settings
 from app.deps import get_assistant, get_kb
 from app.safety.guard import SafetyViolation
@@ -80,6 +80,7 @@ async def session_not_found_handler(request: Request, exc: SessionNotFound) -> J
 
 app.include_router(health.router)
 app.include_router(catalog.router)
+app.include_router(manuals.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
 app.include_router(tts.router)

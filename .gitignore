@@ -18,8 +18,18 @@ npm-debug.log*
 .env.*
 !.env.example
 
+# OEM manuals and local extracted text (respect document licences)
+manuals/
+oem_exports/
+data/manual_index/*.json
+!data/manual_index/.gitkeep
+
 # Logs and local runtime data
 logs/
+data/sessions/*.sqlite3
+data/sessions/*.sqlite3-shm
+data/sessions/*.sqlite3-wal
+!data/sessions/.gitkeep
 *.log
 data/cache/tts/*.mp3
 !data/cache/tts/.gitkeep

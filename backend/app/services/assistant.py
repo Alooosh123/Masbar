@@ -503,11 +503,18 @@ class AssistantService:
                 torque_step = torque_steps[0]
                 torque = self.guard.build_torque(record, torque_step)
                 if torque is not None:
-                    message += (
-                        f" عزم الربط مذكور في الخطوة {torque_step.step_number}: "
-                        f"{torque.value_nm:g} نيوتن·م ({torque.value_lbft:g} رطل·قدم) "
-                        f"حسب {torque.source_document_id} صفحة {torque.source_page}."
-                    )
+                    if torque.verified_from_manual:
+                        message += (
+                            f" عزم الربط المعتمد مذكور في الخطوة {torque_step.step_number}: "
+                            f"{torque.value_nm:g} نيوتن·م ({torque.value_lbft:g} رطل·قدم) "
+                            f"حسب {torque.source_document_id} صفحة {torque.source_page}."
+                        )
+                    else:
+                        message += (
+                            f" توجد قيمة تجريبية غير معتمدة في الخطوة {torque_step.step_number}: "
+                            f"{torque.value_nm:g} نيوتن·م. السجل {torque.source_document_id} "
+                            f"صفحة {torque.source_page} غير متحقق؛ لا تستخدم هذه القيمة في الصيانة."
+                        )
                 else:
                     message += (
                         f" الخطوة {torque_step.step_number} تتطلب عزمًا لكن القيمة "
@@ -536,23 +543,29 @@ class AssistantService:
                 intent=Intent.TORQUE_QUERY,
             )
 
-        message = (
-            f"عزم الشد المعتمد هو {torque.value_nm:g} نيوتن·م "
-            f"({torque.value_lbft:g} رطل·قدم)."
-        )
+        if torque.verified_from_manual:
+            message = (
+                f"عزم الشد المعتمد هو {torque.value_nm:g} نيوتن·م "
+                f"({torque.value_lbft:g} رطل·قدم)."
+            )
+        else:
+            message = (
+                f"القيمة المعروضة تجريبية وغير معتمدة: {torque.value_nm:g} نيوتن·م "
+                f"({torque.value_lbft:g} رطل·قدم). لا تستخدمها في صيانة فعلية."
+            )
         if torque.tightening_sequence:
             message += f" {torque.tightening_sequence}"
         message += (
-            f" المصدر: {torque.source_document_id} صفحة {torque.source_page}."
+            f" المصدر المسجل: {torque.source_document_id} صفحة {torque.source_page}."
         )
-        if torque.source_status != "verified":
-            message += " تنبيه: هذه بيانات نموذجية وليست كتيبًا رسميًا."
+        if not torque.verified_from_manual:
+            message += " تنبيه: لم يجتز هذا السجل والمعدة تحقق المصدر المعتمد."
 
         self.store.audit(
             session,
-            "torque_verified",
+            "torque_verified" if torque.verified_from_manual else "torque_sample_shown",
             f"عرض عزم {torque.value_nm:g} نيوتن·م من {torque.source_document_id} "
-            f"صفحة {torque.source_page}",
+            f"صفحة {torque.source_page}؛ حالة التحقق: {torque.source_status}",
         )
         return self._build_response(
             session, message=message, intent=Intent.TORQUE_QUERY

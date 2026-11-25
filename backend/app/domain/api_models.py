@@ -59,7 +59,7 @@ class TorqueSpecification(BaseModel):
     value_nm: float
     value_lbft: float
     tightening_sequence: str | None = None
-    verified_from_manual: bool = True
+    verified_from_manual: bool = False
     source_document_id: str
     source_page: int
     source_status: str = "sample"
@@ -201,6 +201,8 @@ class HealthResponse(BaseModel):
     tts_provider: str = "disabled"
     tts_ready: bool = False
     manufacturers: int = 0
+    manual_documents: int = 0
+    manual_chunks: int = 0
 
 
 class ManufacturerSummary(BaseModel):

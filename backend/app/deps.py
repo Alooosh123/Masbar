@@ -6,6 +6,7 @@ from app.adapters.vision.factory import build_vision_adapter
 from app.adapters.vision.mock import MockVisionAdapter
 from app.core.config import Settings, get_settings
 from app.knowledge.loader import KnowledgeBase, load_knowledge_base
+from app.knowledge.manual_index import ManualLibrary
 from app.knowledge.oem import OemRegistry, load_oem_registry
 from app.knowledge.retrieval import HybridRetriever
 from app.safety.guard import SafetyGuard
@@ -18,6 +19,12 @@ from app.services.session import SessionStore
 def get_kb() -> KnowledgeBase:
     settings = get_settings()
     return load_knowledge_base(settings.kb_dir)
+
+
+@lru_cache
+def get_manual_library() -> ManualLibrary:
+    settings = get_settings()
+    return ManualLibrary.load(settings.manual_index_dir)
 
 
 @lru_cache
@@ -34,7 +41,10 @@ def get_retriever() -> HybridRetriever:
 @lru_cache
 def get_store() -> SessionStore:
     settings = get_settings()
-    return SessionStore(ttl_minutes=settings.session_ttl_minutes)
+    return SessionStore(
+        ttl_minutes=settings.session_ttl_minutes,
+        db_path=settings.session_db_path,
+    )
 
 
 @lru_cache
@@ -78,6 +88,7 @@ def reset_caches() -> None:
     """Used by tests when environment variables change between cases."""
     get_kb.cache_clear()
     get_oem_registry.cache_clear()
+    get_manual_library.cache_clear()
     get_retriever.cache_clear()
     get_store.cache_clear()
     get_assistant.cache_clear()

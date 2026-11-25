@@ -12,7 +12,15 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend ./backend
 COPY data ./data
 
+# The runtime only needs write access to the SQLite session store and TTS cache.
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /nonexistent --shell /usr/sbin/nologin app \
+    && mkdir -p /app/data/sessions /app/data/cache/tts \
+    && chown -R app:app /app/data
+
 WORKDIR /app/backend
+
+USER app
 
 EXPOSE 8000
 

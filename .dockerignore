@@ -11,4 +11,11 @@ prompts/
 .git/
 .env
 *.log
-README.md
+
+# Keep local OEM source files, extracted manual text, runtime databases and audio out of images.
+manuals/
+oem_exports/
+data/manual_index/*.json
+data/sessions/*.sqlite3*
+data/cache/tts/*.mp3
+backups/
