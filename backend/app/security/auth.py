@@ -207,7 +207,8 @@ def user_from_token(token: str) -> dict[str, Any] | None:
         return None
 
 
-@lru_cache\ndef get_auth_store() -> AuthStore:
+@lru_cache
+def get_auth_store() -> AuthStore:
     settings = get_settings()
     return AuthStore(settings.auth_db_path)
 
