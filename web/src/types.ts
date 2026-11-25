@@ -161,6 +161,7 @@ export interface HealthResponse {
   demo_mode: boolean;
   chat_provider?: string;
   chat_ready?: boolean;
+  auth_required?: boolean;
 }
 
 export interface AuditEntry {
@@ -168,4 +169,19 @@ export interface AuditEntry {
   timestamp: string;
   event: string;
   detail_ar: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  display_name: string;
+  role: "owner" | "admin" | "technician" | "viewer";
+  is_active: boolean;
+  created_at: string;
+  last_login_at: string | null;
+}
+
+export interface AuthMeResponse {
+  authenticated: boolean;
+  user: AuthUser | null;
 }
