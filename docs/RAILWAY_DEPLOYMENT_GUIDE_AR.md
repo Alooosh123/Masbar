@@ -35,7 +35,12 @@
 | `CHAT_PROVIDER` | `cohere` عند استخدام مفتاح Cohere |
 | `DEMO_MODE` | `false` |
 | `MANUAL_SEARCH_ENABLED` | `false` |
-| `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |\n| `AUTH_REQUIRED` | `true` |\n| `JWT_SECRET_KEY` | سر عشوائي لا يقل عن 32 حرفًا |\n| `AUTH_TOKEN_TTL_MINUTES` | `480` |\n| `BOOTSTRAP_ADMIN_EMAIL` | بريد حساب المالك الأول |\n| `BOOTSTRAP_ADMIN_PASSWORD` | كلمة مرور أولية لا تقل عن 20 حرفًا |
+| `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |
+| `AUTH_REQUIRED` | `true` |
+| `JWT_SECRET_KEY` | سر عشوائي لا يقل عن 32 حرفًا |
+| `AUTH_TOKEN_TTL_MINUTES` | `480` |
+| `BOOTSTRAP_ADMIN_EMAIL` | بريد حساب المالك الأول |
+| `BOOTSTRAP_ADMIN_PASSWORD` | كلمة مرور أولية لا تقل عن 20 حرفًا |
 | `RAILWAY_RUN_UID` | `0` عند استخدام Volume، لتهيئة صلاحياته فقط |
 
 4. اجعل Healthcheck Path هو `/health`.
