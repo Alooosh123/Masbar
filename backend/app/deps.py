@@ -1,4 +1,5 @@
 from functools import lru_cache
+import logging
 
 from app.adapters.chat.factory import build_chat_adapter
 from app.adapters.tts.edge import EdgeTtsAdapter
@@ -16,15 +17,33 @@ from app.services.session import SessionStore
 from app.security.auth import AuthStore
 
 
+logger = logging.getLogger(__name__)
+
+
 @lru_cache
 def get_auth_store() -> AuthStore:
     settings = get_settings()
-    return AuthStore(
+    store = AuthStore(
         settings.session_db_path,
         auth_required=settings.auth_required,
         bootstrap_email=settings.bootstrap_admin_email,
         bootstrap_password=settings.bootstrap_admin_password,
     )
+
+    reset_token = settings.owner_password_reset_token
+    reset_password = settings.owner_password_reset_password
+    if bool(reset_token) != bool(reset_password):
+        raise RuntimeError(
+            "OWNER_PASSWORD_RESET_TOKEN and OWNER_PASSWORD_RESET_PASSWORD must be set together"
+        )
+    if reset_token and reset_password:
+        recovered_owner = store.reset_primary_owner_password_once(reset_token, reset_password)
+        if recovered_owner is not None:
+            logger.warning(
+                "One-time owner password recovery completed for %s; remove the recovery variables from the deployment.",
+                recovered_owner.email,
+            )
+    return store
 
 
 @lru_cache
