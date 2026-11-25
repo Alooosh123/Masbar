@@ -9,7 +9,7 @@ from app.knowledge.loader import KnowledgeBase, load_knowledge_base
 from app.knowledge.manual_index import ManualLibrary
 from app.knowledge.oem import OemRegistry, load_oem_registry
 from app.knowledge.retrieval import HybridRetriever
-from app.safety.guard import SafetyGuard
+from app.safety.guard import SafetyGuard\nfrom app.security.auth import get_auth_store
 from app.services.assistant import AssistantService
 from app.services.chat import ChatService
 from app.services.session import SessionStore
@@ -86,7 +86,7 @@ def get_tts_adapter() -> EdgeTtsAdapter:
 
 def reset_caches() -> None:
     """Used by tests when environment variables change between cases."""
-    get_kb.cache_clear()
+    get_auth_store.cache_clear()\n    get_kb.cache_clear()
     get_oem_registry.cache_clear()
     get_manual_library.cache_clear()
     get_retriever.cache_clear()
