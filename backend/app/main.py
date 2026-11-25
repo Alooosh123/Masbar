@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -8,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes import auth, catalog, chat, health, manuals, sessions, tts, ws
+from app.ops.sqlite_backup import create_sqlite_backup, prune_sqlite_backups
 from app.core.config import get_settings
 from app.deps import get_assistant, get_auth_store, get_kb
 from app.security.auth import get_current_user
@@ -36,6 +39,28 @@ async def lifespan(app: FastAPI):
         settings.demo_mode,
         settings.min_visual_confidence,
     )
+    if settings.sqlite_backup_on_startup:
+        backup_dir = settings.sqlite_backup_dir or (settings.session_db_path.parent / "backups")
+        try:
+            result = await asyncio.to_thread(
+                create_sqlite_backup,
+                settings.session_db_path,
+                backup_dir,
+            )
+            removed = await asyncio.to_thread(
+                prune_sqlite_backups,
+                backup_dir,
+                settings.sqlite_backup_retention_days,
+            )
+            logger.info(
+                "SQLite startup backup verified: file=%s size_bytes=%s sha256=%s pruned=%s",
+                Path(result.backup_path).name,
+                result.size_bytes,
+                result.sha256,
+                len(removed),
+            )
+        except Exception:
+            logger.exception("SQLite startup backup failed; original database remains in place")
     yield
 
 

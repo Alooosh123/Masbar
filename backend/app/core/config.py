@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # Sessions
     session_ttl_minutes: int = Field(default=240, ge=1, le=10080)
     session_db_path: Path = PROJECT_ROOT / "data" / "sessions" / "sessions.sqlite3"
+    sqlite_backup_on_startup: bool = False
+    sqlite_backup_dir: Path | None = None
+    sqlite_backup_retention_days: int = Field(default=14, ge=1, le=365)
 
     # Vision provider: "mock" | "openai" | "cohere"
     vision_provider: str = "mock"
