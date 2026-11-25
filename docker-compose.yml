@@ -12,6 +12,7 @@ services:
         required: false
     environment:
       ENVIRONMENT: production
+      PORT: "8000"
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:8080}"
       MANUAL_SEARCH_ENABLED: "false"
       SESSION_DB_PATH: /app/data/sessions/sessions.sqlite3
@@ -38,6 +39,9 @@ services:
     container_name: isa-web
     ports:
       - "8080:80"
+    environment:
+      PORT: "80"
+      BACKEND_UPSTREAM: "http://backend:8000"
     depends_on:
       - backend
     restart: unless-stopped

@@ -11,9 +11,17 @@ import type {
 function inferApiUrl(): string {
   const configured = import.meta.env.VITE_API_URL as string | undefined;
   if (configured && configured.trim()) return configured.trim().replace(/\/$/, "");
-  if (typeof window !== "undefined" && window.location.hostname) {
-    return `http://${window.location.hostname}:8010`;
+
+  if (typeof window !== "undefined") {
+    // Vite development server runs separately from the local API.
+    if (import.meta.env.DEV && window.location.hostname) {
+      return `http://${window.location.hostname}:8010`;
+    }
+
+    // Production frontend proxies /api, /health and /ws to the private backend.
+    return window.location.origin;
   }
+
   return "http://localhost:8010";
 }
 
@@ -40,7 +48,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     });
   } catch {
     throw new ApiError(
-      "تعذر الاتصال بالخادم. تأكد من تشغيل الـ Backend على المنفذ 8010.",
+      "تعذر الاتصال بالخادم. تحقق من تشغيل الخادم الخلفي واتصال الواجهة به.",
       0,
       "network_error"
     );

@@ -73,7 +73,7 @@ jobs:
         run: docker compose config --quiet
       - name: Build production images
         run: docker compose build
-      - name: Run containers and verify persistent session recovery
+      - name: Run containers and verify same-origin API proxy and persistent session recovery
         run: |
           set -euxo pipefail
           docker compose up -d
@@ -103,9 +103,23 @@ jobs:
           }
 
           wait_for_backend
-          echo 'Backend health endpoint is reachable.'
           curl --fail --silent http://127.0.0.1:8080/ >/dev/null
           echo 'Frontend is reachable.'
+
+          curl --fail --silent --show-error http://127.0.0.1:8080/health \
+            -o /tmp/frontend-proxied-health.json
+          curl --fail --silent --show-error http://127.0.0.1:8080/api/v1/equipment \
+            -o /tmp/frontend-proxied-equipment.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          health = json.loads(Path("/tmp/frontend-proxied-health.json").read_text())
+          equipment = json.loads(Path("/tmp/frontend-proxied-equipment.json").read_text())
+          assert health["status"] == "online"
+          assert isinstance(equipment, list) and equipment
+          PY
+          echo 'Same-origin health and equipment API proxy are reachable.'
 
           backend_uid="$(docker compose exec -T backend id -u | tr -d '\r')"
           echo "Backend UID: $backend_uid"
@@ -116,21 +130,21 @@ jobs:
           test "$readonly_root" = "true"
 
           session_response="$(curl --fail --silent --show-error \
-            -X POST http://127.0.0.1:8010/api/v1/sessions \
+            -X POST http://127.0.0.1:8080/api/v1/sessions \
             -H 'Content-Type: application/json' \
             -d '{"equipment_model":"Caterpillar C15 ACERT"}')"
           session_id="$(python -c 'import json,sys; print(json.load(sys.stdin)["session_id"])' <<< "$session_response")"
 
-          echo "Created session $session_id"
+          echo "Created session through frontend origin: $session_id"
           docker compose restart backend
           wait_for_backend
-          echo 'Backend restarted; checking restored session.'
+          echo 'Backend restarted; checking restored session through frontend proxy.'
 
           curl --fail --silent --show-error \
-            "http://127.0.0.1:8010/api/v1/sessions/$session_id" \
+            "http://127.0.0.1:8080/api/v1/sessions/$session_id" \
             -o /tmp/restored-session.json
           curl --fail --silent --show-error \
-            "http://127.0.0.1:8010/api/v1/sessions/$session_id/audit" \
+            "http://127.0.0.1:8080/api/v1/sessions/$session_id/audit" \
             -o /tmp/restored-audit.json
 
           SESSION_ID="$session_id" python - <<'PY'
