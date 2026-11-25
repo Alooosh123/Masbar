@@ -11,7 +11,7 @@ from app.api.routes import auth, catalog, chat, health, manuals, sessions, tts, 
 from app.core.config import get_settings
 from app.deps import get_assistant, get_kb
 from app.safety.guard import SafetyViolation
-from app.security.auth import get_current_user
+from app.security.auth import get_current_user, require_roles
 from app.services.session import SessionNotFound
 
 logging.basicConfig(level=logging.INFO)
@@ -82,10 +82,11 @@ async def session_not_found_handler(request: Request, exc: SessionNotFound) -> J
 
 app.include_router(health.router)
 app.include_router(auth.router)
-protected = [Depends(get_current_user)]
-app.include_router(catalog.router, dependencies=protected)
-app.include_router(manuals.router, dependencies=protected)
-app.include_router(sessions.router, dependencies=protected)
-app.include_router(chat.router, dependencies=protected)
-app.include_router(tts.router, dependencies=protected)
+authenticated = [Depends(get_current_user)]
+technical = [Depends(require_roles("owner", "manager", "engineer", "technician"))]
+app.include_router(catalog.router, dependencies=authenticated)
+app.include_router(manuals.router, dependencies=authenticated)
+app.include_router(sessions.router, dependencies=authenticated)
+app.include_router(chat.router, dependencies=technical)
+app.include_router(tts.router, dependencies=authenticated)
 app.include_router(ws.router)
