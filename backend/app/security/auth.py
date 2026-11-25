@@ -253,7 +253,6 @@ class AuthStore:
             raise ValueError("OWNER_PASSWORD_RESET_PASSWORD must contain at least 20 characters")
 
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-        password_hash = self._hash_password(new_password)
         with self._connect() as connection:
             used = connection.execute(
                 "SELECT 1 FROM auth_recovery_uses WHERE token_hash = ?",
@@ -273,6 +272,7 @@ class AuthStore:
             if owner is None:
                 raise RuntimeError("Cannot reset the owner password: no active owner account exists")
 
+            password_hash = self._hash_password(new_password)
             user_id = str(owner["id"])
             connection.execute(
                 """
