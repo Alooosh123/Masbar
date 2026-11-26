@@ -617,7 +617,7 @@ class ChatService:
         )
         has_search = any(
             term_in_text(normalized, term)
-            for term in ("ابحث", "بحث", "دور", "فتش", "search", "find")
+            for term in ("ابحث", "بحث", "دور", "فتش", "اسال", "جاوب", "سؤال", "search", "find", "ask")
         )
         return has_manual and has_search
 
