@@ -3,6 +3,8 @@ import type { FormEvent, ReactNode } from "react";
 import { ApiError, api } from "../lib/api";
 import type { AuthUser } from "../types";
 import { AuthContext } from "./AuthContext";
+import { CustomerManagement } from "./CustomerManagement";
+import { ForcedPasswordChange } from "./ForcedPasswordChange";
 
 interface Props {
   children: ReactNode;
@@ -26,6 +28,7 @@ export function AuthGate({ children }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showCustomerManagement, setShowCustomerManagement] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,18 +89,36 @@ export function AuthGate({ children }: Props) {
     } finally {
       setUser(null);
       setPassword("");
+      setShowCustomerManagement(false);
       setStatus("login");
     }
   }
 
   if (status === "ready") {
+    const canManageCustomers = user?.role === "owner" || user?.role === "admin";
     return (
       <AuthContext.Provider value={user}>
-        {children}
+        {user?.must_change_password ? (
+          <ForcedPasswordChange user={user} onComplete={setUser} />
+        ) : showCustomerManagement && canManageCustomers ? (
+          <CustomerManagement onClose={() => setShowCustomerManagement(false)} />
+        ) : (
+          children
+        )}
         {user && (
           <div className="auth-user-chip" dir="rtl">
             <strong>{user.display_name || user.email}</strong>
             <span className="auth-user-role">{ROLE_LABELS[user.role]}</span>
+            {canManageCustomers && !user.must_change_password && (
+              <button
+                type="button"
+                className="auth-manage-customers"
+                onClick={() => setShowCustomerManagement((visible) => !visible)}
+                aria-pressed={showCustomerManagement}
+              >
+                {showCustomerManagement ? "إغلاق الإدارة" : "إدارة العملاء"}
+              </button>
+            )}
             <button type="button" className="auth-logout" onClick={() => void logout()}>
               خروج
             </button>
