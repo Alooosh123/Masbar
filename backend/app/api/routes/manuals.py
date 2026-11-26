@@ -57,6 +57,7 @@ def search_manuals(
         hits=hits,
     )
 
+
 @router.post("/manuals/ingest", status_code=201)
 async def ingest_manual(
     request: Request,
