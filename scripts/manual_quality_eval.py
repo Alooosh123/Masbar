@@ -269,6 +269,54 @@ class Evaluator:
             },
         )
 
+        # Disassembly/installation requests are also retrieval-only even when
+        # the requested phrase happens to match a manual excerpt.
+        status, body = self.request_json(
+            "POST",
+            "/api/v1/chat",
+            json={"message": "ابحث في الكتيبات عن خطوات فك مانع التسرب"},
+        )
+        procedure_text = body.get("message_ar", "") if isinstance(body, dict) else ""
+        procedure_ok = (
+            status == 200
+            and body.get("source") == "system"
+            and "المقتطف:" in procedure_text
+            and "لا تنفذ خطوة صيانة" in procedure_text
+        )
+        self.check(
+            "Disassembly procedure request remains retrieval-only",
+            procedure_ok,
+            {
+                "http_status": status,
+                "source": body.get("source") if isinstance(body, dict) else None,
+                "snippet_present": "المقتطف:" in procedure_text,
+                "safety_warning_present": "لا تنفذ خطوة صيانة" in procedure_text,
+            },
+        )
+
+        # A genuinely unmatched question must be met with abstention, not
+        # a general-model answer that could invent technical specifications.
+        status, body = self.request_json(
+            "POST",
+            "/api/v1/chat",
+            json={"message": "ابحث في الكتيبات عن ZXQ-UNKNOWN-999998877"},
+        )
+        abstention_text = body.get("message_ar", "") if isinstance(body, dict) else ""
+        abstention_ok = (
+            status == 200
+            and body.get("source") == "system"
+            and "لم أجد مقاطع مطابقة" in abstention_text
+        )
+        self.check(
+            "Unanswerable manual question is explicitly declined",
+            abstention_ok,
+            {
+                "http_status": status,
+                "source": body.get("source") if isinstance(body, dict) else None,
+                "abstained": "لم أجد مقاطع مطابقة" in abstention_text,
+            },
+        )
+
         return {
             "started_at": started,
             "finished_at": datetime.now(timezone.utc).isoformat(),
