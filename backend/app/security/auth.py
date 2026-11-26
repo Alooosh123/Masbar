@@ -35,6 +35,7 @@ class AuthUser:
     created_at: str
     last_login_at: str | None
     token_version: int
+    must_change_password: bool = False
 
     def public_dict(self) -> dict:
         return {
@@ -45,6 +46,7 @@ class AuthUser:
             "is_active": self.is_active,
             "created_at": self.created_at,
             "last_login_at": self.last_login_at,
+            "must_change_password": self.must_change_password,
         }
 
 
@@ -79,6 +81,26 @@ class CreateUserRequest(BaseModel):
     @classmethod
     def normalize_display_name(cls, value: str) -> str:
         return value.strip()
+
+
+class UpdateCustomerRequest(BaseModel):
+    email: str | None = Field(default=None, min_length=3, max_length=254)
+    display_name: str | None = Field(default=None, min_length=2, max_length=120)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_optional_email(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().casefold()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", normalized):
+            raise ValueError("A valid email address is required")
+        return normalized
+
+    @field_validator("display_name")
+    @classmethod
+    def normalize_optional_display_name(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -126,13 +148,14 @@ class AuthStore:
                     email TEXT NOT NULL UNIQUE COLLATE NOCASE,
                     display_name TEXT NOT NULL,
                     password_hash TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK(role IN ('owner','admin','technician','viewer')),
+                    role TEXT NOT NULL CHECK(role IN ('owner','admin','technician','customer','viewer')),
                     is_active INTEGER NOT NULL DEFAULT 1,
                     created_at TEXT NOT NULL,
                     last_login_at TEXT,
                     failed_login_attempts INTEGER NOT NULL DEFAULT 0,
                     locked_until TEXT,
-                    token_version INTEGER NOT NULL DEFAULT 0
+                    token_version INTEGER NOT NULL DEFAULT 0,
+                    must_change_password INTEGER NOT NULL DEFAULT 0
                 )
                 """
             )
@@ -154,7 +177,8 @@ class AuthStore:
                         last_login_at TEXT,
                         failed_login_attempts INTEGER NOT NULL DEFAULT 0,
                         locked_until TEXT,
-                        token_version INTEGER NOT NULL DEFAULT 0
+                        token_version INTEGER NOT NULL DEFAULT 0,
+                        must_change_password INTEGER NOT NULL DEFAULT 0
                     )
                     """
                 )
@@ -172,6 +196,14 @@ class AuthStore:
                 connection.execute("DROP TABLE auth_users")
                 connection.execute(
                     "ALTER TABLE auth_users_customer_migration RENAME TO auth_users"
+                )
+
+            user_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(auth_users)").fetchall()
+            }
+            if "must_change_password" not in user_columns:
+                connection.execute(
+                    "ALTER TABLE auth_users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0"
                 )
 
             connection.execute(
@@ -251,6 +283,7 @@ class AuthStore:
             created_at=row["created_at"],
             last_login_at=row["last_login_at"],
             token_version=int(row["token_version"]),
+            must_change_password=bool(row["must_change_password"]),
         )
 
     @staticmethod
@@ -337,6 +370,7 @@ class AuthStore:
         password: str,
         role: str,
         event: str = "user_created",
+        must_change_password: bool = False,
     ) -> AuthUser:
         normalized_email = email.strip().casefold()
         if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", normalized_email):
@@ -354,10 +388,18 @@ class AuthStore:
                 connection.execute(
                     """
                     INSERT INTO auth_users(
-                        id,email,display_name,password_hash,role,is_active,created_at
-                    ) VALUES(?,?,?,?,?,1,?)
+                        id,email,display_name,password_hash,role,is_active,created_at,must_change_password
+                    ) VALUES(?,?,?,?,?,1,?,?)
                     """,
-                    (user_id, normalized_email, display_name.strip(), password_hash, role, created_at),
+                    (
+                        user_id,
+                        normalized_email,
+                        display_name.strip(),
+                        password_hash,
+                        role,
+                        created_at,
+                        int(must_change_password),
+                    ),
                 )
                 self._event(connection, user_id, event, role)
         except sqlite3.IntegrityError as exc:
@@ -382,6 +424,94 @@ class AuthStore:
                 """
             ).fetchall()
         return [user for row in rows if (user := self._to_user(row)) is not None]
+
+    def list_customers(self) -> list[AuthUser]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM auth_users WHERE role='customer' ORDER BY created_at DESC"
+            ).fetchall()
+        return [user for row in rows if (user := self._to_user(row)) is not None]
+
+    def update_customer(
+        self,
+        user_id: str,
+        *,
+        email: str | None = None,
+        display_name: str | None = None,
+    ) -> AuthUser:
+        current = self.get_user(user_id)
+        if current is None or current.role != "customer":
+            raise LookupError("Customer account not found")
+        if email is None and display_name is None:
+            raise ValueError("No customer fields were supplied")
+        new_email = current.email if email is None else email.strip().casefold()
+        new_name = current.display_name if display_name is None else display_name.strip()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", new_email):
+            raise ValueError("A valid email address is required")
+        if len(new_name) < 2:
+            raise ValueError("Display name must contain at least 2 characters")
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    "UPDATE auth_users SET email=?, display_name=? WHERE id=? AND role='customer'",
+                    (new_email, new_name, user_id),
+                )
+                self._event(connection, user_id, "customer_updated", "profile")
+        except sqlite3.IntegrityError as exc:
+            raise ValueError("A user with this email already exists") from exc
+        updated = self.get_user(user_id)
+        if updated is None:
+            raise LookupError("Customer account not found")
+        return updated
+
+    def set_customer_active(self, user_id: str, is_active: bool) -> AuthUser:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT role FROM auth_users WHERE id=?", (user_id,)
+            ).fetchone()
+            if row is None or row["role"] != "customer":
+                raise LookupError("Customer account not found")
+            connection.execute(
+                """
+                UPDATE auth_users
+                SET is_active=?, token_version=token_version+1
+                WHERE id=? AND role='customer'
+                """,
+                (int(is_active), user_id),
+            )
+            self._event(
+                connection,
+                user_id,
+                "customer_activated" if is_active else "customer_deactivated",
+            )
+        updated = self.get_user(user_id)
+        if updated is None:
+            raise LookupError("Customer account not found")
+        return updated
+
+    def reset_customer_password(self, user_id: str) -> tuple[AuthUser, str]:
+        temporary_password = secrets.token_urlsafe(24)
+        password_hash = self._hash_password(temporary_password)
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT role FROM auth_users WHERE id=?", (user_id,)
+            ).fetchone()
+            if row is None or row["role"] != "customer":
+                raise LookupError("Customer account not found")
+            connection.execute(
+                """
+                UPDATE auth_users
+                SET password_hash=?, failed_login_attempts=0, locked_until=NULL,
+                    token_version=token_version+1, must_change_password=1
+                WHERE id=? AND role='customer'
+                """,
+                (password_hash, user_id),
+            )
+            self._event(connection, user_id, "customer_password_reset")
+        updated = self.get_user(user_id)
+        if updated is None:
+            raise LookupError("Customer account not found")
+        return updated, temporary_password
 
     def authenticate(self, email: str, password: str) -> AuthUser | None:
         normalized_email = email.strip().casefold()
@@ -440,7 +570,7 @@ class AuthStore:
                 """
                 UPDATE auth_users
                 SET password_hash=?, failed_login_attempts=0, locked_until=NULL,
-                    token_version=token_version+1
+                    token_version=token_version+1, must_change_password=0
                 WHERE id=?
                 """,
                 (self._hash_password(new_password), user.id),
