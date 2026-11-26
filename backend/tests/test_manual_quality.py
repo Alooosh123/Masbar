@@ -238,3 +238,38 @@ def test_torque_question_stays_retrieval_only_without_model_generation(tmp_path,
     finally:
         reset_caches()
         get_settings.cache_clear()
+
+
+def test_manual_rag_rejects_numeric_claims_not_found_in_question_or_evidence(tmp_path, monkeypatch):
+    _seed_bilingual_manuals(tmp_path)
+
+    class FakeRagAdapter:
+        async def reply(self, **kwargs):
+            return ChatReply(
+                text="Maximum working pressure is 9999 bar. [S1]",
+                provider="test",
+            )
+
+    monkeypatch.setattr("app.deps.build_chat_adapter", lambda settings: FakeRagAdapter())
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    get_settings.cache_clear()
+    reset_caches()
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/chat",
+                json={"message": "Search manuals for shaft seal"},
+            )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["source"] == "system"
+        assert "المقتطف:" in body["message_ar"]
+        assert "9999" not in body["message_ar"]
+    finally:
+        reset_caches()
+        get_settings.cache_clear()
