@@ -21,7 +21,7 @@ from app.core.config import get_settings
 AUTH_COOKIE_NAME = "masbar_access"
 AUTH_ISSUER = "masbar"
 PASSWORD_ITERATIONS = 310_000
-PASSWORD_MIN_LENGTH = 14
+PASSWORD_MIN_LENGTH = 8
 ALLOWED_ROLES = {"owner", "admin", "technician", "customer", "viewer"}
 
 
@@ -328,8 +328,10 @@ class AuthStore:
         normalized_email = email.strip().casefold()
         if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", normalized_email):
             raise RuntimeError("BOOTSTRAP_ADMIN_EMAIL is not a valid email address")
-        if len(password) < 20:
-            raise RuntimeError("BOOTSTRAP_ADMIN_PASSWORD must contain at least 20 characters")
+        if len(password) < PASSWORD_MIN_LENGTH:
+            raise RuntimeError(
+                f"BOOTSTRAP_ADMIN_PASSWORD must contain at least {PASSWORD_MIN_LENGTH} characters"
+            )
         self.create_user(
             email=normalized_email,
             display_name="مِسبار — المالك",
@@ -342,8 +344,10 @@ class AuthStore:
         """Consume a one-time recovery token to rotate the existing primary owner's password."""
         if len(token) < 32:
             raise ValueError("OWNER_PASSWORD_RESET_TOKEN must contain at least 32 characters")
-        if len(new_password) < 20:
-            raise ValueError("OWNER_PASSWORD_RESET_PASSWORD must contain at least 20 characters")
+        if len(new_password) < PASSWORD_MIN_LENGTH:
+            raise ValueError(
+                f"OWNER_PASSWORD_RESET_PASSWORD must contain at least {PASSWORD_MIN_LENGTH} characters"
+            )
 
         token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
         with self._connect() as connection:
