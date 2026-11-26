@@ -1,8 +1,22 @@
-from fastapi import APIRouter, HTTPException, Query
+import asyncio
+import logging
+import tempfile
+from pathlib import Path
+
+from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 
 from app.core.config import get_settings
 from app.deps import get_manual_library
-from app.knowledge.manual_index import ManualDocumentSummary, ManualSearchResponse
+from app.knowledge.manual_index import (
+    MAX_PDF_BYTES,
+    ManualDocumentSummary,
+    ManualIndexError,
+    ManualSearchResponse,
+    build_manual_index,
+    write_manual_index,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["manuals"])
 
@@ -29,7 +43,7 @@ def search_manuals(
             status_code=404,
             detail={
                 "code": "manual_search_disabled",
-                "message_ar": "بحث مقتطفات الكتيبات معطل افتراضياً. فعّله فقط في بيئة محلية/خاصة إلى أن تُضاف مصادقة وصلاحيات.",
+                "message_ar": "بحث الكتيبات غير متاح. في الإنتاج يلزم MANUAL_SEARCH_ENABLED=true مع تفعيل AUTH_REQUIRED.",
             },
         )
 
@@ -42,3 +56,138 @@ def search_manuals(
         vector_search_enabled=False,
         hits=hits,
     )
+
+@router.post("/manuals/ingest", status_code=201)
+async def ingest_manual(
+    request: Request,
+    file: UploadFile = File(...),
+    doc_id: str = Form(..., min_length=2, max_length=64),
+    title: str = Form(..., min_length=3, max_length=240),
+    manufacturer: str = Form(..., min_length=2, max_length=120),
+    equipment_models: list[str] = Form(...),
+    model_codes: list[str] = Form(default=[]),
+    document_number: str | None = Form(default=None, max_length=120),
+    revision: str | None = Form(default=None, max_length=80),
+    language: str = Form(default="en", min_length=2, max_length=16),
+    source_url: str | None = Form(default=None),
+    rights_confirmed: bool = Form(default=False),
+    rights_note: str = Form(default=""),
+    overwrite: bool = Form(default=False),
+) -> dict:
+    """Ingest an OEM PDF into the private persistent index (owner/admin only).
+
+    The original PDF is processed in a temporary directory and is not retained.
+    Only the page-cited text index is written to MANUAL_INDEX_DIR.
+    """
+    user = getattr(request.state, "auth_user", None)
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "code": "manual_ingestion_auth_required",
+                "message_ar": "يجب تسجيل الدخول بحساب المالك أو المدير لاستيراد الكتيبات.",
+            },
+        )
+    if user.role not in {"owner", "admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "manual_ingestion_forbidden",
+                "message_ar": "استيراد الكتيبات متاح للمالك أو المدير فقط.",
+            },
+        )
+    if not rights_confirmed or len(rights_note.strip()) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "manual_rights_confirmation_required",
+                "message_ar": "أكد امتلاكك حق معالجة هذا الملف داخلياً، واكتب أساس الإذن أو الترخيص بوضوح.",
+            },
+        )
+    if not any(value.strip() for value in equipment_models):
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "manual_equipment_scope_required",
+                "message_ar": "حدد طراز المعدة الدقيق المرتبط بهذا الكتيب.",
+            },
+        )
+
+    raw_pdf = await file.read(MAX_PDF_BYTES + 1)
+    await file.close()
+    if len(raw_pdf) > MAX_PDF_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "code": "manual_pdf_too_large",
+                "message_ar": "حجم ملف الكتيب يتجاوز الحد المسموح وهو 100 ميجابايت.",
+            },
+        )
+    if not raw_pdf.startswith(b"%PDF-"):
+        raise HTTPException(
+            status_code=415,
+            detail={
+                "code": "manual_pdf_invalid",
+                "message_ar": "الملف المرفوع ليس ملف PDF صالحاً.",
+            },
+        )
+
+    settings = get_settings()
+    try:
+        with tempfile.TemporaryDirectory(prefix="masbar-manual-") as temp_dir:
+            pdf_path = Path(temp_dir) / "source.pdf"
+            pdf_path.write_bytes(raw_pdf)
+            index = await asyncio.to_thread(
+                build_manual_index,
+                pdf_path,
+                doc_id=doc_id.strip(),
+                title=title.strip(),
+                manufacturer=manufacturer.strip(),
+                equipment_models=[value.strip() for value in equipment_models if value.strip()],
+                model_codes=[value.strip() for value in model_codes if value.strip()],
+                document_number=document_number.strip() if document_number else None,
+                revision=revision.strip() if revision else None,
+                language=language.strip(),
+                source_url=source_url.strip() if source_url else None,
+                rights_confirmed=True,
+                rights_note=rights_note.strip(),
+            )
+        await asyncio.to_thread(
+            write_manual_index,
+            index,
+            settings.manual_index_dir,
+            overwrite=overwrite,
+        )
+        get_manual_library.cache_clear()
+        library = get_manual_library()
+        document = next(
+            item for item in library.list_documents() if item.doc_id == index.document.doc_id
+        )
+    except ManualIndexError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "manual_ingestion_rejected",
+                "message_ar": str(exc),
+            },
+        ) from None
+    except Exception:
+        logger.exception("Manual ingestion failed")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "manual_ingestion_failed",
+                "message_ar": "تعذر فهرسة الكتيب. راجع سجل الخادم دون مشاركة محتوى المستند.",
+            },
+        ) from None
+
+    return {
+        "document": document.model_dump(mode="json"),
+        "chunks_created": len(index.chunks),
+        "text_pages": index.document.text_pages,
+        "pages_requiring_ocr": index.document.pages_requiring_ocr,
+        "sha256": index.document.sha256,
+        "original_pdf_retained": False,
+        "retrieval_method": "bm25_lexical",
+        "rag_generation": "cohere_when_configured",
+    }
