@@ -194,9 +194,10 @@ _HELP_TERMS = ("مساعده", "مساعدة", "help", "ماذا تستطيع", 
 class ChatService:
     """Conversation orchestration on top of the deterministic maintenance engine.
 
-    The LLM is deliberately limited to general conversation and free-form image
-    description. Torque values, maintenance steps, part numbers and LOTO rules
-    are always resolved by ``AssistantService`` from the verified knowledge base.
+    The LLM handles general conversation, free-form image description and
+    evidence-grounded non-operational manual Q&A. Torque values, maintenance
+    steps, part numbers and LOTO rules remain controlled by the verified
+    knowledge base and never become executable through manual RAG alone.
     """
 
     def __init__(
@@ -270,8 +271,8 @@ class ChatService:
         if self._is_help(message):
             return self._help(session)
 
-        # Excerpts from potentially licensed manuals are opt-in until access control
-        # is available; this app currently has no user authentication layer.
+        # Manual search and generation are opt-in and protected by authenticated
+        # API access. The ingestion route independently enforces owner/admin roles.
         if self._is_manual_search(message):
             if not self.settings.manual_search_available:
                 return self._system_reply(
@@ -279,7 +280,7 @@ class ChatService:
                     "ولا تعرض الخادم للإنترنت قبل إضافة المصادقة والصلاحيات.",
                     session,
                 )
-            return self._manual_search_reply(session, message)
+            return await self._manual_search_reply(session, message)
 
         # Safety-critical questions always resolve through the knowledge base,
         # even when they happen to mention a catalog noun.
@@ -617,11 +618,16 @@ class ChatService:
         )
         has_search = any(
             term_in_text(normalized, term)
-            for term in ("ابحث", "بحث", "دور", "فتش", "search", "find")
+            for term in (
+                "ابحث", "بحث", "دور", "فتش", "اسال", "جاوب", "سؤال",
+                "ما", "ماذا", "كم", "كيف", "اين", "هل", "اشرح", "وضح",
+                "what", "which", "how", "where", "when", "why", "explain",
+                "describe", "specs", "specification", "search", "find", "ask",
+            )
         )
         return has_manual and has_search
 
-    def _manual_search_reply(
+    async def _manual_search_reply(
         self, session: Session | None, message: str
     ) -> ChatResponse:
         from app.deps import get_manual_library
@@ -630,7 +636,8 @@ class ChatService:
             r"ابحث\s+في\s+الكتيبات?\s+(?:عن|حول)\s+",
             r"ابحث\s+في\s+الدليل\s+(?:عن|حول)\s+",
             r"ابحث\s+بالكتيب\s+(?:عن|حول)\s+",
-            r"(?:search|find)\s+(?:in\s+)?manuals?\s+(?:for|about)\s+",
+            r"(?:اسأل|اسال)\s+(?:في\s+)?الكتيبات?\s+(?:عن|حول)\s+",
+            r"(?:search|find|ask)\s+(?:in\s+)?manuals?\s+(?:for|about)\s+",
         )
         query = message
         for pattern in patterns:
@@ -640,15 +647,15 @@ class ChatService:
         query = query.strip(" ؟?،,:;")
         if len(query) < 2:
             return self._system_reply(
-                "اكتب موضوع البحث بعد الأمر، مثل: «ابحث في الكتيبات عن shaft seal».",
+                "اكتب موضوع السؤال بعد الأمر، مثل: «ابحث في الكتيبات عن مواصفات CPU 1214C».",
                 session,
             )
 
         library = get_manual_library()
         if not library.documents:
             return self._system_reply(
-                "لا توجد كتيبات مفهرسة في الخادم حالياً. أضف ملف PDF تملك حق معالجته "
-                "باستخدام scripts/ingest_manual.py، ثم أعد تشغيل الخادم.",
+                "لا توجد كتيبات مفهرسة في الخادم حالياً. ارفع ملف PDF مصرحاً بمعالجته "
+                "من واجهة API المخصصة للمالك/المدير، ثم أعد السؤال.",
                 session,
             )
 
@@ -656,11 +663,165 @@ class ChatService:
         hits = library.search(query, equipment_model=equipment_model, limit=5)
         if not hits:
             return self._system_reply(
-                "لم أجد مقاطع مطابقة في الكتيبات المفهرسة. جرّب مصطلحاً إنجليزياً "
-                "من لوحة المعدة أو تحقق من أن صفحات PDF تحتوي نصاً قابلاً للاستخراج.",
+                "لم أجد مقاطع مطابقة في الكتيبات المفهرسة. جرّب مصطلحاً فنياً أدق، "
+                "أو تحقق من طراز المعدة المحدد في الجلسة.",
                 session,
             )
 
+        # Operationally sensitive queries remain retrieval-only. The RAG model
+        # may explain descriptive facts, but it never turns these excerpts into
+        # executable torque, isolation, wiring, or maintenance instructions.
+        if self.chat is None or self._is_restricted_manual_rag_query(query):
+            return self._manual_snippets_reply(session, query, hits)
+
+        manual_context = self._manual_rag_context(hits)
+        try:
+            reply = await self.chat.reply(
+                message=query,
+                history=[],
+                context=self._context(session),
+                manual_context=manual_context,
+            )
+        except Exception:
+            logger.exception("Manual RAG generation failed")
+            return self._manual_snippets_reply(session, query, hits)
+
+        safe_text = sanitize_user_facing_text(reply.text)
+        if safe_text:
+            # Only permit citations for source IDs actually present in this response.
+            safe_text = re.sub(
+                r"\[S(\d+)\]",
+                lambda match: match.group(0)
+                if 1 <= int(match.group(1)) <= len(hits)
+                else "",
+                safe_text,
+            )
+        if reply.error or not safe_text:
+            logger.warning(
+                "Manual RAG answer unavailable or rejected: %s",
+                reply.error or "unsafe_or_invalid_output",
+            )
+            return self._manual_snippets_reply(session, query, hits)
+
+        sources = self._manual_source_lines(hits)
+        return ChatResponse(
+            message_ar=(
+                f"{safe_text}\n\nالمراجع المسترجعة:\n{sources}\n\n"
+                "هذه إجابة بحثية مرتبطة بنص الكتيب وليست اعتماداً فنياً للتنفيذ. "
+                "طابق رقم الطراز ولوحة البيانات ومراجعة الدليل، واطلب مراجعة مختص قبل "
+                "أي عمل ميداني. لا تعتمد على الإجابة وحدها لقيم العزم أو إجراءات العزل."
+            ),
+            source="general",
+            session=self._safe_session(session),
+            quick_replies=["اسأل عن قسم آخر في الكتيب", "ما الكتيبات المفهرسة؟"],
+        )
+
+    def _is_restricted_manual_rag_query(self, query: str) -> bool:
+        restricted_terms = (
+            "عزم",
+            "شد",
+            "torque",
+            "tightening",
+            "dismantling",
+            "assembly",
+            "install",
+            "installation",
+            "removal",
+            "remove",
+            "replacement",
+            "wiring",
+            "wire",
+            "terminal torque",
+            "disconnect",
+            "electrical supply",
+            "loto",
+            "lockout",
+            "isolation",
+            "خطوات",
+            "كيف افك",
+            "كيف اركب",
+            "فك",
+            "تركيب",
+            "استبدال",
+            "توصيل",
+            "اسلاك",
+            "كهرباء",
+            "افصل",
+            "عزل",
+            "اجراء صيانة",
+            "اصلاح",
+            "procedure",
+            "procedures",
+            "commission",
+            "commissioning",
+            "configure",
+            "configuration",
+            "parameter",
+            "program",
+            "programming",
+            "download",
+            "upload",
+            "reset",
+            "restart",
+            "calibrate",
+            "adjust",
+            "connect",
+            "startup",
+            "start-up",
+            "energize",
+            "energise",
+            "test run",
+            "diagnostic procedure",
+            "how",
+            "كيف",
+            "error code",
+            "fault code",
+            "alarm reset",
+        )
+        return self._needs_grounded_answer(query) or any(
+            term_in_text(query, term) for term in restricted_terms
+        )
+
+    def _manual_rag_context(self, hits) -> str:
+        blocks: list[str] = []
+        for index, hit in enumerate(hits, start=1):
+            page = (
+                f"printed page {hit.printed_page_number}; PDF page {hit.pdf_page_number}"
+                if hit.printed_page_number
+                else f"PDF page {hit.pdf_page_number}"
+            )
+            document_ref = hit.document_number or hit.document_id
+            revision = f"; revision {hit.revision}" if hit.revision else ""
+            section = f"; section {hit.section_title}" if hit.section_title else ""
+            blocks.append(
+                f"[S{index}] OEM: {hit.manufacturer}; title: {hit.title}; "
+                f"document: {document_ref}{revision}; {page}{section}\n"
+                f"UNTRUSTED EXCERPT:\n{hit.excerpt}"
+            )
+        return "\n\n".join(blocks)
+
+    def _manual_source_lines(self, hits) -> str:
+        lines: list[str] = []
+        for index, hit in enumerate(hits, start=1):
+            page = (
+                f"الصفحة المطبوعة {hit.printed_page_number} (PDF {hit.pdf_page_number})"
+                if hit.printed_page_number
+                else f"صفحة PDF {hit.pdf_page_number}"
+            )
+            document_ref = hit.document_number or hit.document_id
+            revision = f" — الإصدار: {hit.revision}" if hit.revision else ""
+            section = f" — القسم: {hit.section_title}" if hit.section_title else ""
+            lines.append(
+                f"[S{index}] {hit.manufacturer} — {hit.title}{revision} — "
+                f"الوثيقة: {document_ref} — {page}{section}"
+            )
+            if hit.source_url:
+                lines.append(f"رابط المصدر: {hit.source_url}")
+        return "\n".join(lines)
+
+    def _manual_snippets_reply(
+        self, session: Session | None, query: str, hits
+    ) -> ChatResponse:
         lines: list[str] = []
         for index, hit in enumerate(hits, start=1):
             page = (
@@ -669,12 +830,12 @@ class ChatService:
                 if hit.printed_page_number
                 else f"صفحة PDF {hit.pdf_page_number}"
             )
-            doc_ref = hit.document_number or hit.document_id
+            document_ref = hit.document_number or hit.document_id
             revision = f" — الإصدار: {hit.revision}" if hit.revision else ""
             section = f" — القسم: {hit.section_title}" if hit.section_title else ""
             lines.append(
-                f"{index}. {hit.manufacturer} — {hit.title}{revision}\n"
-                f"المرجع: {doc_ref} — {page}{section}\n"
+                f"[S{index}] {hit.manufacturer} — {hit.title}{revision}\n"
+                f"المرجع: {document_ref} — {page}{section}\n"
                 f"المقتطف: {hit.excerpt}"
             )
             if hit.source_url:
@@ -686,12 +847,12 @@ class ChatService:
                 + "\n\n".join(lines)
                 + "\n\nتنبيه: هذا بحث نصي في صفحات الكتيبات، وليس اعتماداً فنياً "
                 "ولا تحققاً من مطابقة رقم الطراز أو الإصدار. لا تنفذ خطوة صيانة أو "
-                "تستخدم قيمة عزم من المقتطف وحده؛ يجب مراجعة الصفحة الأصلية ومطابقة "
-                "لوحة بيانات المعدة واعتماد المعلومة من مختص مؤهل."
+                "تستخدم قيمة عزم من المقتطف وحده؛ راجع الصفحة الأصلية وطابق لوحة "
+                "بيانات المعدة واطلب اعتماد مختص مؤهل."
             ),
             source="system",
             session=self._safe_session(session),
-            quick_replies=["ما الكتيبات المتاحة؟", "ما المعدات المتاحة؟"],
+            quick_replies=["اسأل سؤالاً عاماً عن الكتيبات", "ما المعدات المتاحة؟"],
         )
 
     # ----------------------------------------------------------------- grounded

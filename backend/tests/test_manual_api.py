@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
+from app.adapters.chat.cohere_chat import ChatReply
 from app.core.config import get_settings
 from app.deps import reset_caches
 from app.knowledge.manual_index import ManualChunk, ManualDocument, ManualIndex, write_manual_index
@@ -49,6 +50,8 @@ def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, mo
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     get_settings.cache_clear()
     reset_caches()
 
@@ -75,8 +78,11 @@ def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, mo
 
 def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path, monkeypatch):
     _seed_manual_index(tmp_path)
+    monkeypatch.setattr("app.deps.build_chat_adapter", lambda settings: None)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     get_settings.cache_clear()
     reset_caches()
 
@@ -98,6 +104,8 @@ def test_manual_search_is_disabled_by_default_without_authentication(tmp_path, m
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "false")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     get_settings.cache_clear()
     reset_caches()
 
@@ -118,6 +126,7 @@ def test_manual_search_stays_disabled_in_production_even_if_flag_is_true(tmp_pat
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("CORS_ORIGINS", "https://frontend.example.test")
     get_settings.cache_clear()
@@ -133,3 +142,124 @@ def test_manual_search_stays_disabled_in_production_even_if_flag_is_true(tmp_pat
     assert search.status_code == 404
     assert search.json()["detail"]["code"] == "manual_search_disabled"
     assert "بحث الكتيبات معطل افتراضياً" in chat.json()["message_ar"]
+
+def test_manual_rag_passes_retrieved_sources_to_generation_and_appends_citations(tmp_path, monkeypatch):
+    _seed_manual_index(tmp_path)
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    captured = {}
+
+    class FakeRagAdapter:
+        async def reply(self, **kwargs):
+            captured.update(kwargs)
+            return ChatReply(
+                text="يعرّف المقتطف موضع مانع التسرب بالرقم 105. [S1]",
+                provider="test",
+            )
+
+    monkeypatch.setattr("app.deps.build_chat_adapter", lambda settings: FakeRagAdapter())
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/chat",
+            json={"message": "اسأل الكتيبات عن shaft seal position 105"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "general"
+    assert "[S1]" in body["message_ar"]
+    assert "96546866 0407" in body["message_ar"]
+    assert "الصفحة المطبوعة 9" in body["message_ar"]
+    assert "manual_context" in captured
+    assert "position 105" in captured["manual_context"]
+    assert captured["message"] == "shaft seal position 105"
+    reset_caches()
+
+
+def test_manual_rag_keeps_torque_requests_retrieval_only(tmp_path, monkeypatch):
+    _seed_manual_index(tmp_path)
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    captured = {"called": False}
+
+    class FakeRagAdapter:
+        async def reply(self, **kwargs):
+            captured["called"] = True
+            return ChatReply(text="لا ينبغي استدعائي.", provider="test")
+
+    monkeypatch.setattr("app.deps.build_chat_adapter", lambda settings: FakeRagAdapter())
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/chat",
+            json={"message": "ابحث في الكتيبات عن shaft seal torque"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["source"] == "system"
+    assert "المقتطف:" in response.json()["message_ar"]
+    assert "اطلب اعتماد مختص مؤهل" in response.json()["message_ar"]
+    assert captured["called"] is False
+    reset_caches()
+
+
+def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch):
+    _seed_manual_index(tmp_path)
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    captured = {"called": False}
+
+    class FakeRagAdapter:
+        async def reply(self, **kwargs):
+            captured["called"] = True
+            return ChatReply(text="إجابة تشغيلية غير مسموحة.", provider="test")
+
+    monkeypatch.setattr("app.deps.build_chat_adapter", lambda settings: FakeRagAdapter())
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/chat",
+            json={"message": "ما قيمة عزم shaft seal في الكتيب؟"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["source"] == "system"
+    assert "المقتطف:" in response.json()["message_ar"]
+    assert captured["called"] is False
+    reset_caches()
+
+
+def test_manual_ingestion_requires_authenticated_owner_or_admin(monkeypatch):
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    get_settings.cache_clear()
+    reset_caches()
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/manuals/ingest",
+            data={
+                "doc_id": "manual-upload-test",
+                "title": "Test manual",
+                "manufacturer": "Example OEM",
+                "equipment_models": "Example model",
+                "rights_confirmed": "true",
+                "rights_note": "Authorized internal test licence",
+            },
+            files={"file": ("manual.pdf", b"%PDF-1.4 fake", "application/pdf")},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "manual_ingestion_auth_required"
