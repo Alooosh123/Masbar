@@ -116,6 +116,7 @@ def test_printed_page_detection_ignores_year_dates_and_electrical_ratios():
     assert _printed_page_number("System Manual V4.7 12/2024", pdf_page_count=1323) is None
     assert _printed_page_number("50/60 Hz\n96546866 0407 GB 1 / 19", pdf_page_count=19) == 1
     assert _printed_page_number("9 / 19\nReplacement of shaft seal", pdf_page_count=19) == 9
+    assert _printed_page_number("100/120 V AC", pdf_page_count=1323) is None
 
 
 def test_long_page_is_split_with_overlap():
