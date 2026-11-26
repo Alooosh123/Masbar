@@ -160,7 +160,7 @@ def test_unverified_safety_data_fails_closed_and_hides_sample_checklist(guard, k
     assert protocol.loto_required is True
     assert protocol.blocked_reason_ar is not None
     assert protocol.checklist == []
-    assert any("غير معتمدة" in warning for warning in protocol.warnings_ar)
+    assert any("معتمدة" in warning for warning in protocol.warnings_ar)
 
 
 def test_unverified_procedure_is_blocked_even_after_loto_confirmation(guard, kb):

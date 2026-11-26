@@ -697,11 +697,13 @@ class ChatService:
     # ----------------------------------------------------------------- grounded
     def _grounded_reply(self, session: Session | None, message: str) -> ChatResponse:
         if session is None:
-            return self._system_reply(
-                "لا أقدّم قيم عزم أو خطوات فك أو إجراءات عزل من المحادثة العامة. "
-                "هذه المعلومات تُعرض فقط من قاعدة المعرفة بعد بدء جلسة وتحديد "
-                "المعدة والقطعة.\n\nاختر المعدة أولًا:",
-                None,
+            return ChatResponse(
+                message_ar=(
+                    "لا أقدّم قيم عزم أو خطوات فك أو إجراءات عزل من المحادثة العامة. "
+                    "هذه المعلومات تُعرض فقط من قاعدة المعرفة بعد بدء جلسة وتحديد "
+                    "المعدة والقطعة.\\n\\nاختر المعدة أولًا:"
+                ),
+                source="system",
                 equipment=self.assistant.list_equipment(),
                 quick_replies=self._equipment_quick_replies(self.assistant.list_equipment()),
                 abstained=True,
