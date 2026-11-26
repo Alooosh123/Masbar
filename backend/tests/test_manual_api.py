@@ -219,7 +219,7 @@ def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch
     with TestClient(app) as client:
         response = client.post(
             "/api/v1/chat",
-            json={"message": "ما قيمة العزم في كتيب Grundfos؟"},
+            json={"message": "ما قيمة عزم shaft seal في الكتيب؟"},
         )
 
     assert response.status_code == 200
