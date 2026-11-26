@@ -90,6 +90,38 @@ export const api = {
 
   logout: () => request<{ authenticated: boolean }>("/api/v1/auth/logout", { method: "POST" }),
 
+  customers: () => request<{ customers: AuthUser[] }>("/api/v1/auth/users/customers"),
+
+  createCustomer: (email: string, displayName: string) =>
+    request<{ user: AuthUser; temporary_password: string; must_change_password: boolean }>(
+      "/api/v1/auth/users/customers",
+      { method: "POST", body: JSON.stringify({ email, display_name: displayName }) }
+    ),
+
+  updateCustomer: (id: string, payload: { email?: string; display_name?: string }) =>
+    request<{ user: AuthUser }>(`/api/v1/auth/users/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+
+  setCustomerActive: (id: string, isActive: boolean) =>
+    request<{ user: AuthUser }>(`/api/v1/auth/users/${encodeURIComponent(id)}/activation`, {
+      method: "POST",
+      body: JSON.stringify({ is_active: isActive }),
+    }),
+
+  resetCustomerPassword: (id: string) =>
+    request<{ user: AuthUser; temporary_password: string; must_change_password: boolean }>(
+      `/api/v1/auth/users/${encodeURIComponent(id)}/reset-password`,
+      { method: "POST" }
+    ),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ changed: boolean; user: AuthUser }>("/api/v1/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
   chat: (payload: ChatRequest) =>
     request<ChatResponse>("/api/v1/chat", {
       method: "POST",
