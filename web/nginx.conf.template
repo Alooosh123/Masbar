@@ -10,6 +10,8 @@ server {
 
     # Keep browser traffic on the frontend origin; forward API calls privately.
     location /api/ {
+        # Manual index JSON imports can exceed nginx's 1 MiB default; backend enforces a 15 MiB cap.
+        client_max_body_size 20m;
         proxy_pass ${BACKEND_UPSTREAM};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
