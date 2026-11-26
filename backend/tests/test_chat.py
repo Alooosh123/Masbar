@@ -179,3 +179,17 @@ def test_explicit_image_identification_uses_grounded_part(client, monkeypatch):
     assert body["session"]["state"] == "AWAITING_LOTO"
     assert body["session"]["identified_component"]["part_number"] == "312-5620"
     assert fake.calls == []  # identification never goes through the LLM
+
+
+def test_chat_unhandled_provider_exception_returns_safe_service_error(client, monkeypatch):
+    from app.api.routes import chat as chat_route
+
+    class BrokenChatService:
+        async def handle(self, request):
+            raise RuntimeError("private provider stack trace")
+
+    monkeypatch.setattr(chat_route, "get_chat_service", lambda: BrokenChatService())
+    response = client.post("/api/v1/chat", json={"message": "مرحبا"})
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "chat_temporarily_unavailable"
+    assert "private provider stack trace" not in response.text

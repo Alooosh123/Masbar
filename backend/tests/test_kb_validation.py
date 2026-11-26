@@ -143,3 +143,13 @@ def test_verified_evidence_must_match_source_page():
     }
     with pytest.raises(ValidationError, match="manual_page"):
         EquipmentFile.model_validate(raw)
+
+
+def test_equipment_status_cannot_promote_sample_component_to_verified():
+    from copy import deepcopy
+
+    kb = _kb()
+    cloned = deepcopy(kb)
+    cloned.equipment_files["Caterpillar C15 ACERT"].data_status = "verified"
+    assert cloned.data_status_for("312-5620") == "sample"
+

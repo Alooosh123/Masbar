@@ -116,6 +116,7 @@ class SafetyLockoutProtocol(BaseModel):
     checklist: list[SafetyChecklistItemState] = Field(default_factory=list)
     acknowledged_by_technician: bool = False
     blocked_reason_ar: str | None = None
+    source_status: Literal["verified", "unverified"] = "unverified"
 
 
 class RetrievalCandidate(BaseModel):
@@ -148,6 +149,10 @@ class AssistantResponse(BaseModel):
     data_disclaimer_ar: str = ""
     retrieval_candidates: list[RetrievalCandidate] = Field(default_factory=list)
     last_intent: Intent | None = None
+    procedure_available: bool = False
+    procedure_blocked_reason_ar: str | None = None
+    abstained: bool = False
+    abstention_reason_ar: str | None = None
 
 
 class SessionAuditResponse(BaseModel):
@@ -189,6 +194,8 @@ class ChatResponse(BaseModel):
     equipment: list[EquipmentSummary] = Field(default_factory=list)
     components: list[ComponentSummary] = Field(default_factory=list)
     quick_replies: list[str] = Field(default_factory=list)
+    abstained: bool = False
+    abstention_reason_ar: str | None = None
 
 
 class HealthResponse(BaseModel):

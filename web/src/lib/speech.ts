@@ -42,7 +42,7 @@ export function createArabicRecognizer(): AnyRecognition | null {
   const recognition = new Ctor();
   recognition.lang = "ar-SA";
   recognition.interimResults = false;
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.maxAlternatives = 1;
   return recognition;
 }

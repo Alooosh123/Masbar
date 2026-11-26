@@ -45,18 +45,30 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 60_000);
   try {
     response = await fetch(`${API_URL}${path}`, {
       credentials: "include",
       headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
       ...init,
+      signal: controller.signal,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(
+        "استغرق الخادم وقتًا أطول من المتوقع. تحقق من اتصال الخدمة ثم أعد المحاولة.",
+        408,
+        "request_timeout"
+      );
+    }
     throw new ApiError(
       "تعذر الاتصال بالخادم. تحقق من تشغيل الخادم الخلفي واتصال الواجهة به.",
       0,
       "network_error"
     );
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 
   const payload = await response.json().catch(() => null);

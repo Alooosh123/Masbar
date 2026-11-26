@@ -42,6 +42,7 @@ export interface SafetyLockoutProtocol {
   checklist: ChecklistItemState[];
   acknowledged_by_technician: boolean;
   blocked_reason_ar: string | null;
+  source_status: "verified" | "unverified";
 }
 
 export interface TorqueSpecification {
@@ -119,6 +120,10 @@ export interface AssistantResponse {
   data_disclaimer_ar: string;
   retrieval_candidates: RetrievalCandidate[];
   last_intent: string | null;
+  procedure_available: boolean;
+  procedure_blocked_reason_ar: string | null;
+  abstained: boolean;
+  abstention_reason_ar: string | null;
 }
 
 export type ChatAction =
@@ -152,6 +157,8 @@ export interface ChatResponse {
   equipment: EquipmentSummary[];
   components: ComponentSummary[];
   quick_replies: string[];
+  abstained: boolean;
+  abstention_reason_ar: string | null;
 }
 
 export interface HealthResponse {

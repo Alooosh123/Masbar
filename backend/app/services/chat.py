@@ -19,6 +19,7 @@ from app.domain.enums import SessionState
 from app.domain.kb import ComponentRecord
 from app.knowledge.loader import KnowledgeBase
 from app.safety.guard import SafetyViolation
+from app.safety.output import sanitize_user_facing_text
 from app.services.assistant import AssistantService
 from app.services.session import Session, SessionNotFound, SessionStore
 
@@ -91,6 +92,38 @@ _GROUNDED_TERMS = (
     "تغيير",
     "اصلاح",
     "كيف اصلح",
+    "ضغط منخفض",
+    "ضغط عالي",
+    "ضعف ضغط",
+    "تسريب زيت",
+    "تسرب زيت",
+    "تهريب",
+    "حراره عاليه",
+    "ارتفاع الحراره",
+    "سخونه",
+    "سخونة",
+    "اهتزاز غير طبيعي",
+    "صوت غريب",
+    "رائحه احتراق",
+    "دخان",
+    "المحرك لا يعمل",
+    "ما يشتغل",
+    "المضخه متوقفه",
+    "لا يدور",
+    "leak",
+    "pressure drop",
+    "low pressure",
+    "overheating",
+    "abnormal vibration",
+    "unusual noise",
+    "burning smell",
+    "smoke",
+    "not starting",
+    "not running",
+    "malfunction",
+    "fault",
+    "repair",
+    "troubleshoot",
     "اجراء",
     "اجراءات",
     "طريقه فك",
@@ -492,6 +525,8 @@ class ChatService:
                 source="assistant",
                 session=self._safe_session(session),
                 quick_replies=quick,
+                abstained=True,
+                abstention_reason_ar=exc.message_ar,
             )
         except Exception:  # pragma: no cover - defensive
             logger.exception("Unexpected identification failure")
@@ -512,6 +547,8 @@ class ChatService:
             action=action,
             session=response,
             quick_replies=quick,
+            abstained=response.requires_closer_inspection,
+            abstention_reason_ar=response.inspection_prompt_ar,
         )
 
     # --------------------------------------------------------------- description
@@ -539,11 +576,22 @@ class ChatService:
             image_base64=req.image_base64,
             describe=True,
         )
-        if reply.error or not reply.text:
-            logger.warning("Image description failed: %s", reply.error)
-            return self._system_reply(
-                "تعذر وصف الصورة الآن. تحقق من الاتصال ثم أعد المحاولة.",
-                session,
+        safe_text = sanitize_user_facing_text(reply.text)
+        if reply.error or not safe_text:
+            logger.warning(
+                "Image description unavailable or rejected: %s",
+                reply.error or "unsafe_or_invalid_output",
+            )
+            return ChatResponse(
+                message_ar=(
+                    "لم أتمكن من إنشاء وصف موثوق للصورة. لا أستطيع تأكيد هوية القطعة "
+                    "من هذا الرد؛ أعد التقاط صورة أو اختر القطعة من قاعدة البيانات."
+                ),
+                source="system",
+                session=self._safe_session(session),
+                quick_replies=["حدد القطعة في هذه الصورة", "افتح الكاميرا", "اعرض القطع"],
+                abstained=True,
+                abstention_reason_ar="تعذر التحقق من مخرجات وصف الصورة.",
             )
 
         quick = ["حدد القطعة في هذه الصورة", "افتح الكاميرا"]
@@ -552,7 +600,7 @@ class ChatService:
 
         return ChatResponse(
             message_ar=(
-                f"{reply.text}\n\n"
+                f"{safe_text}\n\n"
                 "ملاحظة: هذا وصف عام للصورة وليس تحديدًا معتمدًا. "
                 "استخدم «حدد القطعة» للتحقق من قاعدة المعرفة."
             ),
@@ -656,6 +704,8 @@ class ChatService:
                 None,
                 equipment=self.assistant.list_equipment(),
                 quick_replies=self._equipment_quick_replies(self.assistant.list_equipment()),
+                abstained=True,
+                abstention_reason_ar="يجب تحديد المعدة والقطعة قبل إجابة سؤال تشغيلي.",
             )
 
         try:
@@ -666,6 +716,8 @@ class ChatService:
                 source="assistant",
                 session=self._safe_session(session),
                 quick_replies=self._base_quick_replies(session),
+                abstained=True,
+                abstention_reason_ar=exc.message_ar,
             )
         except Exception:  # pragma: no cover - defensive
             logger.exception("Grounded assistant failure")
@@ -679,6 +731,8 @@ class ChatService:
             source="assistant",
             session=response,
             quick_replies=self._session_quick_replies(response),
+            abstained=response.abstained,
+            abstention_reason_ar=response.abstention_reason_ar,
         )
 
     # ------------------------------------------------------------------ general
@@ -697,18 +751,29 @@ class ChatService:
             history=[turn.model_dump() for turn in req.history],
             context=self._context(session),
         )
-        if reply.error or not reply.text:
-            logger.warning("General chat failed: %s", reply.error)
-            return self._system_reply(
-                "تعذر الوصول إلى خدمة المحادثة العامة الآن. يمكنني متابعة أوامر "
-                "الجلسة والكاميرا والميكروفون.",
-                session,
+        safe_text = sanitize_user_facing_text(reply.text)
+        if reply.error or not safe_text:
+            logger.warning(
+                "General chat unavailable or rejected: %s",
+                reply.error or "unsafe_or_invalid_output",
+            )
+            return ChatResponse(
+                message_ar=(
+                    "لم أتمكن من إنشاء إجابة يمكن التحقق من سلامة عرضها الآن. "
+                    "أعد صياغة السؤال أو استخدم أوامر تحديد المعدة والقطعة."
+                ),
+                source="system",
+                session=self._safe_session(session),
+                quick_replies=self._base_quick_replies(session),
+                abstained=True,
+                abstention_reason_ar="تعذر التحقق من مخرجات نموذج المحادثة.",
             )
 
         quick = list(self._base_quick_replies(session))
         return ChatResponse(
-            message_ar=reply.text,
+            message_ar=safe_text,
             source="general",
+            session=self._safe_session(session),
             quick_replies=quick,
         )
 
@@ -776,6 +841,8 @@ class ChatService:
         return quick
 
     def _session_quick_replies(self, response) -> list[str]:
+        if response.identified_component is not None and not response.procedure_available:
+            return ["تحذيرات السلامة", "راجع حالة اعتماد المصدر", "اعرض القطع"]
         if response.state == SessionState.AWAITING_LOTO:
             return ["تحذيرات السلامة", "كيف أكمل العزل؟", "اعرض القطع"]
         if response.state in (SessionState.READY, SessionState.IN_PROGRESS):
