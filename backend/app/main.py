@@ -211,8 +211,11 @@ async def enforce_api_auth(request: Request, call_next):
             },
         )
 
+    is_conversation_write = path.startswith("/api/v1/conversations") and request.method in {"POST", "DELETE"}
     if (
-        (path.startswith("/api/v1/chat") or (path.startswith("/api/v1/sessions") and request.method != "GET"))
+        (path.startswith("/api/v1/chat")
+         or (path.startswith("/api/v1/sessions") and request.method != "GET")
+         or is_conversation_write)
         and user.role not in {"owner", "admin", "technician"}
     ):
         return JSONResponse(
