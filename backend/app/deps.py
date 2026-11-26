@@ -14,6 +14,7 @@ from app.safety.guard import SafetyGuard
 from app.services.assistant import AssistantService
 from app.services.chat import ChatService
 from app.services.session import SessionStore
+from app.services.conversation import ConversationStore
 from app.security.auth import AuthStore
 
 
@@ -70,6 +71,12 @@ def get_retriever() -> HybridRetriever:
 
 
 @lru_cache
+def get_conversation_store() -> ConversationStore:
+    settings = get_settings()
+    return ConversationStore(settings.session_db_path)
+
+
+@lru_cache
 def get_store() -> SessionStore:
     settings = get_settings()
     return SessionStore(
@@ -123,6 +130,7 @@ def reset_caches() -> None:
     get_manual_library.cache_clear()
     get_retriever.cache_clear()
     get_store.cache_clear()
+    get_conversation_store.cache_clear()
     get_assistant.cache_clear()
     get_chat_service.cache_clear()
     get_tts_adapter.cache_clear()
