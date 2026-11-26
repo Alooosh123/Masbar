@@ -193,3 +193,54 @@ def test_customer_cannot_manage_users(monkeypatch):
             },
         )
         assert customer_client.get("/api/v1/auth/users").status_code == 403
+
+
+def test_eight_character_password_is_minimum_for_bootstrap_creation_and_rotation(monkeypatch):
+    _configure_auth(monkeypatch)
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_PASSWORD", "Ow8!Pass")
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as owner_client, TestClient(app) as technician_client:
+        owner_login = owner_client.post(
+            "/api/v1/auth/login",
+            json={"email": "owner@example.test", "password": "Ow8!Pass"},
+        )
+        assert owner_login.status_code == 200
+
+        too_short = owner_client.post(
+            "/api/v1/auth/users",
+            json={
+                "email": "short.tech@example.test",
+                "display_name": "فني قصير",
+                "password": "Abc12!@",
+                "role": "technician",
+            },
+        )
+        assert too_short.status_code == 422
+
+        created = owner_client.post(
+            "/api/v1/auth/users",
+            json={
+                "email": "eight.tech@example.test",
+                "display_name": "فني ثمانية",
+                "password": "Abc123!@",
+                "role": "technician",
+            },
+        )
+        assert created.status_code == 201
+
+        technician_login = technician_client.post(
+            "/api/v1/auth/login",
+            json={"email": "eight.tech@example.test", "password": "Abc123!@"},
+        )
+        assert technician_login.status_code == 200
+
+        rotated = technician_client.post(
+            "/api/v1/auth/change-password",
+            json={
+                "current_password": "Abc123!@",
+                "new_password": "N3wPass!",
+            },
+        )
+        assert rotated.status_code == 200
