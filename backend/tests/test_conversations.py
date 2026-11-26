@@ -59,6 +59,14 @@ def test_customer_conversations_persist_and_are_isolated_by_account(monkeypatch)
         password_two = second.json()["temporary_password"]
         assert _login(customer_one, "first.customer@example.test", password_one).status_code == 200
         assert _login(customer_two, "second.customer@example.test", password_two).status_code == 200
+        assert customer_one.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": password_one, "new_password": "First!Pass8"},
+        ).status_code == 200
+        assert customer_two.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": password_two, "new_password": "Second!Pass8"},
+        ).status_code == 200
 
         first_turn = customer_one.post("/api/v1/chat", json={"message": "أحتاج فحص المضخة"})
         assert first_turn.status_code == 200
