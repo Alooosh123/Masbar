@@ -103,6 +103,10 @@ class UpdateCustomerRequest(BaseModel):
         return value.strip() if value is not None else None
 
 
+class SetCustomerActiveRequest(BaseModel):
+    is_active: bool
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1, max_length=256)
     new_password: str = Field(..., min_length=PASSWORD_MIN_LENGTH, max_length=256)
