@@ -93,3 +93,86 @@ def test_logout_removes_auth_cookie(monkeypatch):
         result = client.post("/api/v1/auth/logout")
         assert result.status_code == 200
         assert client.get("/api/v1/auth/me").json()["authenticated"] is False
+
+
+
+def test_owner_can_create_customer_and_customer_can_chat_but_not_execute_maintenance_steps(monkeypatch):
+    _configure_auth(monkeypatch)
+    with TestClient(app) as owner_client:
+        login = owner_client.post(
+            "/api/v1/auth/login",
+            json={"email": "owner@example.test", "password": "Test-owner-password-2026-is-long"},
+        )
+        assert login.status_code == 200
+
+        created = owner_client.post(
+            "/api/v1/auth/users",
+            json={
+                "email": "customer@example.test",
+                "display_name": "عميل تجريبي",
+                "password": "Customer-password-2026-is-strong",
+                "role": "customer",
+            },
+        )
+        assert created.status_code == 201
+        assert created.json()["user"]["role"] == "customer"
+
+        session = owner_client.post(
+            "/api/v1/sessions",
+            json={"equipment_model": "Caterpillar C15 ACERT"},
+        )
+        assert session.status_code == 201
+        session_id = session.json()["session_id"]
+
+    with TestClient(app) as customer_client:
+        login = customer_client.post(
+            "/api/v1/auth/login",
+            json={"email": "customer@example.test", "password": "Customer-password-2026-is-strong"},
+        )
+        assert login.status_code == 200
+        assert login.json()["user"]["role"] == "customer"
+
+        # Customers can open a session and inspect it.
+        created_session = customer_client.post(
+            "/api/v1/sessions",
+            json={"equipment_model": "Caterpillar C15 ACERT"},
+        )
+        assert created_session.status_code == 201
+        assert customer_client.get(
+            f"/api/v1/sessions/{created_session.json()['session_id']}"
+        ).status_code == 200
+
+        # Customer accounts cannot confirm LOTO or advance field execution.
+        assert customer_client.post(
+            f"/api/v1/sessions/{session_id}/loto",
+            json={"confirmed_item_ids": []},
+        ).status_code == 403
+        assert customer_client.post(
+            f"/api/v1/sessions/{session_id}/step",
+            json={"action": "next"},
+        ).status_code == 403
+
+
+def test_customer_cannot_manage_users(monkeypatch):
+    _configure_auth(monkeypatch)
+    with TestClient(app) as owner_client:
+        owner_client.post(
+            "/api/v1/auth/login",
+            json={"email": "owner@example.test", "password": "Test-owner-password-2026-is-long"},
+        )
+        owner_client.post(
+            "/api/v1/auth/users",
+            json={
+                "email": "customer@example.test",
+                "display_name": "عميل تجريبي",
+                "password": "Customer-password-2026-is-strong",
+                "role": "customer",
+            },
+        )
+
+    with TestClient(app) as customer_client:
+        customer_client.post(
+            "/api/v1/auth/login",
+            json={"email": "customer@example.test", "password": "Customer-password-2026-is-strong"},
+        )
+        assert customer_client.get("/api/v1/auth/users").status_code == 403
