@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
 from app.adapters.chat.cohere_chat import ChatReply
-
 from app.core.config import get_settings
 from app.deps import reset_caches
 from app.knowledge.manual_index import ManualChunk, ManualDocument, ManualIndex, write_manual_index
@@ -202,7 +201,11 @@ def test_manual_rag_keeps_torque_requests_retrieval_only(tmp_path, monkeypatch):
     reset_caches()
 
 
-def test_manual_ingestion_requires_authenticated_owner_or_admin():
+def test_manual_ingestion_requires_authenticated_owner_or_admin(monkeypatch):
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    get_settings.cache_clear()
+    reset_caches()
     with TestClient(app) as client:
         response = client.post(
             "/api/v1/manuals/ingest",
