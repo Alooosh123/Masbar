@@ -132,7 +132,17 @@ def test_owner_can_create_customer_and_customer_can_chat_but_not_execute_mainten
         assert login.status_code == 200
         assert login.json()["user"]["role"] == "customer"
 
-        # Customers can open a session and inspect it.
+        # Newly created customer accounts must replace the temporary password first.
+        rotated = customer_client.post(
+            "/api/v1/auth/change-password",
+            json={
+                "current_password": "Customer-password-2026-is-strong",
+                "new_password": "Customer-new-password-2026-is-strong",
+            },
+        )
+        assert rotated.status_code == 200
+
+        # Customers can open a session and inspect it after password rotation.
         created_session = customer_client.post(
             "/api/v1/sessions",
             json={"equipment_model": "Caterpillar C15 ACERT"},
@@ -174,5 +184,12 @@ def test_customer_cannot_manage_users(monkeypatch):
         customer_client.post(
             "/api/v1/auth/login",
             json={"email": "customer@example.test", "password": "Customer-password-2026-is-strong"},
+        )
+        customer_client.post(
+            "/api/v1/auth/change-password",
+            json={
+                "current_password": "Customer-password-2026-is-strong",
+                "new_password": "Customer-new-password-2026-is-strong",
+            },
         )
         assert customer_client.get("/api/v1/auth/users").status_code == 403
