@@ -18,8 +18,8 @@ export function ForcedPasswordChange({ user, onComplete }: Props) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    if (newPassword.length < 14) {
-      setError("يجب أن تتكون كلمة المرور الجديدة من 14 حرفًا على الأقل.");
+    if (newPassword.length < 8) {
+      setError("يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل.");
       return;
     }
     if (newPassword !== confirmation) {
@@ -75,7 +75,7 @@ export function ForcedPasswordChange({ user, onComplete }: Props) {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               required
-              minLength={14}
+              minLength={8}
               maxLength={256}
             />
           </label>
@@ -87,11 +87,11 @@ export function ForcedPasswordChange({ user, onComplete }: Props) {
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               required
-              minLength={14}
+              minLength={8}
               maxLength={256}
             />
           </label>
-          <p className="customer-modal-note">استخدم 14 حرفًا على الأقل، ولا تعِد استخدام كلمة المرور المؤقتة.</p>
+          <p className="customer-modal-note">استخدم 8 أحرف على الأقل، ولا تعِد استخدام كلمة المرور المؤقتة.</p>
           {error && <div className="customer-admin-alert is-error" role="alert">{error}</div>}
           <button type="submit" className="customer-admin-primary password-rotation-submit" disabled={busy || !currentPassword || !newPassword || !confirmation}>
             {busy ? "جارٍ تحديث كلمة المرور…" : "حفظ كلمة المرور والمتابعة"}
