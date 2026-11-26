@@ -165,6 +165,7 @@ class ChatRequest(BaseModel):
     message: str = Field(default="", max_length=4000)
     image_base64: str | None = None
     session_id: str | None = None
+    conversation_id: str | None = Field(default=None, max_length=100)
     history: list[ChatTurn] = Field(default_factory=list)
     mode: Literal["auto", "describe", "identify"] = "auto"
 
@@ -176,6 +177,7 @@ class TtsRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     message_ar: str
+    conversation_id: str | None = None
     source: Literal["assistant", "general", "vision", "system"]
     action: Literal[
         "open_camera",

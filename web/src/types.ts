@@ -138,12 +138,14 @@ export interface ChatRequest {
   message?: string;
   image_base64?: string | null;
   session_id?: string | null;
+  conversation_id?: string | null;
   history?: ChatTurn[];
   mode?: "auto" | "describe" | "identify";
 }
 
 export interface ChatResponse {
   message_ar: string;
+  conversation_id?: string | null;
   source: ChatSource;
   action: ChatAction | null;
   session: AssistantResponse | null;
@@ -185,4 +187,28 @@ export interface AuthUser {
 export interface AuthMeResponse {
   authenticated: boolean;
   user: AuthUser | null;
+}
+
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  preview: string;
+}
+
+export interface ConversationMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  source: ChatSource | null;
+  has_image: boolean;
+  created_at: string;
+}
+
+export interface ConversationDetail {
+  conversation: ConversationSummary;
+  messages: ConversationMessage[];
 }

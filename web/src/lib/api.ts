@@ -8,6 +8,8 @@ import type {
   HealthResponse,
   AuthMeResponse,
   AuthUser,
+  ConversationSummary,
+  ConversationDetail,
 } from "../types";
 
 function inferApiUrl(): string {
@@ -121,6 +123,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     }),
+
+  conversations: () =>
+    request<{ conversations: ConversationSummary[] }>("/api/v1/conversations"),
+
+  getConversation: (id: string) =>
+    request<ConversationDetail>(`/api/v1/conversations/${encodeURIComponent(id)}`),
+
+  deleteConversation: (id: string) =>
+    request<{ deleted: boolean; conversation_id: string }>(
+      `/api/v1/conversations/${encodeURIComponent(id)}`,
+      { method: "DELETE" }
+    ),
 
   chat: (payload: ChatRequest) =>
     request<ChatResponse>("/api/v1/chat", {

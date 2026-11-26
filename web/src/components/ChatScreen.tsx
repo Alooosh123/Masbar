@@ -14,12 +14,14 @@ import type {
   ChatResponse,
   ChatSource,
   ChatTurn,
+  ConversationDetail,
   ComponentSummary,
   EquipmentSummary,
   HealthResponse,
   SessionState,
 } from "../types";
 import { ChatCamera } from "./ChatCamera";
+import { ConversationHistory } from "./ConversationHistory";
 import { ComponentCard } from "./ComponentCard";
 import { SafetyPanel } from "./SafetyPanel";
 import { StepCard } from "./StepCard";
@@ -287,6 +289,8 @@ export function ChatScreen() {
   const currentUser = useAuthUser();
   const customerView = currentUser?.role === "customer";
   const [messages, setMessages] = useState<UiMessage[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -360,6 +364,7 @@ export function ChatScreen() {
   }
 
   function applyChatResponse(response: ChatResponse, speak = true) {
+    if (response.conversation_id) setConversationId(response.conversation_id);
     setMessages((current) => [...current, toAssistantMessage(response)]);
     if (response.session) {
       setSession(response.session);
@@ -487,6 +492,7 @@ export function ChatScreen() {
         message: text,
         image_base64: image,
         session_id: sessionRef.current?.session_id ?? null,
+        conversation_id: conversationId,
         history,
         mode: options?.mode ?? "auto",
       });
@@ -656,6 +662,7 @@ export function ChatScreen() {
 
   function resetConversation() {
     stopListening();
+    setConversationId(null);
     stopSpeaking();
     setCameraOpen(false);
     setSession(null);
@@ -665,6 +672,27 @@ export function ChatScreen() {
     setMicError(null);
     setMessages([]);
     void loadWelcome();
+  }
+
+  function openStoredConversation(detail: ConversationDetail) {
+    stopListening();
+    stopSpeaking();
+    setCameraOpen(false);
+    setConversationId(detail.conversation.id);
+    setSession(null);
+    sessionRef.current = null;
+    lastImageRef.current = null;
+    setError(null);
+    setMicError(null);
+    const restored: UiMessage[] = detail.messages.map((item) => ({
+      id: `saved-${item.id}`,
+      role: item.role,
+      text: item.has_image
+        ? `${item.content} (الصورة الأصلية غير محفوظة)`
+        : item.content,
+      source: item.role === "assistant" ? (item.source || "general") as ChatSource : undefined,
+    }));
+    setMessages(restored);
   }
 
   function toggleSpeaking() {
@@ -754,6 +782,18 @@ export function ChatScreen() {
           >
             <CameraIcon size={20} />
           </button>
+          {currentUser && (
+            <button
+              type="button"
+              className="chat-history-btn"
+              onClick={() => setHistoryOpen(true)}
+              aria-label="عرض سجل المحادثات"
+              title="عرض سجل المحادثات المحفوظة"
+            >
+              <span aria-hidden="true">◷</span>
+              <span>المحادثات</span>
+            </button>
+          )}
           <button
             type="button"
             className="chat-icon-btn"
@@ -959,6 +999,13 @@ export function ChatScreen() {
           </span>
         </div>
       </footer>
+
+      {historyOpen && (
+        <ConversationHistory
+          onClose={() => setHistoryOpen(false)}
+          onSelect={openStoredConversation}
+        />
+      )}
 
       {cameraOpen && (
         <ChatCamera
