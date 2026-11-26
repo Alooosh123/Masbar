@@ -22,7 +22,7 @@ AUTH_COOKIE_NAME = "masbar_access"
 AUTH_ISSUER = "masbar"
 PASSWORD_ITERATIONS = 310_000
 PASSWORD_MIN_LENGTH = 14
-ALLOWED_ROLES = {"owner", "admin", "technician", "viewer"}
+ALLOWED_ROLES = {"owner", "admin", "technician", "customer", "viewer"}
 
 
 @dataclass(frozen=True)
@@ -65,7 +65,7 @@ class CreateUserRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=254)
     display_name: str = Field(..., min_length=2, max_length=120)
     password: str = Field(..., min_length=PASSWORD_MIN_LENGTH, max_length=256)
-    role: str = Field(default="technician", pattern=r"^(admin|technician|viewer)$")
+    role: str = Field(default="technician", pattern=r"^(admin|technician|customer|viewer)$")
 
     @field_validator("email")
     @classmethod
