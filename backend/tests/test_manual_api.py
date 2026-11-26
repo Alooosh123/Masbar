@@ -50,6 +50,8 @@ def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, mo
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     get_settings.cache_clear()
     reset_caches()
 
@@ -100,6 +102,8 @@ def test_manual_search_is_disabled_by_default_without_authentication(tmp_path, m
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "false")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     get_settings.cache_clear()
     reset_caches()
 
@@ -120,6 +124,7 @@ def test_manual_search_stays_disabled_in_production_even_if_flag_is_true(tmp_pat
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("CORS_ORIGINS", "https://frontend.example.test")
     get_settings.cache_clear()
