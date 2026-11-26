@@ -159,8 +159,17 @@ async def enforce_api_auth(request: Request, call_next):
             and session_action in {"identify", "ask"}
         )
         is_customer_chat = path == "/api/v1/chat" and request.method == "POST"
+        is_customer_tts = path.startswith("/api/v1/tts") and request.method == "POST"
+        is_customer_password_change = path == "/api/v1/auth/change-password" and request.method == "POST"
         is_customer_read = session_path and request.method == "GET"
-        if is_customer_chat or is_session_create or is_customer_session_action or is_customer_read:
+        if (
+            is_customer_chat
+            or is_customer_tts
+            or is_customer_password_change
+            or is_session_create
+            or is_customer_session_action
+            or is_customer_read
+        ):
             request.state.auth_user = user
             return await call_next(request)
 
