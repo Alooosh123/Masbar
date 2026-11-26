@@ -722,7 +722,7 @@ class ChatService:
 
     def _manual_answer_numbers_are_grounded(self, answer: str, query: str, hits) -> bool:
         """Reject generated numeric claims absent from the question and cited evidence."""
-        answer_without_citations = re.sub(r"\\[S\\d+\\]", " ", answer)
+        answer_without_citations = re.sub(r"\[S\d+\], " ", answer)
         source_parts = [query]
         for index, hit in enumerate(hits, start=1):
             source_parts.extend(
@@ -738,10 +738,10 @@ class ChatService:
                 ]
             )
         allowed_numbers = set(
-            re.findall(r"\\d+(?:[.,]\\d+)?", normalize_arabic(" ".join(source_parts)))
+            re.findall(r"\d+(?:[.,]\d+)?", normalize_arabic(" ".join(source_parts)))
         )
         answer_numbers = set(
-            re.findall(r"\\d+(?:[.,]\\d+)?", normalize_arabic(answer_without_citations))
+            re.findall(r"\d+(?:[.,]\d+)?", normalize_arabic(answer_without_citations))
         )
         return answer_numbers.issubset(allowed_numbers)
 
