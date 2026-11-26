@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { ApiError, api } from "../lib/api";
+import { useAuthUser } from "./AuthContext";
 import {
   createArabicRecognizer,
   recognitionSupported,
@@ -225,6 +226,7 @@ function SessionCards({
   onStep,
   onSpeak,
   onPickCandidate,
+  customerView,
 }: {
   session: AssistantResponse;
   busy: boolean;
@@ -232,6 +234,7 @@ function SessionCards({
   onStep: (action: "next" | "prev" | "repeat") => void;
   onSpeak: (text: string) => void;
   onPickCandidate: (partNumber: string) => void;
+  customerView: boolean;
 }) {
   const safety = session.safety_lockout;
   const showSafety =
@@ -245,7 +248,7 @@ function SessionCards({
       )}
 
       {showSafety && safety && (
-        <SafetyPanel protocol={safety} busy={busy} onConfirm={onConfirmLoto} />
+        <SafetyPanel protocol={safety} busy={busy} onConfirm={onConfirmLoto} readOnly={customerView} />
       )}
 
       {session.current_step && (
@@ -254,6 +257,7 @@ function SessionCards({
           busy={busy}
           onStep={onStep}
           onSpeak={onSpeak}
+          readOnly={customerView}
         />
       )}
 
@@ -280,6 +284,8 @@ function SessionCards({
 }
 
 export function ChatScreen() {
+  const currentUser = useAuthUser();
+  const customerView = currentUser?.role === "customer";
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -838,6 +844,7 @@ export function ChatScreen() {
                       onPickCandidate={(partNumber) =>
                         void send(`حدد القطعة ${partNumber}`)
                       }
+                      customerView={customerView}
                     />
                   )}
                 </div>
