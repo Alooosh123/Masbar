@@ -271,8 +271,8 @@ class ChatService:
         if self._is_help(message):
             return self._help(session)
 
-        # Excerpts from potentially licensed manuals are opt-in until access control
-        # is available; this app currently has no user authentication layer.
+        # Manual search and generation are opt-in and protected by authenticated
+        # API access. The ingestion route independently enforces owner/admin roles.
         if self._is_manual_search(message):
             if not self.settings.manual_search_available:
                 return self._system_reply(
@@ -578,15 +578,6 @@ class ChatService:
             describe=True,
         )
         safe_text = sanitize_user_facing_text(reply.text)
-        if safe_text:
-            # Only permit citations for source IDs actually present in this response.
-            safe_text = re.sub(
-                r"\[S(\d+)\]",
-                lambda match: match.group(0)
-                if 1 <= int(match.group(1)) <= len(hits)
-                else "",
-                safe_text,
-            )
         if reply.error or not safe_text:
             logger.warning(
                 "Image description unavailable or rejected: %s",
@@ -691,6 +682,15 @@ class ChatService:
             return self._manual_snippets_reply(session, query, hits)
 
         safe_text = sanitize_user_facing_text(reply.text)
+        if safe_text:
+            # Only permit citations for source IDs actually present in this response.
+            safe_text = re.sub(
+                r"\[S(\d+)\]",
+                lambda match: match.group(0)
+                if 1 <= int(match.group(1)) <= len(hits)
+                else "",
+                safe_text,
+            )
         if reply.error or not safe_text:
             logger.warning(
                 "Manual RAG answer unavailable or rejected: %s",
