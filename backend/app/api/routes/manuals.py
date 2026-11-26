@@ -10,6 +10,7 @@ from app.deps import get_manual_library
 from app.knowledge.manual_index import (
     MAX_PDF_BYTES,
     ManualDocumentSummary,
+    ManualIndex,
     ManualIndexError,
     ManualSearchResponse,
     build_manual_index,
@@ -191,4 +192,108 @@ async def ingest_manual(
         "original_pdf_retained": False,
         "retrieval_method": "bm25_lexical",
         "rag_generation": "cohere_when_configured",
+    }
+
+
+
+@router.post("/manuals/import-index", status_code=201)
+async def import_manual_index(
+    request: Request,
+    file: UploadFile = File(...),
+    overwrite: bool = Form(default=False),
+) -> dict:
+    """Import a prebuilt, schema-validated manual index (owner/admin only).
+
+    This endpoint lets an owner upload a locally prepared index without
+    transferring or retaining the original PDF on the application server.
+    """
+    user = getattr(request.state, "auth_user", None)
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "code": "manual_ingestion_auth_required",
+                "message_ar": "يجب تسجيل الدخول بحساب المالك أو المدير لاستيراد فهرس الكتيب.",
+            },
+        )
+    if user.role not in {"owner", "admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "manual_ingestion_forbidden",
+                "message_ar": "استيراد فهارس الكتيبات متاح للمالك أو المدير فقط.",
+            },
+        )
+
+    max_index_bytes = 15 * 1024 * 1024
+    raw_index = await file.read(max_index_bytes + 1)
+    await file.close()
+    if len(raw_index) > max_index_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "code": "manual_index_too_large",
+                "message_ar": "حجم ملف الفهرس يتجاوز الحد المسموح وهو 15 ميجابايت.",
+            },
+        )
+
+    try:
+        index = ManualIndex.model_validate_json(raw_index)
+    except Exception:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "manual_index_invalid",
+                "message_ar": "ملف الفهرس غير صالح أو لا يطابق بنية مِسبار المعتمدة.",
+            },
+        ) from None
+
+    if not index.document.rights_confirmed or len(index.document.rights_note.strip()) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "manual_rights_confirmation_required",
+                "message_ar": "الفهرس لا يحتوي تأكيداً صالحاً لحق معالجة محتوى الكتيب.",
+            },
+        )
+
+    settings = get_settings()
+    try:
+        await asyncio.to_thread(
+            write_manual_index,
+            index,
+            settings.manual_index_dir,
+            overwrite=overwrite,
+        )
+        get_manual_library.cache_clear()
+        library = get_manual_library()
+        document = next(
+            item for item in library.list_documents() if item.doc_id == index.document.doc_id
+        )
+    except ManualIndexError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "manual_index_conflict",
+                "message_ar": str(exc),
+            },
+        ) from None
+    except Exception:
+        logger.exception("Manual index import failed")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "manual_index_import_failed",
+                "message_ar": "تعذر حفظ فهرس الكتيب. راجع سجل الخادم.",
+            },
+        ) from None
+
+    return {
+        "document": document.model_dump(mode="json"),
+        "chunks_imported": len(index.chunks),
+        "text_pages": index.document.text_pages,
+        "pages_requiring_ocr": index.document.pages_requiring_ocr,
+        "sha256": index.document.sha256,
+        "original_pdf_transferred": False,
+        "retrieval_method": "bm25_lexical",
     }
