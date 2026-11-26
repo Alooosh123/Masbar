@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth, catalog, chat, health, manuals, sessions, tts, ws
+from app.api.routes import auth, catalog, chat, conversations, health, manuals, sessions, tts, ws
 from app.ops.sqlite_backup import create_sqlite_backup, prune_sqlite_backups
 from app.core.config import get_settings
 from app.deps import get_assistant, get_auth_store, get_kb
@@ -131,6 +131,7 @@ async def enforce_api_auth(request: Request, call_next):
         "/api/v1/sessions",
         "/api/v1/manuals",
         "/api/v1/tts",
+        "/api/v1/conversations",
     )
     is_protected = is_user_admin or is_change_password or path.startswith(protected_prefixes)
 
@@ -185,6 +186,7 @@ async def enforce_api_auth(request: Request, call_next):
             and session_action in {"identify", "ask"}
         )
         is_customer_chat = path == "/api/v1/chat" and request.method == "POST"
+        is_customer_conversations = path.startswith("/api/v1/conversations") and request.method in {"GET", "POST", "DELETE"}
         is_customer_tts = path.startswith("/api/v1/tts") and request.method == "POST"
         is_customer_password_change = path == "/api/v1/auth/change-password" and request.method == "POST"
         is_customer_read = session_path and request.method == "GET"
@@ -249,5 +251,6 @@ app.include_router(catalog.router)
 app.include_router(manuals.router)
 app.include_router(sessions.router)
 app.include_router(chat.router)
+app.include_router(conversations.router)
 app.include_router(tts.router)
 app.include_router(ws.router)
