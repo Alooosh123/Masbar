@@ -81,6 +81,8 @@ def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path,
     monkeypatch.setattr("app.deps.build_chat_adapter", lambda settings: None)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     get_settings.cache_clear()
     reset_caches()
 
@@ -145,6 +147,8 @@ def test_manual_rag_passes_retrieved_sources_to_generation_and_appends_citations
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     captured = {}
 
     class FakeRagAdapter:
@@ -181,6 +185,8 @@ def test_manual_rag_keeps_torque_requests_retrieval_only(tmp_path, monkeypatch):
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     captured = {"called": False}
 
     class FakeRagAdapter:
@@ -210,6 +216,8 @@ def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch
     _seed_manual_index(tmp_path)
     monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
     monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
     captured = {"called": False}
 
     class FakeRagAdapter:
