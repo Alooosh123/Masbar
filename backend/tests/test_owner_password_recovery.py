@@ -43,7 +43,7 @@ def test_owner_recovery_rejects_short_secrets_without_mutating_password(tmp_path
     with pytest.raises(ValueError):
         store.reset_primary_owner_password_once("short", NEW_PASSWORD)
     with pytest.raises(ValueError):
-        store.reset_primary_owner_password_once(RECOVERY_TOKEN, "too-short")
+        store.reset_primary_owner_password_once(RECOVERY_TOKEN, "short!!")
 
     assert store.authenticate("owner@example.test", OLD_PASSWORD) is not None
 
