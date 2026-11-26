@@ -89,39 +89,48 @@ def test_identify_by_part_number_from_chat(client):
     assert body["session"]["state"] == "AWAITING_LOTO"
     assert body["session"]["identified_component"]["part_number"] == "312-5620"
     assert body["session"]["current_step"] is None
+    assert body["session"]["procedure_available"] is False
+    assert body["session"]["safety_lockout"]["source_status"] == "unverified"
+    assert body["session"]["safety_lockout"]["checklist"] == []
 
 
-def test_torque_is_blocked_before_loto_in_chat(client):
+def test_unverified_torque_and_loto_are_blocked_in_chat(client):
     start = _chat(client, "ابدأ جلسة على C15")
     session_id = start["session"]["session_id"]
     identified = _chat(client, "حدد القطعة 312-5620", session_id=session_id)
 
+    assert identified["session"]["procedure_available"] is False
+    assert identified["session"]["safety_lockout"]["checklist"] == []
+
     blocked = _chat(client, "كم العزم؟", session_id=session_id)
     assert blocked["session"]["state"] == "AWAITING_LOTO"
-    assert "بوابة السلامة" in blocked["message_ar"]
+    assert "إيقاف آمن" in blocked["message_ar"]
+    assert "45" not in blocked["message_ar"]
 
-    ids = [item["id"] for item in identified["session"]["safety_lockout"]["checklist"]]
     loto = client.post(
         f"/api/v1/sessions/{session_id}/loto",
-        json={"confirmed_item_ids": ids},
+        json={"confirmed_item_ids": []},
     )
-    assert loto.status_code == 200
+    assert loto.status_code == 409
+    assert loto.json()["detail"]["code"] == "safety_not_verified"
 
     torque = _chat(client, "كم العزم؟", session_id=session_id)
-    assert "45" in torque["message_ar"]
-    assert "SENR9834-08" in torque["message_ar"]
+    assert "45" not in torque["message_ar"]
+    assert torque["session"]["current_step"] is None
+    assert torque["session"]["procedure_available"] is False
 
 
-def test_next_step_from_chat_after_loto(client):
+
+def test_next_step_from_chat_is_blocked_for_unverified_component(client):
     start = _chat(client, "ابدأ جلسة على C15")
     session_id = start["session"]["session_id"]
-    identified = _chat(client, "312-5620", session_id=session_id)
-    ids = [item["id"] for item in identified["session"]["safety_lockout"]["checklist"]]
-    client.post(f"/api/v1/sessions/{session_id}/loto", json={"confirmed_item_ids": ids})
+    _chat(client, "312-5620", session_id=session_id)
 
     body = _chat(client, "الخطوة التالية", session_id=session_id)
-    assert body["session"]["current_step"]["step_number"] == 2
-    assert body["session"]["state"] == "IN_PROGRESS"
+    assert body["session"]["current_step"] is None
+    assert body["session"]["procedure_available"] is False
+    assert body["abstained"] is True
+
 
 
 def test_safety_question_without_session_never_calls_llm(client, monkeypatch):
@@ -129,6 +138,7 @@ def test_safety_question_without_session_never_calls_llm(client, monkeypatch):
     body = _chat(client, "كم عزم صمام 312-5620؟")
     assert body["source"] == "system"
     assert "قاعدة المعرفة" in body["message_ar"]
+    assert body["abstained"] is True
     assert fake.calls == []
 
 
@@ -138,8 +148,10 @@ def test_voice_loto_confirmation_is_rejected(client):
     _chat(client, "حدد القطعة 312-5620", session_id=session_id)
 
     body = _chat(client, "تم العزل", session_id=session_id)
-    assert "التأكيد الصوتي وحده" in body["message_ar"]
+    assert "غير معتمدة" in body["message_ar"]
     assert body["session"]["state"] == "AWAITING_LOTO"
+    assert body["session"]["procedure_available"] is False
+    assert body["abstained"] is True
 
 
 def test_general_chat_uses_adapter(client, monkeypatch):
@@ -179,3 +191,41 @@ def test_explicit_image_identification_uses_grounded_part(client, monkeypatch):
     assert body["session"]["state"] == "AWAITING_LOTO"
     assert body["session"]["identified_component"]["part_number"] == "312-5620"
     assert fake.calls == []  # identification never goes through the LLM
+
+
+def test_chat_unhandled_provider_exception_returns_safe_service_error(client, monkeypatch):
+    from app.api.routes import chat as chat_route
+
+    class BrokenChatService:
+        async def handle(self, request):
+            raise RuntimeError("private provider stack trace")
+
+    monkeypatch.setattr(chat_route, "get_chat_service", lambda: BrokenChatService())
+    response = client.post("/api/v1/chat", json={"message": "مرحبا"})
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "chat_temporarily_unavailable"
+    assert "private provider stack trace" not in response.text
+
+
+def test_prompt_leakage_is_rejected_and_not_rendered(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    async def leaking_reply(*args, **kwargs):
+        return ChatReply(
+            text="User asks for maintenance. We should respond with steps.",
+            provider="fake",
+        )
+    fake.reply = leaking_reply
+    body = _chat(client, "اشرح معنى لوحة التحكم بشكل مبسط.")
+    assert body["abstained"] is True
+    assert "User asks" not in body["message_ar"]
+    assert "We should respond" not in body["message_ar"]
+
+
+def test_unverified_part_number_is_not_presented_as_oem_citation(client):
+    start = _chat(client, "ابدأ جلسة على C15")
+    session_id = start["session"]["session_id"]
+    _chat(client, "حدد القطعة 312-5620", session_id=session_id)
+    body = _chat(client, "ما رقم القطعة؟", session_id=session_id)
+    assert body["abstained"] is True
+    assert "SENR9834-08" not in body["message_ar"]
+    assert "تجريبي" in body["message_ar"]

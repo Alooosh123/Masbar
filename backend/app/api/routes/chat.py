@@ -1,13 +1,33 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Request
 
 from app.deps import get_chat_service, get_conversation_store
 from app.domain.api_models import ChatRequest, ChatResponse, ChatTurn
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, request: Request) -> ChatResponse:
+    """Handle chat and persist text history without exposing internal exceptions."""
+    try:
+        return await _handle_chat(req, request)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Unhandled chat request failure")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "chat_temporarily_unavailable",
+                "message_ar": "تعذر إكمال المحادثة الآن بسبب عطل مؤقت في إحدى الخدمات. أعد المحاولة بعد قليل.",
+            },
+        ) from None
+
+
+async def _handle_chat(req: ChatRequest, request: Request) -> ChatResponse:
     """Handle chat and persist its text history in the authenticated user's scope."""
     user = getattr(request.state, "auth_user", None)
     if user is None:
@@ -37,8 +57,6 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
             "message_ar": "المحادثة غير موجودة أو لا تملك صلاحية الوصول إليها.",
         })
 
-    # Server-side history is authoritative; the browser cannot inject another
-    # user's transcript into this conversation's model context.
     request_with_history = req.model_copy(
         update={
             "conversation_id": conversation_id,

@@ -47,21 +47,29 @@ class KnowledgeBase:
 
     def data_status_for(self, part_number: str) -> str:
         component = self.get_component(part_number)
-        if component is None:
-            return "unknown"
+        if component is None or component.verification_status != "verified":
+            return "sample"
+        component_evidence = component.verification_evidence
+        if component_evidence is None:
+            return "sample"
         for model in component.equipment_models:
             equipment_file = self.equipment_files.get(model)
-            if equipment_file is not None:
-                evidence = equipment_file.equipment_verification_evidence
-                if (
-                    equipment_file.data_status == "verified"
-                    and evidence is not None
-                    and evidence.equipment_model == model
-                    and "identity" in evidence.reviewed_scopes
-                ):
-                    return "verified"
-                return "sample"
+            if equipment_file is None or equipment_file.data_status != "verified":
+                continue
+            equipment_evidence = equipment_file.equipment_verification_evidence
+            if (
+                equipment_evidence is not None
+                and equipment_evidence.equipment_model == model
+                and "identity" in equipment_evidence.reviewed_scopes
+                and component_evidence.equipment_model == model
+                and component_evidence.nameplate_reference == equipment_evidence.nameplate_reference
+                and component_evidence.source_document_id == component.manual_doc_id
+                and component_evidence.source_page == component.manual_page
+                and {"identity", "procedure"}.issubset(set(component_evidence.reviewed_scopes))
+            ):
+                return "verified"
         return "sample"
+
 
 
 def load_knowledge_base(kb_dir: Path | str) -> KnowledgeBase:

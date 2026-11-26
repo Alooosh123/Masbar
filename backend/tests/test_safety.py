@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.core.config import get_settings
+from app.domain.enums import SafetySeverity
 from app.domain.kb import CueSpec, StepRecord, VerificationEvidence
 from app.knowledge.loader import load_knowledge_base
 from app.safety.guard import SafetyGuard, SafetyViolation
@@ -63,21 +64,14 @@ def test_torque_only_for_torque_steps(guard, kb):
     assert torque_step.requires_torque
 
     assert guard.build_torque(record, record.steps[0]) is None
-
-    torque = guard.build_torque(record, torque_step)
-    assert torque is not None
-    assert torque.value_nm == 45.0
-    assert torque.verified_from_manual is False
-    assert torque.source_status == "sample"
-    assert torque.source_document_id == "SENR9834-08"
+    # Numeric data in demo fixtures must never be exposed as operational torque.
+    assert guard.build_torque(record, torque_step) is None
 
 
 def test_torque_provenance_requires_traceable_independent_review(kb):
     sample_record = kb.require_component("312-5620")
     sample_torque = SafetyGuard(kb).build_torque(sample_record, sample_record.steps[-1])
-    assert sample_torque is not None
-    assert sample_torque.verified_from_manual is False
-    assert sample_torque.source_status == "sample"
+    assert sample_torque is None
 
     # Merely flipping status flags must not turn an unreferenced value into an approved one.
     unreviewed_kb = deepcopy(kb)
@@ -87,9 +81,7 @@ def test_torque_provenance_requires_traceable_independent_review(kb):
     unreviewed_torque = SafetyGuard(unreviewed_kb).build_torque(
         unreviewed_record, unreviewed_record.steps[-1]
     )
-    assert unreviewed_torque is not None
-    assert unreviewed_torque.verified_from_manual is False
-    assert unreviewed_torque.source_status == "sample"
+    assert unreviewed_torque is None
 
     # A verified value needs a source/page hash, model/nameplate match and two distinct reviewers.
     verified_kb = deepcopy(kb)
@@ -159,12 +151,20 @@ def test_loto_gate_blocks_execution(guard, kb):
     guard.ensure_execution_allowed(record, acknowledged=True)
 
 
-def test_safety_protocol_exposes_checklist_state(guard, kb):
+def test_unverified_safety_data_fails_closed_and_hides_sample_checklist(guard, kb):
     record = kb.require_component("312-5620")
     protocol = guard.build_safety(record, {"battery_disconnected"}, acknowledged=False)
     assert protocol is not None
+    assert protocol.source_status == "unverified"
+    assert protocol.severity == SafetySeverity.CRITICAL
     assert protocol.loto_required is True
     assert protocol.blocked_reason_ar is not None
-    states = {item.id: item.confirmed for item in protocol.checklist}
-    assert states["battery_disconnected"] is True
-    assert states["pressure_released"] is False
+    assert protocol.checklist == []
+    assert any("معتمدة" in warning for warning in protocol.warnings_ar)
+
+
+def test_unverified_procedure_is_blocked_even_after_loto_confirmation(guard, kb):
+    record = kb.require_component("312-5620")
+    with pytest.raises(SafetyViolation) as exc:
+        guard.ensure_procedure_allowed(record, acknowledged=True)
+    assert exc.value.code == "procedure_not_verified"

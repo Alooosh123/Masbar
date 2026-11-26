@@ -73,6 +73,8 @@ interface UiMessage {
   equipment?: EquipmentSummary[];
   components?: ComponentSummary[];
   quickReplies?: string[];
+  abstained?: boolean;
+  abstentionReason?: string;
 }
 
 interface SendOptions {
@@ -103,6 +105,8 @@ function toAssistantMessage(response: ChatResponse): UiMessage {
     equipment: response.equipment,
     components: response.components,
     quickReplies: response.quick_replies,
+    abstained: response.abstained,
+    abstentionReason: response.abstention_reason_ar || undefined,
   };
 }
 
@@ -253,6 +257,19 @@ function SessionCards({
         <SafetyPanel protocol={safety} busy={busy} onConfirm={onConfirmLoto} readOnly={customerView} />
       )}
 
+      {session.identified_component && !session.procedure_available && (
+        <section className="procedure-blocked" role="alert">
+          <AlertIcon size={18} />
+          <div>
+            <strong>تم إيقاف تعليمات الصيانة</strong>
+            <p>
+              {session.procedure_blocked_reason_ar ||
+                "لا يوجد دليل صيانة وسلامة معتمد ومطابق للطراز. لا تستخدم أي خطوة أو عزم غير موثق."}
+            </p>
+          </div>
+        </section>
+      )}
+
       {session.current_step && (
         <StepCard
           session={session}
@@ -308,6 +325,10 @@ export function ChatScreen() {
   const autoSpeakRef = useRef(autoSpeak);
   const listeningRef = useRef(false);
   const recognitionRef = useRef<any>(null);
+  const recognitionTextRef = useRef("");
+  const recognitionManualStopRef = useRef(false);
+  const recognitionSubmittedRef = useRef(false);
+  const recognitionRestartTimerRef = useRef<number | null>(null);
   const lastImageRef = useRef<string | null>(null);
   const hasInteractedRef = useRef(false);
   const sendRef = useRef<(text: string, options?: SendOptions) => void>(() => undefined);
@@ -344,7 +365,11 @@ export function ChatScreen() {
 
   useEffect(() => {
     return () => {
+      if (recognitionRestartTimerRef.current !== null) {
+        window.clearTimeout(recognitionRestartTimerRef.current);
+      }
       try {
+        recognitionManualStopRef.current = true;
         recognitionRef.current?.abort();
       } catch {
         /* ignore */
@@ -556,43 +581,54 @@ export function ChatScreen() {
     }
   }
 
-  function stopListening() {
-    try {
-      recognitionRef.current?.abort();
-    } catch {
-      /* ignore */
+  function submitRecognizedSpeech() {
+    if (recognitionSubmittedRef.current) return;
+    recognitionSubmittedRef.current = true;
+    const transcript = recognitionTextRef.current.trim();
+    if (!transcript) {
+      setMicError("لم يتم التقاط كلام واضح. اضغط الميكروفون وحاول مرة أخرى أو استخدم الكتابة.");
+      return;
     }
-    recognitionRef.current = null;
-    listeningRef.current = false;
-    setListening(false);
+    setDraft("");
+    sendRef.current(transcript);
   }
 
-  async function startListening() {
+  function stopListening() {
+    recognitionManualStopRef.current = true;
+    listeningRef.current = false;
+    setListening(false);
+    if (recognitionRestartTimerRef.current !== null) {
+      window.clearTimeout(recognitionRestartTimerRef.current);
+      recognitionRestartTimerRef.current = null;
+    }
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+    try {
+      // stop() flushes the final speech result; abort() discards it.
+      recognition.stop();
+    } catch {
+      recognitionRef.current = null;
+      submitRecognizedSpeech();
+    }
+  }
+
+  function startListening() {
     if (listeningRef.current) return;
     setMicError(null);
     if (!recognitionSupported()) {
       setMicError("هذا المتصفح لا يدعم تحويل الكلام إلى نص. استخدم الكتابة.");
       return;
     }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setMicError("لا يمكن الوصول إلى الميكروفون من هذه الصفحة. استخدم HTTPS أو localhost.");
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((track) => track.stop());
-    } catch {
-      setMicError("تعذر الوصول إلى الميكروفون. اسمح بالإذن من إعدادات المتصفح.");
-      return;
-    }
 
     const recognition = createArabicRecognizer();
     if (!recognition) {
-      setMicError("خدمة التعرف الصوتي غير متاحة في هذا المتصفح.");
+      setMicError("خدمة التعرف الصوتي غير متاحة في هذا المتصفح. استخدم الكتابة.");
       return;
     }
 
+    recognitionTextRef.current = "";
+    recognitionManualStopRef.current = false;
+    recognitionSubmittedRef.current = false;
     recognitionRef.current = recognition;
 
     recognition.onstart = () => {
@@ -601,37 +637,68 @@ export function ChatScreen() {
       setMicError(null);
     };
 
-    recognition.onend = () => {
-      listeningRef.current = false;
-      setListening(false);
+    recognition.onresult = (event: any) => {
+      let finalText = "";
+      for (let index = event.resultIndex ?? 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result?.isFinal) {
+          finalText += ` ${result?.[0]?.transcript || ""}`;
+        }
+      }
+      if (finalText.trim()) {
+        recognitionTextRef.current = `${recognitionTextRef.current} ${finalText}`.trim();
+        setDraft(recognitionTextRef.current);
+      }
     };
 
     recognition.onerror = (event: any) => {
+      const code = event?.error;
+      if (code === "aborted" && recognitionManualStopRef.current) return;
       listeningRef.current = false;
       setListening(false);
-      const code = event?.error;
-      if (code === "aborted") return;
       if (code === "not-allowed" || code === "service-not-allowed") {
         setMicError("لم يُسمح باستخدام الميكروفون. راجع إذن الموقع في المتصفح.");
       } else if (code === "no-speech") {
         setMicError("لم أسمع كلامًا. اضغط الميكروفون وحاول مرة أخرى.");
       } else if (code === "network") {
-        setMicError("خدمة التعرف الصوتي غير متاحة دون اتصال. يمكنك الكتابة.");
+        setMicError("خدمة التعرف الصوتي غير متاحة حاليًا. يمكنك الكتابة بدلًا من ذلك.");
+      } else if (code === "audio-capture") {
+        setMicError("لم يتم العثور على ميكروفون صالح. تحقق من توصيله وإذن المتصفح.");
       } else {
         setMicError("تعذر التعرف على الصوت. حاول مرة أخرى أو استخدم الكتابة.");
       }
     };
 
-    recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result?.[0]?.transcript || "")
-        .join(" ")
-        .trim();
-      if (transcript) {
-        sendRef.current(transcript);
+    recognition.onend = () => {
+      if (recognitionManualStopRef.current) {
+        listeningRef.current = false;
+        setListening(false);
+        recognitionRef.current = null;
+        submitRecognizedSpeech();
+        return;
       }
+
+      // Some mobile engines end a recognition segment after a pause even in
+      // continuous mode. Resume while the user still has the listening state.
+      if (!listeningRef.current || recognitionRef.current !== recognition) return;
+      if (recognitionRestartTimerRef.current !== null) {
+        window.clearTimeout(recognitionRestartTimerRef.current);
+      }
+      recognitionRestartTimerRef.current = window.setTimeout(() => {
+        recognitionRestartTimerRef.current = null;
+        if (!listeningRef.current || recognitionRef.current !== recognition) return;
+        try {
+          recognition.start();
+        } catch {
+          listeningRef.current = false;
+          setListening(false);
+          setMicError("انقطع الاستماع من المتصفح. اضغط الميكروفون لإعادة المحاولة.");
+        }
+      }, 250);
     };
 
+    // Start synchronously inside the microphone button gesture. Do not await
+    // getUserMedia first: Safari can lose the user-activation context.
     try {
       listeningRef.current = true;
       setListening(true);
@@ -639,7 +706,8 @@ export function ChatScreen() {
     } catch {
       listeningRef.current = false;
       setListening(false);
-      setMicError("تعذر بدء الاستماع. أغلق أي تطبيق آخر يستخدم الميكروفون ثم أعد المحاولة.");
+      recognitionRef.current = null;
+      setMicError("تعذر بدء الاستماع. اسمح للمتصفح باستخدام الميكروفون ثم أعد المحاولة.");
     }
   }
 
@@ -850,6 +918,13 @@ export function ChatScreen() {
                     />
                   )}
 
+                  {message.abstained && (
+                    <div className="chat-abstention" role="status">
+                      <strong>امتنع مسبار عن تقديم إجابة غير موثقة</strong>
+                      {message.abstentionReason && <p>{message.abstentionReason}</p>}
+                    </div>
+                  )}
+
                   {message.text && (
                     <div className="chat-bubble">
                       <ChatText text={message.text} />
@@ -991,7 +1066,7 @@ export function ChatScreen() {
             {micError ||
               voiceError ||
               (listening
-                ? "أستمع الآن… سأرسل النص تلقائيًا بعد انتهاء كلامك."
+                ? "أستمع الآن… اضغط زر الإيقاف بعد انتهاء كلامك لإرسال السؤال."
                 : "الصوت والكاميرا يعملان من داخل المحادثة.")}
           </span>
           <span className="chat-powered">

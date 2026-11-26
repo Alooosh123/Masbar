@@ -236,6 +236,8 @@ class AssistantService:
             SessionState.AWAITING_LOTO
             if record.safety.loto_required
             else SessionState.READY
+            if self.guard.procedure_is_verified(record)
+            else SessionState.IDENTIFIED
         )
 
         self.store.audit(
@@ -249,7 +251,12 @@ class AssistantService:
             f"تم تحديد {record.arabic_name} برقم {record.part_number} "
             f"بثقة {confidence:.0%}."
         )
-        if session.state == SessionState.AWAITING_LOTO:
+        if not self.guard.procedure_is_verified(record):
+            message += (
+                " تم التعرف على القطعة ضمن بيانات التجربة، لكن مصدر الصيانة والسلامة "
+                "غير معتمد لهذا الطراز؛ لن تُعرض خطوات أو عزوم حتى تتم مراجعة الدليل."
+            )
+        elif session.state == SessionState.AWAITING_LOTO:
             message += (
                 " بوابة السلامة مغلقة الآن: أكمل بنود العزل (LOTO) على الشاشة قبل عرض خطوات الفك."
             )
@@ -272,6 +279,19 @@ class AssistantService:
             raise SafetyViolation(
                 "no_identification",
                 "لا توجد قطعة محددة بعد. حدد القطعة أولًا ثم أكمل إجراءات العزل.",
+                status_code=409,
+            )
+
+        if not self.guard.procedure_is_verified(record):
+            self.store.audit(
+                session,
+                "safety_gate_blocked_unverified_source",
+                f"رفض تأكيد LOTO لعدم وجود دليل سلامة معتمد للقطعة {record.part_number}",
+            )
+            raise SafetyViolation(
+                "safety_not_verified",
+                "لا يمكن فتح بوابة الصيانة؛ معلومات العزل والسلامة لهذه القطعة "
+                "لم تُراجع وتُعتمد من مصدر مطابق للمعدة. لا تبدأ الفك أو التشغيل.",
                 status_code=409,
             )
 
@@ -336,7 +356,7 @@ class AssistantService:
                 status_code=409,
             )
 
-        self.guard.ensure_execution_allowed(record, session.loto_confirmed)
+        self.guard.ensure_procedure_allowed(record, session.loto_confirmed)
         total = len(record.steps)
         message = ""
 
@@ -461,6 +481,18 @@ class AssistantService:
         if record is None:
             return self._needs_identification(session, Intent.CONFIRM_LOTO)
 
+        if not self.guard.procedure_is_verified(record):
+            return self._build_response(
+                session,
+                message=(
+                    "لا يمكن تأكيد العزل أو بدء الصيانة؛ بيانات السلامة الخاصة بهذه القطعة "
+                    "غير معتمدة من كتيب مطابق. أوقف العمل حتى تُراجع الوثيقة والمعدة."
+                ),
+                intent=Intent.CONFIRM_LOTO,
+                abstained=True,
+                abstention_reason_ar="مصدر تعليمات السلامة غير معتمد.",
+            )
+
         if not record.safety.loto_required:
             return self._build_response(
                 session,
@@ -494,6 +526,23 @@ class AssistantService:
 
         if record.safety.loto_required and not session.loto_confirmed:
             return self._blocked_by_loto(session, record, intent=Intent.TORQUE_QUERY)
+
+        if not self.guard.procedure_is_verified(record):
+            self.store.audit(
+                session,
+                "torque_abstained_unverified_source",
+                f"حجب قيمة العزم لعدم اعتماد المصدر للقطعة {record.part_number}",
+            )
+            return self._build_response(
+                session,
+                message=(
+                    "لا أستطيع عرض عزم الشد لهذه القطعة: لا توجد قيمة عزم معتمدة "
+                    "ومطابقة للموديل في مصدر تمت مراجعته. لن أعرض القيم التجريبية."
+                ),
+                intent=Intent.TORQUE_QUERY,
+                abstained=True,
+                abstention_reason_ar="قيمة عزم الشد غير معتمدة ومطابقة للطراز.",
+            )
 
         step = record.steps[min(max(session.step_index, 1), len(record.steps)) - 1]
         if not step.requires_torque:
@@ -579,8 +628,21 @@ class AssistantService:
         intent: Intent,
     ) -> AssistantResponse:
         if record is not None:
+            if self.kb.data_status_for(record.part_number) != "verified":
+                message = (
+                    f"تم العثور على مرشح تجريبي باسم {record.arabic_name} "
+                    f"ورمز داخلي {record.part_number}. هذه البيانات غير معتمدة كرقم قطعة OEM "
+                    "ولا أملك مصدرًا مطابقًا يؤكدها؛ يلزم فحص لوحة البيانات ومراجعة الكتيب."
+                )
+                return self._build_response(
+                    session,
+                    message=message,
+                    intent=intent,
+                    abstained=True,
+                    abstention_reason_ar="هوية القطعة لم تُعتمد من مصدر الشركة المصنّعة.",
+                )
             message = (
-                f"رقم القطعة هو {record.part_number}، وهي {record.arabic_name} "
+                f"رقم القطعة المعتمد هو {record.part_number}، وهي {record.arabic_name} "
                 f"({record.english_name}). المرجع: {record.manual_doc_id} "
                 f"صفحة {record.manual_page}."
             )
@@ -611,14 +673,30 @@ class AssistantService:
                 intent=Intent.SAFETY_QUERY,
             )
 
+        protocol = self.guard.build_safety(
+            record, session.confirmed_items, session.loto_confirmed
+        )
+        if protocol is not None and protocol.source_status != "verified":
+            message = (
+                "لا توجد تحذيرات أو إجراءات عزل موثقة ومعتمدة ومطابقة لهذه القطعة. "
+                "لا يمكنني استنتاجها أو اختراعها، ويجب إيقاف الصيانة حتى مراجعة الدليل."
+            )
+            return self._build_response(
+                session,
+                message=message,
+                intent=Intent.SAFETY_QUERY,
+                abstained=True,
+                abstention_reason_ar="معلومات السلامة لهذه القطعة غير معتمدة من المصدر.",
+            )
+
         requirement = record.safety
         if not requirement.warnings_ar:
             message = (
-                "لا توجد تحذيرات مسجلة لهذه القطعة في قاعدة البيانات. "
-                "هذا لا يعني أنها آمنة؛ اتبع إجراءات السلامة العامة للمعدة."
+                "لا توجد تحذيرات إضافية مسجلة في المصدر المعتمد لهذه القطعة. "
+                "اتبع تقييم مخاطر الموقع وتعليمات السلامة المحلية."
             )
         else:
-            message = "تحذيرات السلامة: " + " ".join(requirement.warnings_ar)
+            message = "تحذيرات السلامة المعتمدة: " + " ".join(requirement.warnings_ar)
 
         if requirement.loto_required and not session.loto_confirmed:
             message += " بوابة العزل ما زالت مغلقة."
@@ -637,6 +715,18 @@ class AssistantService:
         intent: Intent,
     ) -> AssistantResponse:
         if record is not None:
+            if self.kb.data_status_for(record.part_number) != "verified":
+                return self._build_response(
+                    session,
+                    message=(
+                        f"المرشح الحالي هو {record.arabic_name} ({record.part_number}) "
+                        "من قاعدة تجريبية. لم يتم توثيق هويته على هذه المعدة؛ راجع لوحة البيانات "
+                        "واختر المرشح الصحيح قبل أي إجراء تشغيلي."
+                    ),
+                    intent=intent,
+                    abstained=True,
+                    abstention_reason_ar="تعذر تأكيد هوية القطعة من مصدر معتمد.",
+                )
             return self._build_response(
                 session,
                 message=(
@@ -719,7 +809,19 @@ class AssistantService:
         record: ComponentRecord | None,
         intent: Intent | None = None,
     ) -> AssistantResponse:
-        warnings = " ".join(record.safety.warnings_ar) if record else ""
+        if record is None or not self.guard.procedure_is_verified(record):
+            return self._build_response(
+                session,
+                message=(
+                    "إيقاف آمن: لا توجد تعليمات عزل وسلامة معتمدة ومطابقة لهذه القطعة. "
+                    "لن أعرض تحذيرات أو إجراءات LOTO تجريبية؛ لا تبدأ الصيانة حتى مراجعة الدليل الصحيح."
+                ),
+                intent=intent,
+                abstained=True,
+                abstention_reason_ar="معلومات العزل والسلامة غير معتمدة لهذه المعدة.",
+            )
+
+        warnings = " ".join(record.safety.warnings_ar)
         return self._build_response(
             session,
             message=(
@@ -756,6 +858,8 @@ class AssistantService:
     def _state_message(self, session: Session) -> str:
         if session.state == SessionState.CREATED:
             return "الجلسة جاهزة. حدد القطعة للبدء."
+        if session.state == SessionState.IDENTIFIED:
+            return "تم اختيار مرشح للقطعة، لكن إرشادات الصيانة غير معتمدة."
         if session.state == SessionState.AWAITING_LOTO:
             return "تم تحديد القطعة. أكمل بنود السلامة قبل عرض خطوات الفك."
         if session.state == SessionState.READY:
@@ -771,16 +875,22 @@ class AssistantService:
                 "أو اكتب رقم القطعة/اسمها للبحث اليدوي",
             ]
         if session.state == SessionState.AWAITING_LOTO:
+            if record is not None and not self.guard.procedure_is_verified(record):
+                return ["راجع حالة اعتماد المصدر", "تحذيرات السلامة", "اعرض القطع"]
             return [
                 "أكمل جميع بنود العزل في لوحة السلامة",
                 "لا تبدأ الفك قبل تأكيد البوابة",
             ]
         if session.state in (SessionState.READY, SessionState.IN_PROGRESS):
-            return [
-                "قل: «الخطوة التالية»",
-                "قل: «أعد الخطوة»",
-                "قل: «كم العزم؟»",
-            ]
+            if record is not None and self.guard.procedure_is_verified(record):
+                return [
+                    "قل: «الخطوة التالية»",
+                    "قل: «أعد الخطوة»",
+                    "قل: «كم العزم؟»",
+                ]
+            return ["راجع حالة اعتماد المصدر", "تحذيرات السلامة", "اعرض القطع"]
+        if session.state == SessionState.IDENTIFIED:
+            return ["راجع حالة اعتماد المصدر", "تحذيرات السلامة", "اعرض القطع"]
         if session.state == SessionState.COMPLETED:
             return ["ابدأ جلسة جديدة", "راجع سجل الجلسة (Audit)"]
         return []
@@ -792,6 +902,8 @@ class AssistantService:
         intent: Intent | None = None,
         candidates: list[RetrievalCandidate] | None = None,
         inspection_prompt: str | None = None,
+        abstained: bool = False,
+        abstention_reason_ar: str | None = None,
     ) -> AssistantResponse:
         record = self._record(session)
         identified = None
@@ -800,6 +912,14 @@ class AssistantService:
         manual_reference = None
         disclaimer = DEFAULT_DISCLAIMER_AR
         data_status = "sample"
+        procedure_available = bool(
+            record is not None and self.guard.procedure_is_verified(record)
+        )
+        procedure_blocked_reason = (
+            None
+            if procedure_available or record is None
+            else "لا توجد وثيقة صيانة وسلامة مطابقة ومعتمدة لهذه القطعة. تم حجب الخطوات والعزم."
+        )
 
         if record is not None:
             data_status = self.kb.data_status_for(record.part_number)
@@ -819,7 +939,7 @@ class AssistantService:
                 record, session.confirmed_items, session.loto_confirmed
             )
 
-            if session.state in (
+            if procedure_available and session.state in (
                 SessionState.READY,
                 SessionState.IN_PROGRESS,
                 SessionState.COMPLETED,
@@ -851,6 +971,10 @@ class AssistantService:
             data_disclaimer_ar=disclaimer,
             retrieval_candidates=candidates or [],
             last_intent=intent,
+            procedure_available=procedure_available,
+            procedure_blocked_reason_ar=procedure_blocked_reason,
+            abstained=abstained,
+            abstention_reason_ar=abstention_reason_ar,
         )
 
     def _build_step(

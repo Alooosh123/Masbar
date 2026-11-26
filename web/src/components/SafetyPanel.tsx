@@ -14,11 +14,35 @@ export function SafetyPanel({ protocol, busy, onConfirm, readOnly = false }: Pro
 
   if (!protocol.loto_required && protocol.warnings_ar.length === 0) return null;
 
+  // Never turn an unverified/demo checklist into a false sense of safety.
+  if (protocol.source_status !== "verified") {
+    return (
+      <section className="safety-panel critical" role="alert">
+        <header>
+          <span className="safety-icon"><ShieldIcon size={22} /></span>
+          <div>
+            <h2>إيقاف آمن — معلومات السلامة غير معتمدة</h2>
+            <p>لا يمكن فتح بوابة الصيانة أو اعتبار تأكيد الشاشة دليلاً على العزل.</p>
+          </div>
+        </header>
+        <ul className="warning-list">
+          {protocol.warnings_ar.map((warning) => (
+            <li key={warning}><AlertIcon size={16} /><span>{warning}</span></li>
+          ))}
+        </ul>
+        <p className="gate-hint">
+          {protocol.blocked_reason_ar ||
+            "لا توجد تعليمات سلامة وعزل مراجعة ومطابقة للمعدة. أوقف العمل حتى يراجع فني مؤهل كتيب الطراز الصحيح."}
+        </p>
+      </section>
+    );
+  }
+
   if (protocol.acknowledged_by_technician) {
     return (
       <div className="safety-strip">
         <CheckIcon size={18} />
-        <span>تم توثيق إجراءات العزل (LOTO) لهذه الجلسة.</span>
+        <span>تم توثيق إجراءات العزل (LOTO) لهذه الجلسة وفق المصدر المعتمد.</span>
       </div>
     );
   }
@@ -28,7 +52,7 @@ export function SafetyPanel({ protocol, busy, onConfirm, readOnly = false }: Pro
       <section className="safety-panel warning">
         <header>
           <AlertIcon size={20} />
-          <h2>تحذيرات السلامة</h2>
+          <h2>تحذيرات السلامة المعتمدة</h2>
         </header>
         <ul className="warning-list">
           {protocol.warnings_ar.map((warning) => (
@@ -46,7 +70,7 @@ export function SafetyPanel({ protocol, busy, onConfirm, readOnly = false }: Pro
           <span className="safety-icon"><ShieldIcon size={22} /></span>
           <div>
             <h2>متطلبات السلامة (LOTO)</h2>
-            <p>اعرض هذه المتطلبات على فني مؤهل قبل أي عمل على المعدة. لا يمكن لحساب العميل اعتماد العزل أو فتح خطوات التنفيذ.</p>
+            <p>راجع هذه المتطلبات مع فني مؤهل. لا يمكن لحساب العميل اعتماد العزل أو فتح خطوات التنفيذ.</p>
           </div>
         </header>
         <ul className="warning-list">
@@ -80,46 +104,32 @@ export function SafetyPanel({ protocol, busy, onConfirm, readOnly = false }: Pro
   return (
     <section className={`safety-panel ${protocol.severity === "CRITICAL" ? "critical" : "warning"}`}>
       <header>
-        <span className="safety-icon">
-          <ShieldIcon size={22} />
-        </span>
+        <span className="safety-icon"><ShieldIcon size={22} /></span>
         <div>
           <h2>بوابة السلامة الإلزامية (LOTO)</h2>
-          <p>لن تظهر خطوات الفك حتى تؤكد كل بند. التأكيد يُسجَّل في سجل الجلسة.</p>
+          <p>لن تظهر خطوات الصيانة حتى تؤكد كل بند من المصدر المعتمد. التأكيد يُسجَّل في سجل الجلسة.</p>
         </div>
       </header>
-
       <ul className="warning-list">
         {protocol.warnings_ar.map((warning) => (
-          <li key={warning}>
-            <AlertIcon size={16} />
-            <span>{warning}</span>
-          </li>
+          <li key={warning}><AlertIcon size={16} /><span>{warning}</span></li>
         ))}
       </ul>
-
       <div className="checklist">
         {protocol.checklist.map((item) => {
           const isChecked = checked.has(item.id);
           return (
             <label className={`check-row ${isChecked ? "is-checked" : ""}`} key={item.id}>
-              <input
-                type="checkbox"
-                checked={isChecked}
-                onChange={() => toggle(item.id)}
-              />
-              <span className="check-box">
-                <CheckIcon size={16} />
-              </span>
+              <input type="checkbox" checked={isChecked} onChange={() => toggle(item.id)} />
+              <span className="check-box"><CheckIcon size={16} /></span>
               <span className="check-label">{item.label_ar}</span>
             </label>
           );
         })}
       </div>
-
       <button
         className="confirm-safety-btn"
-        disabled={!allChecked || busy}
+        disabled={!allChecked || busy || protocol.source_status !== "verified"}
         onClick={() => onConfirm(protocol.checklist.map((item) => item.id))}
       >
         {busy ? "جارٍ التوثيق…" : "أؤكد إتمام جميع إجراءات العزل — متابعة"}
