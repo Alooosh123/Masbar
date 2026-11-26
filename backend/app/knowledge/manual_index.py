@@ -125,9 +125,32 @@ class ManualSearchResponse(BaseModel):
     hits: list[ManualSearchHit] = Field(default_factory=list)
 
 
+# Small bilingual expansion for high-frequency industrial terms found in the
+# currently indexed OEM manuals. Keep this deliberately explicit: lexical
+# retrieval must not silently translate arbitrary technical claims.
+_ARABIC_MANUAL_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("مانع التسرب", ("shaft", "seal")),
+    ("مانع التسريب", ("shaft", "seal")),
+    ("ختم العمود", ("shaft", "seal")),
+    ("عمود الدوران", ("shaft",)),
+    ("مواصفات", ("specification", "specifications")),
+    ("المواصفات الفنية", ("technical", "specifications")),
+    ("وحدة المعالجة المركزية", ("cpu", "central", "processing", "unit")),
+    ("المعالج المركزي", ("cpu", "central", "processing", "unit")),
+    ("متحكم قابل للبرمجة", ("programmable", "controller")),
+    ("وحدة تحكم قابلة للبرمجة", ("programmable", "controller")),
+)
+
+
 def _terms(text: str) -> list[str]:
     normalized = normalize_arabic(text).lower()
-    return re.findall(r"[a-z0-9]+|[\u0600-\u06ff]+", normalized)
+    terms = re.findall(r"[a-z0-9]+|[\u0600-\u06ff]+", normalized)
+    expanded: list[str] = []
+    for phrase, aliases in _ARABIC_MANUAL_SYNONYMS:
+        normalized_phrase = normalize_arabic(phrase).lower()
+        if normalized_phrase and normalized_phrase in normalized:
+            expanded.extend(aliases)
+    return terms + expanded
 
 
 def _printed_page_number(

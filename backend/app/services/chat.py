@@ -696,6 +696,10 @@ class ChatService:
                 else "",
                 safe_text,
             )
+        if safe_text and not self._manual_answer_numbers_are_grounded(safe_text, query, hits):
+            logger.warning("Manual RAG answer rejected because it contains unsupported numeric claims")
+            safe_text = None
+
         if reply.error or not safe_text:
             logger.warning(
                 "Manual RAG answer unavailable or rejected: %s",
@@ -715,6 +719,31 @@ class ChatService:
             session=self._safe_session(session),
             quick_replies=["اسأل عن قسم آخر في الكتيب", "ما الكتيبات المفهرسة؟"],
         )
+
+    def _manual_answer_numbers_are_grounded(self, answer: str, query: str, hits) -> bool:
+        """Reject generated numeric claims absent from the question and cited evidence."""
+        answer_without_citations = re.sub(r"\[S\d+\]", " ", answer)
+        source_parts = [query]
+        for index, hit in enumerate(hits, start=1):
+            source_parts.extend(
+                [
+                    hit.excerpt,
+                    hit.document_number or "",
+                    hit.revision or "",
+                    hit.title or "",
+                    hit.section_title or "",
+                    str(hit.pdf_page_number),
+                    str(hit.printed_page_number or ""),
+                    str(index),
+                ]
+            )
+        allowed_numbers = set(
+            re.findall(r"\d+(?:[.,]\d+)?", normalize_arabic(" ".join(source_parts)))
+        )
+        answer_numbers = set(
+            re.findall(r"\d+(?:[.,]\d+)?", normalize_arabic(answer_without_citations))
+        )
+        return answer_numbers.issubset(allowed_numbers)
 
     def _is_restricted_manual_rag_query(self, query: str) -> bool:
         restricted_terms = (
