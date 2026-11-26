@@ -242,6 +242,77 @@ def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch
     reset_caches()
 
 
+def test_manual_index_import_requires_authenticated_owner_or_admin(monkeypatch):
+    monkeypatch.setenv("AUTH_REQUIRED", "false")
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/manuals/import-index",
+            files={"file": ("manual.json", b"{}", "application/json")},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "manual_ingestion_auth_required"
+
+
+def test_manual_index_import_validates_schema_and_persists_searchable_chunks(tmp_path, monkeypatch):
+    from app.security.auth import AuthUser
+
+    source_dir = tmp_path / "source"
+    target_dir = tmp_path / "target"
+    _seed_manual_index(source_dir)
+    index_bytes = (source_dir / "grundfos-cr5-test.json").read_bytes()
+
+    monkeypatch.setenv("AUTH_REQUIRED", "true")
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("CORS_ORIGINS", "https://frontend.example.test")
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-signing-secret-" + ("x" * 32))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(target_dir))
+    get_settings.cache_clear()
+    reset_caches()
+    monkeypatch.setattr("app.main.get_auth_store", lambda: None)
+    monkeypatch.setattr(
+        "app.main.get_current_user",
+        lambda request, required=True: AuthUser(
+            id="owner-test",
+            email="owner@example.test",
+            display_name="Owner Test",
+            role="owner",
+            is_active=True,
+            created_at="2026-01-01T00:00:00+00:00",
+            last_login_at=None,
+            token_version=0,
+            must_change_password=False,
+        ),
+    )
+
+    with TestClient(app) as client:
+        imported = client.post(
+            "/api/v1/manuals/import-index",
+            files={"file": ("grundfos-cr5-test.json", index_bytes, "application/json")},
+        )
+        listed = client.get("/api/v1/manuals")
+        searched = client.get(
+            "/api/v1/manuals/search",
+            params={"q": "shaft seal position 105", "equipment_model": "Grundfos CR 5 Model A"},
+        )
+
+    assert imported.status_code == 201
+    assert imported.json()["chunks_imported"] == 1
+    assert imported.json()["original_pdf_transferred"] is False
+    assert (target_dir / "grundfos-cr5-test.json").is_file()
+    assert listed.status_code == 200
+    assert listed.json()[0]["document_number"] == "96546866 0407"
+    assert searched.status_code == 200
+    assert searched.json()["hits"][0]["pdf_page_number"] == 9
+
+    reset_caches()
+
+
 def test_manual_ingestion_requires_authenticated_owner_or_admin(monkeypatch):
     monkeypatch.setenv("AUTH_REQUIRED", "false")
     monkeypatch.setenv("ENVIRONMENT", "development")
