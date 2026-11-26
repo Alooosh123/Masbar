@@ -149,7 +149,7 @@ def _printed_page_number(
         total_number = int(total_text)
         if page_number < 1 or total_number < page_number:
             continue
-        if pdf_page_count is not None and total_number > pdf_page_count:
+        if pdf_page_count is not None and total_number != pdf_page_count:
             continue
         return page_number
     return None
