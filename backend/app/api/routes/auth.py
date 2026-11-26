@@ -8,6 +8,7 @@ from app.security.auth import (
     AUTH_COOKIE_NAME,
     AuthUser,
     ChangePasswordRequest,
+    CreateCustomerRequest,
     CreateUserRequest,
     LoginRequest,
     SetCustomerActiveRequest,
@@ -69,6 +70,28 @@ def logout(response: Response) -> dict:
 def me(request: Request) -> dict:
     user = get_current_user(request, required=False)
     return {"authenticated": user is not None, "user": user.public_dict() if user else None}
+
+
+@router.post("/users/customers", status_code=201)
+def create_customer(payload: CreateCustomerRequest, request: Request) -> dict:
+    actor = get_current_user(request)
+    if actor is None or actor.role not in {"owner", "admin"}:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "insufficient_role", "message_ar": "إنشاء حسابات العملاء يتطلب صلاحية المالك أو المدير."},
+        )
+    try:
+        user, temporary_password = get_auth_store().create_customer_account(
+            email=payload.email,
+            display_name=payload.display_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"code": "customer_conflict", "message_ar": str(exc)}) from exc
+    return {
+        "user": user.public_dict(),
+        "temporary_password": temporary_password,
+        "must_change_password": True,
+    }
 
 
 @router.get("/users/customers")
