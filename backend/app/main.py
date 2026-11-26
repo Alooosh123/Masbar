@@ -192,6 +192,7 @@ async def enforce_api_auth(request: Request, call_next):
         is_customer_read = session_path and request.method == "GET"
         if (
             is_customer_chat
+            or is_customer_conversations
             or is_customer_tts
             or is_customer_password_change
             or is_session_create
