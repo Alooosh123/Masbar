@@ -138,12 +138,14 @@ export interface ChatRequest {
   message?: string;
   image_base64?: string | null;
   session_id?: string | null;
+  conversation_id?: string | null;
   history?: ChatTurn[];
   mode?: "auto" | "describe" | "identify";
 }
 
 export interface ChatResponse {
   message_ar: string;
+  conversation_id?: string | null;
   source: ChatSource;
   action: ChatAction | null;
   session: AssistantResponse | null;
