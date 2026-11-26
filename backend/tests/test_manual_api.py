@@ -201,6 +201,34 @@ def test_manual_rag_keeps_torque_requests_retrieval_only(tmp_path, monkeypatch):
     reset_caches()
 
 
+def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch):
+    _seed_manual_index(tmp_path)
+    monkeypatch.setenv("MANUAL_INDEX_DIR", str(tmp_path))
+    monkeypatch.setenv("MANUAL_SEARCH_ENABLED", "true")
+    captured = {"called": False}
+
+    class FakeRagAdapter:
+        async def reply(self, **kwargs):
+            captured["called"] = True
+            return ChatReply(text="إجابة تشغيلية غير مسموحة.", provider="test")
+
+    monkeypatch.setattr("app.deps.build_chat_adapter", lambda settings: FakeRagAdapter())
+    get_settings.cache_clear()
+    reset_caches()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/chat",
+            json={"message": "ما قيمة العزم في كتيب Grundfos؟"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["source"] == "system"
+    assert "المقتطف:" in response.json()["message_ar"]
+    assert captured["called"] is False
+    reset_caches()
+
+
 def test_manual_ingestion_requires_authenticated_owner_or_admin(monkeypatch):
     monkeypatch.setenv("AUTH_REQUIRED", "false")
     monkeypatch.setenv("ENVIRONMENT", "development")
