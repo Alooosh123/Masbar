@@ -121,6 +121,9 @@ def test_customer_password_reset_returns_one_time_password_and_revokes_sessions(
         assert _login(customer, "reset.customer@example.test", second_password).status_code == 200
         me = customer.get("/api/v1/auth/me").json()
         assert me["user"]["must_change_password"] is True
+        catalog_blocked = customer.get("/api/v1/equipment")
+        assert catalog_blocked.status_code == 403
+        assert catalog_blocked.json()["detail"]["code"] == "password_change_required"
         blocked = customer.post(
             "/api/v1/sessions",
             json={"equipment_model": "Caterpillar C15 ACERT"},
