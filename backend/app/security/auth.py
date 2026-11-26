@@ -83,6 +83,24 @@ class CreateUserRequest(BaseModel):
         return value.strip()
 
 
+class CreateCustomerRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
+    display_name: str = Field(..., min_length=2, max_length=120)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        normalized = value.strip().casefold()
+        if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", normalized):
+            raise ValueError("A valid email address is required")
+        return normalized
+
+    @field_validator("display_name")
+    @classmethod
+    def normalize_display_name(cls, value: str) -> str:
+        return value.strip()
+
+
 class UpdateCustomerRequest(BaseModel):
     email: str | None = Field(default=None, min_length=3, max_length=254)
     display_name: str | None = Field(default=None, min_length=2, max_length=120)
@@ -428,6 +446,18 @@ class AuthStore:
                 """
             ).fetchall()
         return [user for row in rows if (user := self._to_user(row)) is not None]
+
+    def create_customer_account(self, *, email: str, display_name: str) -> tuple[AuthUser, str]:
+        temporary_password = secrets.token_urlsafe(24)
+        user = self.create_user(
+            email=email,
+            display_name=display_name,
+            password=temporary_password,
+            role="customer",
+            event="customer_created",
+            must_change_password=True,
+        )
+        return user, temporary_password
 
     def list_customers(self) -> list[AuthUser]:
         with self._connect() as connection:
