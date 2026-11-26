@@ -130,18 +130,29 @@ def _terms(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+|[\u0600-\u06ff]+", normalized)
 
 
-def _printed_page_number(text: str) -> int | None:
-    tail = text[-1200:]
-    matches = re.findall(
-        r"(?:page\s*(?:number\s*)?:?\s*)?(\d{1,4})\s*(?:/|of)\s*\d{1,4}",
-        tail,
-        flags=re.IGNORECASE,
-    )
-    if not matches:
-        return None
-    value = int(matches[-1])
-    return value if value > 0 else None
+def _printed_page_number(
+    text: str, pdf_page_count: int | None = None
+) -> int | None:
+    """Detect a printed page only from an explicit page fraction in the header.
 
+    A generic search across the page body can mistake dates such as 12/2024 or
+    electrical ratios such as 50/60 Hz for a page number. When the PDF page
+    count is known, the denominator must not exceed it.
+    """
+    header = text[:500]
+    matches = re.findall(
+        r"(?<![0-9])(\d{1,4})\s*/\s*(\d{1,4})(?![0-9])",
+        header,
+    )
+    for page_text, total_text in matches:
+        page_number = int(page_text)
+        total_number = int(total_text)
+        if page_number < 1 or total_number < page_number:
+            continue
+        if pdf_page_count is not None and total_number > pdf_page_count:
+            continue
+        return page_number
+    return None
 
 def _section_title(text: str) -> str | None:
     for line in text.splitlines()[:8]:
@@ -239,7 +250,7 @@ def build_manual_index(
             continue
         text_pages += 1
         section = _section_title(page_text)
-        printed_page = _printed_page_number(page_text)
+        printed_page = _printed_page_number(page_text, page_count)
         for chunk_index, text_chunk in enumerate(
             _split_page(page_text, max_chunk_chars, overlap_chars)
         ):
