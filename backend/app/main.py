@@ -13,7 +13,7 @@ from app.api.routes import auth, catalog, chat, health, manuals, sessions, tts, 
 from app.ops.sqlite_backup import create_sqlite_backup, prune_sqlite_backups
 from app.core.config import get_settings
 from app.deps import get_assistant, get_auth_store, get_kb
-from app.security.auth import get_current_user
+from app.security.auth import AUTH_COOKIE_NAME, get_current_user
 from app.safety.guard import SafetyViolation
 from app.services.session import SessionNotFound
 
@@ -105,8 +105,24 @@ async def enforce_api_auth(request: Request, call_next):
         "/api/v1/auth/logout",
         "/api/v1/auth/me",
     }
-    if path in public_auth_paths or request.method == "OPTIONS":
+    if path in public_auth_paths or path == "/health" or request.method == "OPTIONS":
         return await call_next(request)
+
+    has_auth_token = bool(
+        request.cookies.get(AUTH_COOKIE_NAME)
+        or request.headers.get("authorization", "").lower().startswith("bearer ")
+    )
+    if (
+        runtime_settings.auth_required
+        and has_auth_token
+        and path != "/api/v1/auth/change-password"
+    ):
+        pending_user = get_current_user(request, required=False)
+        if pending_user is not None and pending_user.must_change_password:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": {"code": "password_change_required", "message_ar": "يجب تغيير كلمة المرور المؤقتة قبل استخدام التطبيق."}},
+            )
 
     is_user_admin = path.startswith("/api/v1/auth/users")
     is_change_password = path == "/api/v1/auth/change-password"
