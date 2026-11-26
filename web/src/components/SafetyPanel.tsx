@@ -6,9 +6,10 @@ interface Props {
   protocol: SafetyLockoutProtocol;
   busy: boolean;
   onConfirm: (confirmedIds: string[]) => void;
+  readOnly?: boolean;
 }
 
-export function SafetyPanel({ protocol, busy, onConfirm }: Props) {
+export function SafetyPanel({ protocol, busy, onConfirm, readOnly = false }: Props) {
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   if (!protocol.loto_required && protocol.warnings_ar.length === 0) return null;
@@ -34,6 +35,31 @@ export function SafetyPanel({ protocol, busy, onConfirm }: Props) {
             <li key={warning}>{warning}</li>
           ))}
         </ul>
+      </section>
+    );
+  }
+
+  if (readOnly) {
+    return (
+      <section className={`safety-panel ${protocol.severity === "CRITICAL" ? "critical" : "warning"}`}>
+        <header>
+          <span className="safety-icon"><ShieldIcon size={22} /></span>
+          <div>
+            <h2>متطلبات السلامة (LOTO)</h2>
+            <p>اعرض هذه المتطلبات على فني مؤهل قبل أي عمل على المعدة. لا يمكن لحساب العميل اعتماد العزل أو فتح خطوات التنفيذ.</p>
+          </div>
+        </header>
+        <ul className="warning-list">
+          {protocol.warnings_ar.map((warning) => (
+            <li key={warning}><AlertIcon size={16} /><span>{warning}</span></li>
+          ))}
+        </ul>
+        <div className="customer-safety-list">
+          <strong>قائمة التحقق التي يجب أن يراجعها الفني:</strong>
+          <ul>
+            {protocol.checklist.map((item) => <li key={item.id}>{item.label_ar}</li>)}
+          </ul>
+        </div>
       </section>
     );
   }

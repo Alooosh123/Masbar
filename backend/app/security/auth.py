@@ -22,7 +22,7 @@ AUTH_COOKIE_NAME = "masbar_access"
 AUTH_ISSUER = "masbar"
 PASSWORD_ITERATIONS = 310_000
 PASSWORD_MIN_LENGTH = 14
-ALLOWED_ROLES = {"owner", "admin", "technician", "viewer"}
+ALLOWED_ROLES = {"owner", "admin", "technician", "customer", "viewer"}
 
 
 @dataclass(frozen=True)
@@ -65,7 +65,7 @@ class CreateUserRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=254)
     display_name: str = Field(..., min_length=2, max_length=120)
     password: str = Field(..., min_length=PASSWORD_MIN_LENGTH, max_length=256)
-    role: str = Field(default="technician", pattern=r"^(admin|technician|viewer)$")
+    role: str = Field(default="technician", pattern=r"^(admin|technician|customer|viewer)$")
 
     @field_validator("email")
     @classmethod
@@ -136,6 +136,44 @@ class AuthStore:
                 )
                 """
             )
+            schema_row = connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='auth_users'"
+            ).fetchone()
+            schema_sql = str(schema_row["sql"] or "") if schema_row else ""
+            if "'customer'" not in schema_sql:
+                connection.execute(
+                    """
+                    CREATE TABLE auth_users_customer_migration (
+                        id TEXT PRIMARY KEY,
+                        email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                        display_name TEXT NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        role TEXT NOT NULL CHECK(role IN ('owner','admin','technician','customer','viewer')),
+                        is_active INTEGER NOT NULL DEFAULT 1,
+                        created_at TEXT NOT NULL,
+                        last_login_at TEXT,
+                        failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+                        locked_until TEXT,
+                        token_version INTEGER NOT NULL DEFAULT 0
+                    )
+                    """
+                )
+                connection.execute(
+                    """
+                    INSERT INTO auth_users_customer_migration(
+                        id,email,display_name,password_hash,role,is_active,created_at,
+                        last_login_at,failed_login_attempts,locked_until,token_version
+                    )
+                    SELECT id,email,display_name,password_hash,role,is_active,created_at,
+                           last_login_at,failed_login_attempts,locked_until,token_version
+                    FROM auth_users
+                    """
+                )
+                connection.execute("DROP TABLE auth_users")
+                connection.execute(
+                    "ALTER TABLE auth_users_customer_migration RENAME TO auth_users"
+                )
+
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS auth_events (

@@ -149,6 +149,40 @@ async def enforce_api_auth(request: Request, call_next):
             content={"detail": {"code": "insufficient_role", "message_ar": "إدارة الحسابات تتطلب صلاحية المالك أو المدير."}},
         )
 
+    if user.role == "customer":
+        session_path = path.startswith("/api/v1/sessions")
+        session_action = path.rsplit("/", 1)[-1] if session_path else ""
+        is_session_create = path.rstrip("/") == "/api/v1/sessions" and request.method == "POST"
+        is_customer_session_action = (
+            session_path
+            and request.method == "POST"
+            and session_action in {"identify", "ask"}
+        )
+        is_customer_chat = path == "/api/v1/chat" and request.method == "POST"
+        is_customer_tts = path.startswith("/api/v1/tts") and request.method == "POST"
+        is_customer_password_change = path == "/api/v1/auth/change-password" and request.method == "POST"
+        is_customer_read = session_path and request.method == "GET"
+        if (
+            is_customer_chat
+            or is_customer_tts
+            or is_customer_password_change
+            or is_session_create
+            or is_customer_session_action
+            or is_customer_read
+        ):
+            request.state.auth_user = user
+            return await call_next(request)
+
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": {
+                    "code": "customer_action_restricted",
+                    "message_ar": "حساب العميل يتيح المحادثة وتحليل القطع وعرض الجلسات. اعتماد العزل وتشغيل خطوات الصيانة متاح للفنيين المعتمدين فقط.",
+                }
+            },
+        )
+
     if (
         (path.startswith("/api/v1/chat") or (path.startswith("/api/v1/sessions") and request.method != "GET"))
         and user.role not in {"owner", "admin", "technician"}

@@ -175,7 +175,7 @@ export interface AuthUser {
   id: string;
   email: string;
   display_name: string;
-  role: "owner" | "admin" | "technician" | "viewer";
+  role: "owner" | "admin" | "technician" | "customer" | "viewer";
   is_active: boolean;
   created_at: string;
   last_login_at: string | null;
