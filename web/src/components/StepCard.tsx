@@ -14,9 +14,10 @@ interface Props {
   busy: boolean;
   onStep: (action: "next" | "prev" | "repeat") => void;
   onSpeak: (text: string) => void;
+  readOnly?: boolean;
 }
 
-export function StepCard({ session, busy, onStep, onSpeak }: Props) {
+export function StepCard({ session, busy, onStep, onSpeak, readOnly = false }: Props) {
   const step = session.current_step;
 
   if (session.state === "COMPLETED") {
@@ -101,7 +102,7 @@ export function StepCard({ session, busy, onStep, onSpeak }: Props) {
         </div>
       )}
 
-      <div className="step-actions">
+      {!readOnly && <div className="step-actions">
         <button
           className="step-btn secondary"
           onClick={() => onStep("prev")}
@@ -130,7 +131,11 @@ export function StepCard({ session, busy, onStep, onSpeak }: Props) {
           {step.step_number >= step.total_steps ? "إنهاء الإجراء" : "الخطوة التالية"}
           <ChevronLeftIcon size={22} />
         </button>
-      </div>
+      </div>}
+
+      {readOnly && (
+        <p className="customer-readonly-note">يمكنك الاطلاع على الإرشادات. تنفيذ الخطوات واعتمادها مخصص للفنيين المعتمدين.</p>
+      )}
 
       <button
         className="speak-inline"
