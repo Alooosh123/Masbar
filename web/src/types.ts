@@ -186,3 +186,27 @@ export interface AuthMeResponse {
   authenticated: boolean;
   user: AuthUser | null;
 }
+
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+  preview: string;
+}
+
+export interface ConversationMessage {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  source: ChatSource | null;
+  has_image: boolean;
+  created_at: string;
+}
+
+export interface ConversationDetail {
+  conversation: ConversationSummary;
+  messages: ConversationMessage[];
+}
