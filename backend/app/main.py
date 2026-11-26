@@ -149,6 +149,16 @@ async def enforce_api_auth(request: Request, call_next):
             content={"detail": {"code": "insufficient_role", "message_ar": "إدارة الحسابات تتطلب صلاحية المالك أو المدير."}},
         )
 
+    if user.must_change_password and path not in {
+        "/api/v1/auth/me",
+        "/api/v1/auth/logout",
+        "/api/v1/auth/change-password",
+    }:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": {"code": "password_change_required", "message_ar": "يجب تغيير كلمة المرور المؤقتة قبل استخدام التطبيق."}},
+        )
+
     if user.role == "customer":
         session_path = path.startswith("/api/v1/sessions")
         session_action = path.rsplit("/", 1)[-1] if session_path else ""
