@@ -144,7 +144,7 @@ _ARABIC_MANUAL_SYNONYMS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 def _terms(text: str) -> list[str]:
     normalized = normalize_arabic(text).lower()
-    terms = re.findall(r"[a-z0-9]+|[\\u0600-\\u06ff]+", normalized)
+    terms = re.findall(r"[a-z0-9]+|[\u0600-\u06ff]+", normalized)
     expanded: list[str] = []
     for phrase, aliases in _ARABIC_MANUAL_SYNONYMS:
         normalized_phrase = normalize_arabic(phrase).lower()
