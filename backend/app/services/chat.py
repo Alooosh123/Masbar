@@ -194,9 +194,10 @@ _HELP_TERMS = ("مساعده", "مساعدة", "help", "ماذا تستطيع", 
 class ChatService:
     """Conversation orchestration on top of the deterministic maintenance engine.
 
-    The LLM is deliberately limited to general conversation and free-form image
-    description. Torque values, maintenance steps, part numbers and LOTO rules
-    are always resolved by ``AssistantService`` from the verified knowledge base.
+    The LLM handles general conversation, free-form image description and
+    evidence-grounded non-operational manual Q&A. Torque values, maintenance
+    steps, part numbers and LOTO rules remain controlled by the verified
+    knowledge base and never become executable through manual RAG alone.
     """
 
     def __init__(
@@ -577,6 +578,15 @@ class ChatService:
             describe=True,
         )
         safe_text = sanitize_user_facing_text(reply.text)
+        if safe_text:
+            # Only permit citations for source IDs actually present in this response.
+            safe_text = re.sub(
+                r"\[S(\d+)\]",
+                lambda match: match.group(0)
+                if 1 <= int(match.group(1)) <= len(hits)
+                else "",
+                safe_text,
+            )
         if reply.error or not safe_text:
             logger.warning(
                 "Image description unavailable or rejected: %s",
@@ -735,6 +745,31 @@ class ChatService:
             "عزل",
             "اجراء صيانة",
             "اصلاح",
+            "procedure",
+            "procedures",
+            "commission",
+            "commissioning",
+            "configure",
+            "configuration",
+            "parameter",
+            "program",
+            "programming",
+            "download",
+            "upload",
+            "reset",
+            "restart",
+            "calibrate",
+            "adjust",
+            "connect",
+            "startup",
+            "start-up",
+            "energize",
+            "energise",
+            "test run",
+            "diagnostic procedure",
+            "error code",
+            "fault code",
+            "alarm reset",
         )
         return self._needs_grounded_answer(query) or any(
             term_in_text(query, term) for term in restricted_terms
