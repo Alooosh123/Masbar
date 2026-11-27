@@ -1,10 +1,15 @@
+import pytest
+
+from app.deps import get_assistant
+from app.domain.api_models import SessionCreateRequest
 from app.main import app  # noqa: F401  (ensures app imports cleanly in tests)
+from app.safety.guard import SafetyViolation
 
 
 def _create(client, equipment: str = "Caterpillar C15 ACERT") -> dict:
-    response = client.post("/api/v1/sessions", json={"equipment_model": equipment})
-    assert response.status_code == 201, response.text
-    pending = response.json()
+    pending = get_assistant().create_session(
+        SessionCreateRequest(equipment_model=equipment)
+    ).model_dump()
     confirmed = client.post(
         "/api/v1/chat",
         json={"message": "تأكيد المعدة", "session_id": pending["session_id"]},
@@ -33,13 +38,11 @@ def test_health_reports_loaded_knowledge(client):
 
 
 def test_session_requires_explicit_equipment_confirmation(client):
-    created = client.post(
-        "/api/v1/sessions",
-        json={"equipment_model": "Siemens S7-1200 Control Panel"},
-    )
-    assert created.status_code == 201
-    session_id = created.json()["session_id"]
-    assert created.json()["state"] == "PENDING_CONFIRMATION"
+    created = get_assistant().create_session(
+        SessionCreateRequest(equipment_model="Siemens S7-1200 Control Panel")
+    ).model_dump()
+    session_id = created["session_id"]
+    assert created["state"] == "PENDING_CONFIRMATION"
 
     blocked = client.post(
         f"/api/v1/sessions/{session_id}/ask",
@@ -56,12 +59,20 @@ def test_session_requires_explicit_equipment_confirmation(client):
     assert confirmed.status_code == 200
     assert confirmed.json()["session"]["state"] == "CREATED"
 
-def test_unknown_equipment_is_rejected(client):
+def test_public_session_creation_requires_image_identification(client):
     response = client.post(
-        "/api/v1/sessions", json={"equipment_model": "Unknown Machine"}
+        "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
     )
-    assert response.status_code == 404
-    assert response.json()["detail"]["code"] == "unknown_equipment"
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "image_identification_required"
+
+
+def test_unknown_equipment_is_rejected_by_internal_session_service():
+    with pytest.raises(SafetyViolation) as error:
+        get_assistant().create_session(
+            SessionCreateRequest(equipment_model="Unknown Machine")
+        )
+    assert error.value.code == "unknown_equipment"
 
 
 def test_missing_image_abstains_without_identifying_a_component(client):
