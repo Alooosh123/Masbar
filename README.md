@@ -19,7 +19,7 @@
 | محرك السلامة الحتمي (LOTO + العزم) | ✅ يُفرض على الخادم ولا يمكن تجاوزه من الواجهة أو المحادثة |
 | البحث الهجين في قاعدة المعرفة | ✅ يعمل محليًا بدون أي خدمة خارجية |
 | سجل مصادر OEM الرسمية | ✅ **31 شركة و126 عائلة موديلات** مع روابط رسمية وبحث |
-| تحديد القطعة بالنص / الرقم / الصورة | ✅ Mock افتراضي + OpenRouter Qwen3-VL / Cohere / OpenAI VLM |
+| تحديد القطعة بالنص / الرقم / الصورة | ✅ Mock افتراضي + OpenRouter Nemotron 3.5 Super VL المجاني / Cohere / OpenAI VLM |
 | وصف الصور العامة | ✅ Cohere Command A Vision — مستقل عن تاريخ الكاميرا |
 | الكاميرا داخل المحادثة | ✅ فتح/إغلاق بالأمر، التقاط ووصف، والتقاط وتحديد صريح |
 | الصوت العربي (ASR/TTS) | ✅ TTS عصبي عربي من الخادم (`ar-SA-ZariyahNeural`) + ذاكرة صوتية محلية + ASR عربي في المتصفح |
@@ -123,15 +123,15 @@ cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 
 ## 4. إضافة مفاتيح الذكاء الاصطناعي
 
-المشروع يعمل بدون أي مفتاح عبر `VISION_PROVIDER=mock` و`CHAT_PROVIDER=off`، لكن الوصف الذكي والمحادثة العامة يحتاجان مزوّدًا. يمكن تفعيل الرؤية عبر OpenRouter أو Cohere أو OpenAI. الإعداد المقترح للرؤية هو OpenRouter + Qwen3-VL:
+المشروع يعمل بدون أي مفتاح عبر `VISION_PROVIDER=mock` و`CHAT_PROVIDER=off`، لكن الوصف الذكي والمحادثة العامة يحتاجان مزوّدًا. يمكن تفعيل الرؤية عبر OpenRouter أو Cohere أو OpenAI. الإعداد المقترح للرؤية هو OpenRouter + Nemotron 3.5 Super VL:
 
-### الخيار A — OpenRouter + Qwen3-VL (رؤية الصور عبر API فقط)
+### الخيار A — OpenRouter + NVIDIA Nemotron 3.5 Super VL المجاني (رؤية الصور عبر API فقط)
 
 ```env
 VISION_PROVIDER=openrouter
 OPENROUTER_API_KEY=...
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-VISION_MODEL=qwen/qwen3-vl-8b-instruct
+VISION_MODEL=nvidia/nemotron-3.5-super-vl:free
 VISION_TIMEOUT_SECONDS=60
 DEMO_MODE=false
 ```
@@ -151,7 +151,7 @@ COHERE_BASE_URL=https://api.cohere.com/v2
 إذا لم تكن خدمة المحادثة العامة مطلوبة، استخدم `CHAT_PROVIDER=off`. يمكن أيضًا استمرار استخدام `VISION_PROVIDER=cohere` أو `VISION_PROVIDER=openai` بدل OpenRouter.
 
 1. عدّل `.env` في جذر المشروع ثم أعد تشغيل الخادم.
-2. تحقق: `GET /health` يجب أن يعيد `vision_provider: "openrouter"` عند تفعيل Qwen3-VL. اختبر طلب صورة حقيقيًا؛ وجود اسم المتغير لا يثبت الاتصال.
+2. تحقق: `GET /health` يجب أن يعيد `vision_provider: "openrouter"` عند تفعيل Nemotron 3.5 Super VL. اختبر طلب صورة حقيقيًا؛ النموذج المجاني يخضع لحصص وتوفر مزودين وقد يرجع 429 عند بلوغ الحد. وجود اسم المتغير لا يثبت الاتصال.
 3. إذا تُرك `VISION_MODEL` أو `CHAT_MODEL` فارغًا، يستخدم الخادم النموذج الافتراضي للمزوّد.
 4. لتعطيل المحادثة العامة مع إبقاء أوامر الجلسة والكاميرا تعمل: `CHAT_PROVIDER=off`.
 
@@ -379,11 +379,11 @@ docker compose up --build
 
 يستخدم نشر Railway خدمتين: Backend خاص وFrontend عام، مع تمرير `/api` و`/health` و`/ws` عبر Nginx من نفس نطاق الواجهة.
 
-- يمكن تشغيل الرؤية عبر OpenRouter + Qwen3-VL باستخدام `OPENROUTER_API_KEY` المحفوظ كسر في Backend، مع فصل إعداد المحادثة العامة.
-- إعداد الرؤية المقترح: `VISION_PROVIDER=openrouter` و`VISION_MODEL=qwen/qwen3-vl-8b-instruct` و`DEMO_MODE=false`. لا يحتاج إلى Ollama أو تنزيل نموذج.
+- يمكن تشغيل الرؤية عبر OpenRouter + Nemotron 3.5 Super VL باستخدام `OPENROUTER_API_KEY` المحفوظ كسر في Backend، مع فصل إعداد المحادثة العامة.
+- إعداد الرؤية المقترح: `VISION_PROVIDER=openrouter` و`VISION_MODEL=nvidia/nemotron-3.5-super-vl:free` و`DEMO_MODE=false`. لا يحتاج إلى Ollama أو تنزيل نموذج.
 - المصادقة الحالية على `main` تستخدم Cookie آمنًا HttpOnly، وتُفعّل عبر `AUTH_REQUIRED=true` و`JWT_SECRET_KEY` وبيانات المالك الأول الموضحة في دليل Railway.
 - يستخدم الخادم Volume دائمًا في `/app/data/sessions` لقاعدة SQLite. التخزين مناسب لنسخة Backend واحدة، وليس لتشغيل عدة نسخ متزامنة.
 - بيانات الصيانة التسع ما زالت `sample`؛ لا تستخدم عزمًا أو إجراءً صناعيًا قبل استيراد كتيب OEM مرخّص ومراجعته من شخصين مستقلين.
 - اختبارات الكاميرا والميكروفون الآلية تستخدم أجهزة وهمية. اختبار الأجهزة الفعلية موثق في `docs/REAL_DEVICE_TEST_CHECKLIST_AR.md`.
 
-التفاصيل في [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md) و[دليل إعداد Qwen3-VL عبر OpenRouter API](docs/OPENROUTER_QWEN3_VL_SETUP_AR.md).
+التفاصيل في [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md) و[دليل إعداد Nemotron 3.5 Super VL عبر OpenRouter API](docs/OPENROUTER_QWEN3_VL_SETUP_AR.md).
