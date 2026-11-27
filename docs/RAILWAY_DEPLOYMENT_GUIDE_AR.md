@@ -31,7 +31,7 @@
 | `ENVIRONMENT` | `production` |
 | `PORT` | `8000` |
 | `CORS_ORIGINS` | عنوان الواجهة بعد إنشائه، مثل `https://<frontend-domain>` |
-| `VISION_PROVIDER` | `openrouter` لاستخدام Qwen3-VL عبر API، أو `cohere` / `openai` |
+| `VISION_PROVIDER` | `openrouter` لاستخدام NVIDIA Nemotron 3.5 Super VL المجاني عبر API، أو `cohere` / `openai` |
 | `CHAT_PROVIDER` | `cohere` عند توفر مفتاح Cohere، أو `off` لتعطيل المحادثة العامة |
 | `DEMO_MODE` | `false` |
 | `MANUAL_SEARCH_ENABLED` | `false` |
@@ -105,7 +105,7 @@ BACKEND_UPSTREAM=http://<backend-private-domain>:8000
 
 ## 3. تفعيل مزود الرؤية عبر API
 
-يدعم MISBAR الآن Qwen3-VL عبر OpenRouter باستخدام واجهة OpenAI-compatible. لا يحتاج Backend إلى تثبيت Ollama أو تنزيل أوزان النموذج؛ يرسل الصورة إلى خدمة API من الخادم فقط.
+يدعم MISBAR الآن NVIDIA Nemotron 3.5 Super VL المجاني عبر OpenRouter باستخدام واجهة OpenAI-compatible. لا يحتاج Backend إلى تثبيت Ollama أو تنزيل أوزان النموذج؛ يرسل الصورة إلى خدمة API من الخادم فقط.
 
 أضف المتغيرات التالية في Backend داخل Railway أو في ملف `.env` المحلي:
 
@@ -113,7 +113,7 @@ BACKEND_UPSTREAM=http://<backend-private-domain>:8000
 VISION_PROVIDER=openrouter
 OPENROUTER_API_KEY=<secret>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-VISION_MODEL=qwen/qwen3-vl-8b-instruct
+VISION_MODEL=nvidia/nemotron-3.5-super-vl:free
 VISION_TIMEOUT_SECONDS=60
 DEMO_MODE=false
 ```
@@ -126,7 +126,7 @@ DEMO_MODE=false
 
 الطلب يذهب إلى `POST https://openrouter.ai/api/v1/chat/completions` مع صورة Base64 واسم النموذج. لا توجد خدمة Ollama أو ملفات نماذج محلية مطلوبة.
 
-**التكلفة:** Qwen3-VL-8B عبر OpenRouter ليس مجانيًا حاليًا؛ التسعير المنشور هو 0.117 دولار/مليون رمز إدخال و0.455 دولار/مليون رمز إخراج، وقد يتغير. النماذج المجانية في OpenRouter لها حدود يومية/دقيقة وقد لا تكون Qwen3-VL نفسه. راجع صفحة السعر قبل الاستخدام المكثف.
+**التكلفة:** NVIDIA Nemotron 3.5 Super VL المجاني-8B عبر OpenRouter ليس مجانيًا حاليًا؛ التسعير المنشور هو 0.117 دولار/مليون رمز إدخال و0.455 دولار/مليون رمز إخراج، وقد يتغير. النماذج المجانية في OpenRouter لها حدود يومية/دقيقة وقد لا تكون NVIDIA Nemotron 3.5 Super VL المجاني نفسه. راجع صفحة السعر قبل الاستخدام المكثف.
 
 بعد الإعداد، افحص `GET /health` واختبر صورة فعلية معروفة. وجود المفتاح أو نجاح الاختبارات الوهمية لا يثبت نجاح الاتصال أو دقة التعرف. لا ترسل صور المعدات إلى مزود خارجي قبل مراجعة سياسة الخصوصية.
 
