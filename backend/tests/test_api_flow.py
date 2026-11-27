@@ -4,7 +4,13 @@ from app.main import app  # noqa: F401  (ensures app imports cleanly in tests)
 def _create(client, equipment: str = "Caterpillar C15 ACERT") -> dict:
     response = client.post("/api/v1/sessions", json={"equipment_model": equipment})
     assert response.status_code == 201, response.text
-    return response.json()
+    pending = response.json()
+    confirmed = client.post(
+        "/api/v1/chat",
+        json={"message": "تأكيد المعدة", "session_id": pending["session_id"]},
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    return client.get(f"/api/v1/sessions/{pending['session_id']}").json()
 
 
 def _identify(client, session_id: str, payload: dict | None = None) -> dict:
