@@ -626,8 +626,34 @@ class ChatService:
             "no",
         }
 
-        is_confirm = normalized in {normalize_arabic(item) for item in confirm_phrases}
-        is_reject = normalized in {normalize_arabic(item) for item in reject_phrases}
+        is_confirm = normalized.casefold() in {
+            normalize_arabic(item).casefold() for item in confirm_phrases
+        }
+        is_reject = normalized.casefold() in {
+            normalize_arabic(item).casefold() for item in reject_phrases
+        }
+        corrected_model = self._find_equipment(message)
+        correction_intent = bool(
+            tokens & {"بل", "اقصد", "اقصد ان", "المعده", "المعده هي"}
+        ) or "المعدة هي" in message
+        if correction_intent and corrected_model and corrected_model != session.equipment_model:
+            previous = session.equipment_model
+            session.equipment_model = corrected_model
+            self.store.audit(
+                session,
+                "equipment_candidate_corrected",
+                f"صحح المستخدم المعدة المقترحة من {previous} إلى {corrected_model}؛ التأكيد ما زال مطلوباً.",
+            )
+            return ChatResponse(
+                message_ar=(
+                    f"تم تحديث النتيجة المقترحة إلى {corrected_model}. "
+                    "لم يتم تفعيلها بعد؛ أرسل «تأكيد المعدة» لقبولها أو أعد التصوير."
+                ),
+                source="vision",
+                session=self._safe_session(session),
+                quick_replies=["تأكيد المعدة", "إعادة التصوير"],
+            )
+
         if is_confirm:
             session.state = SessionState.CREATED
             self.store.audit(
