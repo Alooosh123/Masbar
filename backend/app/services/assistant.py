@@ -3,7 +3,6 @@ from __future__ import annotations
 import secrets
 
 from app.adapters.vision.base import VisionResult
-from app.adapters.vision.mock import MockVisionAdapter
 from app.core.config import Settings
 from app.domain.api_models import (
     ARVisualCue,
