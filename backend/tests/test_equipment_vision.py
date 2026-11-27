@@ -143,3 +143,65 @@ def test_equipment_vision_rejects_model_outside_closed_catalog(monkeypatch):
 
     assert result.equipment_model is None
     assert result.error == "unsupported_equipment_result"
+
+
+
+def test_openrouter_equipment_identification_uses_openai_compatible_api(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "choices": [{
+                    "message": {
+                        "content": json.dumps({
+                            "equipment_model": "Siemens S7-1200 Control Panel",
+                            "confidence": 0.91,
+                        })
+                    }
+                }]
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            captured["timeout"] = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, endpoint, headers, json):
+            captured["endpoint"] = endpoint
+            captured["headers"] = headers
+            captured["payload"] = json
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        "app.adapters.vision.equipment.httpx.AsyncClient",
+        FakeAsyncClient,
+    )
+    adapter = EquipmentVisionAdapter(
+        provider="openrouter",
+        api_key="test-openrouter-key",
+        base_url="https://openrouter.ai/api/v1",
+        model="qwen/qwen3-vl-8b-instruct",
+    )
+    image = base64.b64encode(b"fake-image").decode("ascii")
+
+    result = asyncio.run(
+        adapter.identify(image, ["Siemens S7-1200 Control Panel"])
+    )
+
+    assert result.equipment_model == "Siemens S7-1200 Control Panel"
+    assert result.provider == "openrouter:qwen/qwen3-vl-8b-instruct"
+    assert captured["endpoint"] == "https://openrouter.ai/api/v1/chat/completions"
+    assert captured["headers"]["Authorization"] == "Bearer test-openrouter-key"
+    assert captured["payload"]["model"] == "qwen/qwen3-vl-8b-instruct"
+    assert captured["payload"]["messages"][1]["content"][1]["image_url"]["url"].startswith(
+        "data:image/jpeg;base64,"
+    )
