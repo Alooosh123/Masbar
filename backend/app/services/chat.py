@@ -22,10 +22,12 @@ from app.safety.guard import SafetyViolation
 from app.safety.output import sanitize_user_facing_text
 from app.services.assistant import AssistantService
 from app.services.session import Session, SessionNotFound, SessionStore
+from app.adapters.vision.equipment import EquipmentVisionAdapter
 
 logger = logging.getLogger(__name__)
 
 _STATE_AR: dict[SessionState, str] = {
+    SessionState.PENDING_CONFIRMATION: "بانتظار تأكيد المعدة",
     SessionState.CREATED: "بانتظار تحديد القطعة",
     SessionState.IDENTIFIED: "تم التحديد",
     SessionState.AWAITING_LOTO: "بانتظار تأكيد العزل",
@@ -197,12 +199,14 @@ class ChatService:
         store: SessionStore,
         chat: CohereChatAdapter | None,
         settings: Settings,
+        equipment_vision: EquipmentVisionAdapter | None = None,
     ):
         self.assistant = assistant
         self.kb = kb
         self.store = store
         self.chat = chat
         self.settings = settings
+        self.equipment_vision = equipment_vision
 
     # ------------------------------------------------------------------ public
     async def handle(self, req: ChatRequest) -> ChatResponse:
@@ -210,25 +214,14 @@ class ChatService:
         session = self._load_session(req.session_id)
         has_image = bool(req.image_base64)
 
-        if not message and not has_image:
-            return self._welcome()
+        if has_image:
+            return await self._identify_equipment(req.image_base64)
 
-        # Explicit UI modes win over text heuristics.
-        if has_image and req.mode == "identify":
-            return await self._identify(req, session, message, from_image=True)
-        if has_image and req.mode == "describe":
-            return ChatResponse(
-                message_ar=(
-                    "وصف الصور العام خارج نطاق مسبار. أرسل صورة لتحديد إحدى المعدات المدعومة "
-                    "أو أعد التقاط صورة أوضح."
-                ),
-                source="system",
-                session=self._safe_session(session),
-                equipment=self.assistant.list_equipment() if session is None else [],
-                quick_replies=["ما المعدات المدعومة؟", "افتح الكاميرا"],
-                abstained=True,
-                abstention_reason_ar="الصورة لم تُرسل في وضع تحديد المعدات.",
-            )
+        if session is not None and session.state == SessionState.PENDING_CONFIRMATION:
+            return self._handle_pending_equipment_confirmation(session, message)
+
+        if not message:
+            return self._welcome()
 
         if self._is_close_camera(message):
             return ChatResponse(
@@ -242,13 +235,12 @@ class ChatService:
         if self._is_open_camera(message):
             return ChatResponse(
                 message_ar=(
-                    "فتحت الكاميرا داخل المحادثة. وجّهها نحو القطعة، ثم اختر "
-                    "«التقاط ووصف» لوصف عام، أو «التقاط وتحديد» للتحقق من قاعدة المعرفة."
+                    "فتحت الكاميرا لتحديد نوع المعدة المدعومة. التقط صورة واضحة، راجع النتيجة، ثم أكدها."
                 ),
                 source="system",
                 action="open_camera",
                 session=self._safe_session(session),
-                quick_replies=["حدد القطعة", "ما المعدات المتاحة؟"],
+                quick_replies=["التقط صورة للمعدة"],
             )
 
         if self._is_stop_listening(message):
@@ -473,6 +465,20 @@ class ChatService:
         )
 
     def _start_session(self, message: str, session: Session | None) -> ChatResponse:
+        return ChatResponse(
+            message_ar=(
+                "لا تبدأ جلسة الصيانة باختيار يدوي. التقط صورة للمعدة أولاً؛ "
+                "يمكنك تصحيح نتيجة التعرف يدوياً بعد أن يعرضها النظام للتأكيد."
+            ),
+            source="system",
+            session=self._safe_session(session),
+            action="open_camera",
+            quick_replies=["افتح الكاميرا"],
+            abstained=True,
+            abstention_reason_ar="يجب أن يبدأ تحديد المعدة بالصورة.",
+        )
+
+    def _start_session_legacy_disabled(self, message: str, session: Session | None) -> ChatResponse:
         equipment_name = self._find_equipment(message)
         if equipment_name is None:
             if "320d" in normalize_arabic(message):
@@ -508,6 +514,152 @@ class ChatService:
                 "افتح الكاميرا",
                 "ما المعدات المتاحة؟",
             ],
+        )
+
+    async def _identify_equipment(self, image_base64: str | None) -> ChatResponse:
+        equipment = self.assistant.list_equipment()
+        if self.equipment_vision is None:
+            return ChatResponse(
+                message_ar=(
+                    "التعرف البصري الحقيقي على نوع المعدة غير مهيأ حالياً. "
+                    "لن أستخدم وضع المحاكاة لتخمين هويتها."
+                ),
+                source="system",
+                equipment=equipment,
+                quick_replies=["حاول لاحقاً"],
+                abstained=True,
+                abstention_reason_ar="مزود التعرف البصري الحقيقي غير متاح.",
+            )
+
+        try:
+            result = await self.equipment_vision.identify(
+                image_base64, self.kb.equipment_names()
+            )
+        except Exception:
+            logger.exception("Equipment image identification failed")
+            return ChatResponse(
+                message_ar="تعذر معالجة الصورة بسبب عطل تقني. لم يتم إنشاء جلسة صيانة؛ أعد المحاولة لاحقاً.",
+                source="system",
+                equipment=equipment,
+                quick_replies=["أعد المحاولة", "افتح الكاميرا"],
+                abstained=True,
+                abstention_reason_ar="فشل تقني أثناء معالجة صورة المعدة.",
+            )
+
+        if result.error or not result.equipment_model:
+            reason = result.error or "no_equipment_match"
+            if reason == "invalid_or_oversized_image":
+                message = "الصورة غير صالحة أو حجمها أكبر من الحد المسموح. التقط صورة JPEG أو PNG أو WebP أصغر."
+                abstention = "ملف الصورة غير صالح أو يتجاوز الحجم المسموح."
+            elif reason.startswith("vision_provider"):
+                message = "تعذر الاتصال بمزود التعرف البصري. لم أخمّن نوع المعدة."
+                abstention = "تعطل مزود التعرف البصري."
+            else:
+                message = "لم أتمكن من مطابقة الصورة مع المعدات المدعومة. حسّن الإضاءة أو أعد التصوير."
+                abstention = "لم تنتج الصورة تطابقاً موثوقاً مع قائمة المعدات."
+            return ChatResponse(
+                message_ar=message,
+                source="system",
+                equipment=equipment,
+                quick_replies=["أعد التصوير", "افتح الكاميرا"],
+                abstained=True,
+                abstention_reason_ar=abstention,
+            )
+
+        if result.confidence < self.settings.min_visual_confidence:
+            return ChatResponse(
+                message_ar=(
+                    f"هناك احتمال أن تكون المعدة {result.equipment_model}، لكن الثقة "
+                    f"({result.confidence:.0%}) أقل من حد القبول. لا أستطيع تأكيدها؛ أعد التصوير."
+                ),
+                source="system",
+                equipment=equipment,
+                quick_replies=["أعد التصوير", "افتح الكاميرا"],
+                abstained=True,
+                abstention_reason_ar="ثقة التعرف على نوع المعدة أقل من الحد المعتمد.",
+            )
+
+        session = self.store.create(result.equipment_model)
+        session.state = SessionState.PENDING_CONFIRMATION
+        self.store.audit(
+            session,
+            "equipment_identification_proposed",
+            f"اقترح التعرف البصري {result.equipment_model} بثقة {result.confidence:.0%} عبر {result.provider}",
+        )
+        return ChatResponse(
+            message_ar=(
+                f"نتيجة التعرف من الصورة: **{result.equipment_model}** "
+                f"(الثقة {result.confidence:.0%}).\n"
+                "لم أفعّل سياق الصيانة بعد. راجع النتيجة واضغط «تأكيد المعدة» "
+                "إذا كانت صحيحة، أو اختر «تصحيح المعدة» إذا كان هذا تطابقاً خاطئاً."
+            ),
+            source="system",
+            session=self.assistant.get_session(session.id),
+            equipment=equipment,
+            quick_replies=[
+                "تأكيد المعدة",
+                "تصحيح المعدة إلى Caterpillar C15 ACERT",
+                "تصحيح المعدة إلى Siemens S7-1200 Control Panel",
+                "إعادة التصوير",
+            ],
+        )
+
+    def _handle_pending_equipment_confirmation(
+        self, session: Session, message: str
+    ) -> ChatResponse:
+        normalized = normalize_arabic(message).strip()
+        if normalized in {"تأكيد المعدة", "اكد المعده", "نعم اكد", "صحيح", "نعم"}:
+            session.state = SessionState.CREATED
+            self.store.audit(
+                session,
+                "equipment_identification_confirmed",
+                f"أكد المستخدم هوية المعدة: {session.equipment_model}",
+            )
+            return ChatResponse(
+                message_ar=(
+                    f"تم تأكيد المعدة: {session.equipment_model}. "
+                    "أصبح سياق هذه المعدة فعالاً لهذه الجلسة. يمكنك الآن طرح سؤال صيانة."
+                ),
+                source="system",
+                session=self.assistant.get_session(session.id),
+                quick_replies=["اسأل عن الصيانة", "افتح الكاميرا"],
+            )
+
+        if normalized.startswith("تصحيح المعده الى ") or normalized.startswith("تصحيح المعده إلى "):
+            selected = self._find_equipment(message)
+            if selected is not None:
+                session.equipment_model = selected
+                self.store.audit(
+                    session,
+                    "equipment_identification_corrected",
+                    f"صحح المستخدم نتيجة التعرف إلى: {selected}",
+                )
+                return ChatResponse(
+                    message_ar=f"تم تحديث الاختيار إلى {selected}. أكد المعدة إذا كان هذا هو الطراز الصحيح.",
+                    source="system",
+                    session=self.assistant.get_session(session.id),
+                    quick_replies=["تأكيد المعدة", "إعادة التصوير"],
+                )
+
+        if "اعاده التصوير" in normalized or "اعد التصوير" in normalized or "غير صحيحه" in normalized:
+            return ChatResponse(
+                message_ar="حسناً. التقط صورة جديدة واضحة للمعدة؛ لن أستخدم النتيجة السابقة.",
+                source="system",
+                action="open_camera",
+                session=self._safe_session(session),
+                quick_replies=["التقاط صورة جديدة"],
+            )
+
+        return ChatResponse(
+            message_ar=(
+                f"المعدة المقترحة هي {session.equipment_model}. "
+                "أكدها أولاً أو صحح الاختيار؛ لن أبحث في أي دليل قبل التأكيد."
+            ),
+            source="system",
+            session=self._safe_session(session),
+            quick_replies=["تأكيد المعدة", "إعادة التصوير"],
+            abstained=True,
+            abstention_reason_ar="هوية المعدة ما زالت بانتظار تأكيد المستخدم.",
         )
 
     # ------------------------------------------------------------- identification
