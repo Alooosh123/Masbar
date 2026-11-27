@@ -139,7 +139,7 @@ def test_maintenance_question_without_confirmed_equipment_abstains(client, monke
 
 def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
     from app.deps import get_chat_service
-    from app.services.chat import ChatService
+    from app.domain.api_models import SessionCreateRequest
 
     service = get_chat_service()
     service.settings.manual_search_enabled = True
@@ -198,9 +198,9 @@ def test_manual_rag_without_valid_synthesis_abstains_instead_of_showing_raw_chun
     getter.cache_clear = lambda: None
     monkeypatch.setattr(app.deps, "get_manual_library", getter)
 
-    session = client.post(
-        "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
-    ).json()
+    session = service.assistant.create_session(
+        SessionCreateRequest(equipment_model="Siemens S7-1200 Control Panel")
+    ).model_dump()
     confirmed = _chat(client, "تأكيد المعدة", session_id=session["session_id"])
     assert confirmed["session"]["state"] == "CREATED"
     body = _chat(
