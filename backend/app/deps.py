@@ -4,7 +4,6 @@ import logging
 from app.adapters.chat.factory import build_chat_adapter
 from app.adapters.tts.edge import EdgeTtsAdapter
 from app.adapters.vision.factory import build_vision_adapter
-from app.adapters.vision.mock import MockVisionAdapter
 from app.core.config import Settings, get_settings
 from app.knowledge.loader import KnowledgeBase, load_knowledge_base
 from app.knowledge.manual_index import ManualLibrary
@@ -95,7 +94,6 @@ def get_assistant() -> AssistantService:
         retriever=get_retriever(),
         store=get_store(),
         vision=build_vision_adapter(kb, settings),
-        fallback_vision=MockVisionAdapter(kb),
         settings=settings,
     )
 
