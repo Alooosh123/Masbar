@@ -78,7 +78,7 @@ def test_openrouter_allows_explicit_model_override(kb):
     settings = Settings(
         vision_provider="openrouter",
         openrouter_api_key="test-openrouter-key",
-        vision_model="nvidia/nemotron-3.5-super-vl:free",
+        vision_model="qwen/qwen3-vl-8b-instruct",
     )
     adapter = build_vision_adapter(kb, settings)
-    assert adapter.model == "nvidia/nemotron-3.5-super-vl:free"
+    assert adapter.model == "qwen/qwen3-vl-8b-instruct"
