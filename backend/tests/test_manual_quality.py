@@ -167,7 +167,7 @@ def test_manual_rag_removes_forged_source_ids_and_keeps_real_citation(tmp_path, 
         async def reply(self, **kwargs):
             captured.update(kwargs)
             return ChatReply(
-                text="يذكر المقتطف موضع مانع التسرب بالرقم 105. [S1] ادعاء بمصدر غير موجود [S99]",
+                text="يذكر الدليل أن CPU 1214C من عائلة SIMATIC S7-1200. [S1] ادعاء بمصدر غير موجود [S99]",
                 provider="test",
             )
 
@@ -181,18 +181,21 @@ def test_manual_rag_removes_forged_source_ids_and_keeps_real_citation(tmp_path, 
 
     try:
         with TestClient(app) as client:
+            session = client.post(
+                "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+            ).json()
             response = client.post(
                 "/api/v1/chat",
-                json={"message": "ابحث في الكتيبات عن مانع التسرب position 105"},
+                json={"message": "ابحث في الكتيبات عن CPU 1214C", "session_id": session["session_id"]},
             )
 
         assert response.status_code == 200, response.text
         body = response.json()
-        assert body["source"] == "general"
+        assert body["source"] == "assistant"
         assert "[S1]" in body["message_ar"]
         assert "[S99]" not in body["message_ar"]
-        assert "96546866 0407" in body["message_ar"]
-        assert "الصفحة المطبوعة 9" in body["message_ar"]
+        assert "A5E02486680-AQ" in body["message_ar"]
+        assert "صفحة PDF 1132" in body["message_ar"]
         assert "shaft seal" in captured["manual_context"].lower()
     finally:
         reset_caches()
@@ -205,7 +208,7 @@ def test_manual_rag_prompt_treats_retrieved_text_as_untrusted():
     assert "لا تضف حقائق أو أرقامًا أو قيمًا" in MANUAL_RAG_SYSTEM_PROMPT
 
 
-def test_torque_question_stays_retrieval_only_without_model_generation(tmp_path, monkeypatch):
+def test_torque_question_abstains_when_synthesis_is_not_grounded(tmp_path, monkeypatch):
     _seed_bilingual_manuals(tmp_path)
     called = {"value": False}
 
@@ -224,17 +227,22 @@ def test_torque_question_stays_retrieval_only_without_model_generation(tmp_path,
 
     try:
         with TestClient(app) as client:
+            session = client.post(
+                "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+            ).json()
+            session_id = session["session_id"]
             response = client.post(
                 "/api/v1/chat",
-                json={"message": "ابحث في الكتيبات عن عزم شد shaft seal"},
+                json={"message": "ابحث في الكتيبات عن عزم CPU 1214C", "session_id": session_id},
             )
 
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["source"] == "system"
-        assert "المقتطف:" in body["message_ar"]
+        assert body["abstained"] is True
+        assert "المقتطف:" not in body["message_ar"]
         assert "9999" not in body["message_ar"]
-        assert called["value"] is False
+        assert called["value"] is True
     finally:
         reset_caches()
         get_settings.cache_clear()
@@ -260,15 +268,20 @@ def test_manual_rag_rejects_numeric_claims_not_found_in_question_or_evidence(tmp
 
     try:
         with TestClient(app) as client:
+            session = client.post(
+                "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+            ).json()
+            session_id = session["session_id"]
             response = client.post(
                 "/api/v1/chat",
-                json={"message": "Search manuals for shaft seal"},
+                json={"message": "Search manuals for CPU 1214C", "session_id": session_id},
             )
 
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["source"] == "system"
-        assert "المقتطف:" in body["message_ar"]
+        assert body["abstained"] is True
+        assert "المقتطف:" not in body["message_ar"]
         assert "9999" not in body["message_ar"]
     finally:
         reset_caches()
