@@ -112,6 +112,9 @@ function toAssistantMessage(response: ChatResponse): UiMessage {
 }
 
 function quickRepliesForSession(session: AssistantResponse): string[] {
+  if (session.state === "PENDING_CONFIRMATION") {
+    return ["تأكيد المعدة", "إعادة التصوير"];
+  }
   if (session.state === "AWAITING_LOTO") {
     return ["تحذيرات السلامة", "كيف أكمل العزل؟", "اعرض القطع"];
   }
@@ -165,25 +168,11 @@ function equipmentGlyph(name: string) {
   return <EngineIcon size={21} />;
 }
 
-function EquipmentStrip({
-  items,
-  busy,
-  onPick,
-}: {
-  items: EquipmentSummary[];
-  busy: boolean;
-  onPick: (name: string) => void;
-}) {
+function EquipmentStrip({ items }: { items: EquipmentSummary[] }) {
   return (
-    <div className="chat-equipment-grid">
+    <div className="chat-equipment-grid" aria-label="المعدات المدعومة">
       {items.map((item) => (
-        <button
-          key={item.equipment_family}
-          type="button"
-          className="chat-equipment-card"
-          onClick={() => onPick(item.equipment_family)}
-          disabled={busy}
-        >
+        <div key={item.equipment_family} className="chat-equipment-card">
           <span className="chat-equipment-icon">{equipmentGlyph(item.equipment_family)}</span>
           <span className="chat-equipment-copy">
             <strong>{item.equipment_family}</strong>
@@ -191,7 +180,7 @@ function EquipmentStrip({
               {item.manufacturer} · {item.component_count} قطع
             </small>
           </span>
-        </button>
+        </div>
       ))}
     </div>
   );
@@ -934,11 +923,7 @@ export function ChatScreen() {
                   )}
 
                   {message.equipment && message.equipment.length > 0 && (
-                    <EquipmentStrip
-                      items={message.equipment}
-                      busy={busy}
-                      onPick={(name) => void send(`ابدأ جلسة على ${name}`)}
-                    />
+                    <EquipmentStrip items={message.equipment} />
                   )}
 
                   {message.components && message.components.length > 0 && (
