@@ -144,6 +144,11 @@ class AssistantService:
     # ----------------------------------------------------------------- identify
     async def identify(self, session_id: str, req: IdentifyRequest) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            raise SafetyViolation(
+                "equipment_confirmation_required",
+                "أكد هوية المعدة أولاً قبل تحديد أي مكون.",
+            )
         self._reset_identification(session)
         self.store.audit(session, "identification_started", "بدأت محاولة تحديد القطعة")
 
@@ -275,6 +280,11 @@ class AssistantService:
         self, session_id: str, req: LotoConfirmRequest
     ) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            raise SafetyViolation(
+                "equipment_confirmation_required",
+                "أكد هوية المعدة أولاً قبل أي إجراء سلامة.",
+            )
         record = self._record(session)
         if record is None:
             raise SafetyViolation(
@@ -349,6 +359,11 @@ class AssistantService:
         self, session_id: str, req: StepActionRequest
     ) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            raise SafetyViolation(
+                "equipment_confirmation_required",
+                "أكد هوية المعدة أولاً قبل طلب أي خطوة.",
+            )
         record = self._record(session)
         if record is None:
             raise SafetyViolation(
@@ -413,6 +428,14 @@ class AssistantService:
     # --------------------------------------------------------------------- ask
     def ask(self, session_id: str, req: AskRequest) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            message = "هوية المعدة ما زالت بانتظار تأكيدك. لا أستطيع البحث في دليلها قبل التأكيد."
+            return self._build_response(
+                session,
+                message=message,
+                abstained=True,
+                abstention_reason_ar="لم يؤكد المستخدم هوية المعدة بعد.",
+            )
         expanded = self.retriever.expand(req.transcript)
         intent = expanded.intent
         record = self._record(session)
