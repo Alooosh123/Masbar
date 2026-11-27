@@ -286,10 +286,15 @@ class ChatService:
         # API access. The ingestion route independently enforces owner/admin roles.
         if self._is_manual_search(message):
             if not self.settings.manual_search_available:
-                return self._system_reply(
-                    "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. فعّله فقط في بيئة محلية/خاصة، "
-                    "ولا تعرض الخادم للإنترنت قبل إضافة المصادقة والصلاحيات.",
-                    session,
+                return ChatResponse(
+                    message_ar=(
+                        "البحث في الكتيبات غير متاح حالياً. لم أقدم معلومات صيانة غير موثقة."
+                    ),
+                    source="system",
+                    session=self._safe_session(session),
+                    quick_replies=self._base_quick_replies(session),
+                    abstained=True,
+                    abstention_reason_ar="خدمة البحث في الكتيبات غير مفعلة.",
                 )
             return await self._manual_search_reply(session, message)
 
@@ -740,7 +745,7 @@ class ChatService:
         # Operationally sensitive queries remain retrieval-only. The RAG model
         # may explain descriptive facts, but it never turns these excerpts into
         # executable torque, isolation, wiring, or maintenance instructions.
-        if self.chat is None or self._is_restricted_manual_rag_query(query):
+        if self.chat is None or self._is_restricted_manual_rag_query(query) or self._is_maintenance_query(query):
             return self._manual_snippets_reply(session, query, hits)
 
         manual_context = self._manual_rag_context(hits)
@@ -998,42 +1003,18 @@ class ChatService:
     async def _general_reply(
         self, req: ChatRequest, session: Session | None, message: str
     ) -> ChatResponse:
-        if self.chat is None:
-            return self._system_reply(
-                "المحادثة العامة غير مهيأة على الخادم. أستطيع تنفيذ أوامر الكاميرا "
-                "والميكروفون وبدء الجلسات وعرض القطع والسلامة والخطوات.",
-                session,
-            )
-
-        reply = await self.chat.reply(
-            message=message,
-            history=[turn.model_dump() for turn in req.history],
-            context=self._context(session),
-        )
-        safe_text = sanitize_user_facing_text(reply.text)
-        if reply.error or not safe_text:
-            logger.warning(
-                "General chat unavailable or rejected: %s",
-                reply.error or "unsafe_or_invalid_output",
-            )
-            return ChatResponse(
-                message_ar=(
-                    "لم أتمكن من إنشاء إجابة يمكن التحقق من سلامة عرضها الآن. "
-                    "أعد صياغة السؤال أو استخدم أوامر تحديد المعدة والقطعة."
-                ),
-                source="system",
-                session=self._safe_session(session),
-                quick_replies=self._base_quick_replies(session),
-                abstained=True,
-                abstention_reason_ar="تعذر التحقق من مخرجات نموذج المحادثة.",
-            )
-
-        quick = list(self._base_quick_replies(session))
+        # General-purpose conversation is intentionally outside the locked MVP.
+        # Do not call the LLM for unrelated requests.
         return ChatResponse(
-            message_ar=safe_text,
-            source="general",
+            message_ar=(
+                "هذا الطلب خارج نطاق مسبار. أستطيع تحديد المعدات المدعومة من الصور، "
+                "والبحث في دليل الصيانة المطابق، أو الامتناع عندما لا تتوفر أدلة كافية."
+            ),
+            source="system",
             session=self._safe_session(session),
-            quick_replies=quick,
+            quick_replies=self._base_quick_replies(session),
+            abstained=True,
+            abstention_reason_ar="الطلب لا يندرج ضمن ميزات MVP المعتمدة.",
         )
 
     # ------------------------------------------------------------------ helpers
