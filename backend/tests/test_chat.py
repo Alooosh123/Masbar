@@ -172,7 +172,7 @@ def test_image_defaults_to_identification_not_general_description(client, monkey
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "", image_base64="AA==")
     assert body["source"] == "system"
-    assert len(body["equipment"]) == 3
+    assert len(body["equipment"]) == 2
     assert "اختر المعدة" in body["message_ar"]
     assert fake.calls == []
 
