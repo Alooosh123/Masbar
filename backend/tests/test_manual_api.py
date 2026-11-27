@@ -11,15 +11,15 @@ from app.main import app
 
 def _seed_manual_index(index_dir):
     document = ManualDocument(
-        doc_id="grundfos-cr5-test",
-        title="Service instructions CR 1, CR 3 and CR 5",
-        manufacturer="Grundfos",
-        equipment_models=["Grundfos CR 5 Model A"],
-        model_codes=["CR 5 Model A"],
-        document_number="96546866 0407",
-        revision="2007-04",
+        doc_id="siemens-s7-1200-test",
+        title="S7-1200 System Manual Test Fixture",
+        manufacturer="Siemens",
+        equipment_models=["Siemens S7-1200 Control Panel"],
+        model_codes=["S7-1200"],
+        document_number="A5E-TEST-001",
+        revision="TEST",
         language="en",
-        source_url="https://www.grundfos.com/",
+        source_url="https://www.siemens.com/",
         sha256="b" * 64,
         page_count=19,
         text_pages=1,
@@ -36,10 +36,10 @@ def _seed_manual_index(index_dir):
             pdf_page_number=9,
             printed_page_number=9,
             chunk_index=0,
-            section_title="Replacement of shaft seal",
+            section_title="CPU technical specifications",
             text=(
-                "Replacement of shaft seal. The shaft seal is identified as position "
-                "105. Refer to the correct model and revision before any work."
+                "CPU 1214C technical specifications. The controller belongs to the "
+                "SIMATIC S7-1200 family. Verify the exact model and revision before work."
             ),
         )
     ]
@@ -59,12 +59,12 @@ def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, mo
         documents = client.get("/api/v1/manuals")
         search = client.get(
             "/api/v1/manuals/search",
-            params={"q": "shaft seal replacement", "equipment_model": "Grundfos CR 5 Model A"},
+            params={"q": "CPU 1214C technical specifications", "equipment_model": "Siemens S7-1200 Control Panel"},
         )
         health = client.get("/health")
 
     assert documents.status_code == 200
-    assert documents.json()[0]["document_number"] == "96546866 0407"
+    assert documents.json()[0]["document_number"] == "A5E-TEST-001"
     assert search.status_code == 200
     body = search.json()
     assert body["retrieval_method"] == "bm25_lexical"
@@ -87,17 +87,19 @@ def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path,
     reset_caches()
 
     with TestClient(app) as client:
+        session = client.post(
+            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+        ).json()
         response = client.post(
             "/api/v1/chat",
-            json={"message": "ابحث في الكتيبات عن shaft seal"},
+            json={"message": "ابحث في الكتيبات عن CPU 1214C", "session_id": session["session_id"]},
         )
 
     assert response.status_code == 200
     body = response.json()
     assert body["source"] == "system"
-    assert "96546866 0407" in body["message_ar"]
-    assert "الصفحة المطبوعة 9" in body["message_ar"]
-    assert "لا تنفذ خطوة صيانة" in body["message_ar"]
+    assert body["abstained"] is True
+    assert "خدمة صياغة الإجابة" in body["message_ar"]
 
 
 def test_manual_search_is_disabled_by_default_without_authentication(tmp_path, monkeypatch):
@@ -155,7 +157,7 @@ def test_manual_rag_passes_retrieved_sources_to_generation_and_appends_citations
         async def reply(self, **kwargs):
             captured.update(kwargs)
             return ChatReply(
-                text="يعرّف المقتطف موضع مانع التسرب بالرقم 105. [S1]",
+                text="يوضح الدليل أن CPU 1214C جزء من عائلة S7-1200. [S1]",
                 provider="test",
             )
 
@@ -164,20 +166,24 @@ def test_manual_rag_passes_retrieved_sources_to_generation_and_appends_citations
     reset_caches()
 
     with TestClient(app) as client:
+        session = client.post(
+            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+        ).json()
+        session_id = session["session_id"]
         response = client.post(
             "/api/v1/chat",
-            json={"message": "اسأل الكتيبات عن shaft seal position 105"},
+            json={"message": "اسأل الكتيبات عن CPU 1214C technical specifications", "session_id": session_id},
         )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["source"] == "general"
+    assert body["source"] == "assistant"
     assert "[S1]" in body["message_ar"]
     assert "96546866 0407" in body["message_ar"]
     assert "الصفحة المطبوعة 9" in body["message_ar"]
     assert "manual_context" in captured
-    assert "position 105" in captured["manual_context"]
-    assert captured["message"] == "shaft seal position 105"
+    assert "CPU 1214C" in captured["manual_context"]
+    assert captured["message"] == "CPU 1214C technical specifications"
     reset_caches()
 
 
