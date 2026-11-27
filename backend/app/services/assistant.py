@@ -667,6 +667,8 @@ class AssistantService:
                     "لا تبدأ أي فك قبل معرفة متطلبات العزل."
                 ),
                 intent=Intent.SAFETY_QUERY,
+                abstained=True,
+                abstention_reason_ar="لم يتم تحديد القطعة، لذلك لا يمكن اختيار تحذيراتها بأمان.",
             )
 
         protocol = self.guard.build_safety(
