@@ -33,7 +33,7 @@ def list_manuals() -> list[ManualDocumentSummary]:
 @router.get("/manuals/search", response_model=ManualSearchResponse)
 def search_manuals(
     q: str = Query(min_length=2, max_length=500, description="Search text in Arabic or English"),
-    session_id: str = Query(min_length=8, max_length=100),
+    session_id: str | None = Query(default=None, min_length=8, max_length=100),
     equipment_model: str | None = Query(default=None, max_length=160),
     limit: int = Query(default=5, ge=1, le=20),
 ) -> ManualSearchResponse:
@@ -48,6 +48,15 @@ def search_manuals(
             detail={
                 "code": "manual_search_disabled",
                 "message_ar": "بحث الكتيبات غير متاح. في الإنتاج يلزم MANUAL_SEARCH_ENABLED=true مع تفعيل AUTH_REQUIRED.",
+            },
+        )
+
+    if not session_id:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "equipment_session_required",
+                "message_ar": "يلزم تمرير جلسة معدة مؤكدة للبحث في دليلها.",
             },
         )
 
