@@ -333,6 +333,15 @@ class ChatService:
         if self._needs_grounded_answer(message):
             return self._grounded_reply(session, message)
 
+        # OEM registry and data-provenance questions remain available as
+        # read-only reference information; they do not create equipment sessions
+        # or authorize maintenance instructions.
+        if self._is_manufacturer_list(message):
+            return self._manufacturer_catalog(session)
+
+        if self._is_oem_data_question(message):
+            return self._oem_data_status(session)
+
         if self._is_equipment_list(message):
             return self._equipment_catalog()
 
@@ -462,6 +471,21 @@ class ChatService:
         )
 
     def _start_session(self, message: str, session: Session | None) -> ChatResponse:
+        normalized = normalize_arabic(message).lower()
+        if re.search(r"\\b320\\s*d\\b|320d", normalized):
+            equipment = self.assistant.list_equipment()
+            return ChatResponse(
+                message_ar=(
+                    "المعدة Caterpillar 320D غير مدعومة حالياً. لا يمكن إنشاء جلسة لها. "
+                    "التقط صورة لمعدة مدعومة حتى يحددها النظام ويعرضها للتأكيد."
+                ),
+                source="system",
+                session=self._safe_session(session),
+                equipment=equipment,
+                quick_replies=["افتح الكاميرا"],
+                abstained=True,
+                abstention_reason_ar="Caterpillar 320D خارج قائمة المعدات المدعومة.",
+            )
         return ChatResponse(
             message_ar=(
                 "لا تبدأ جلسة الصيانة باختيار يدوي. التقط صورة للمعدة أولاً؛ "
@@ -1070,8 +1094,8 @@ class ChatService:
             return ChatResponse(
                 message_ar=(
                     "لا أقدّم قيم عزم أو خطوات فك أو إجراءات عزل من المحادثة العامة. "
-                    "هذه المعلومات تُعرض فقط من قاعدة المعرفة بعد بدء جلسة وتحديد "
-                    "المعدة والقطعة.\\n\\nاختر المعدة أولًا:"
+                    "هذه المعلومات تتطلب تحديد المعدة والقطعة والتحقق من الدليل المطابق أولاً. "
+                    "اختر صورة المعدة للبدء:"
                 ),
                 source="system",
                 equipment=self.assistant.list_equipment(),
