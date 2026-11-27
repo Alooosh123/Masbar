@@ -4,9 +4,16 @@ from fastapi.testclient import TestClient
 
 from app.adapters.chat.cohere_chat import ChatReply
 from app.core.config import get_settings
-from app.deps import reset_caches
+from app.deps import get_assistant, reset_caches
+from app.domain.api_models import SessionCreateRequest
 from app.knowledge.manual_index import ManualChunk, ManualDocument, ManualIndex, write_manual_index
 from app.main import app
+
+
+def _create_pending_session(equipment_model: str) -> dict:
+    return get_assistant().create_session(
+        SessionCreateRequest(equipment_model=equipment_model)
+    ).model_dump()
 
 
 def _seed_manual_index(index_dir):
@@ -87,9 +94,7 @@ def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path,
     reset_caches()
 
     with TestClient(app) as client:
-        session = client.post(
-            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
-        ).json()
+        session = _create_pending_session("Siemens S7-1200 Control Panel")
         session_id = session["session_id"]
         client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
@@ -168,9 +173,7 @@ def test_manual_rag_passes_retrieved_sources_to_generation_and_appends_citations
     reset_caches()
 
     with TestClient(app) as client:
-        session = client.post(
-            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
-        ).json()
+        session = _create_pending_session("Siemens S7-1200 Control Panel")
         session_id = session["session_id"]
         client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
@@ -208,9 +211,7 @@ def test_manual_rag_keeps_torque_requests_retrieval_only(tmp_path, monkeypatch):
     reset_caches()
 
     with TestClient(app) as client:
-        session = client.post(
-            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
-        ).json()
+        session = _create_pending_session("Siemens S7-1200 Control Panel")
         session_id = session["session_id"]
         client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
@@ -244,9 +245,7 @@ def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch
     reset_caches()
 
     with TestClient(app) as client:
-        session = client.post(
-            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
-        ).json()
+        session = _create_pending_session("Siemens S7-1200 Control Panel")
         session_id = session["session_id"]
         client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
