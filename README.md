@@ -125,11 +125,22 @@ cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 
 المشروع يعمل بدون أي مفتاح عبر `VISION_PROVIDER=mock` و`CHAT_PROVIDER=off`، لكن الوصف الذكي والمحادثة العامة يحتاجان مزوّدًا. المزوّد المفعّل حاليًا هو Cohere:
 
-### الخيار A — Cohere (المزوّد المفعّل حاليًا)
+### الخيار A — OpenRouter + Qwen3-VL (رؤية الصور عبر API فقط)
 
 ```env
-VISION_PROVIDER=cohere
-VISION_MODEL=command-a-vision-07-2025
+VISION_PROVIDER=openrouter
+OPENROUTER_API_KEY=...
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+VISION_MODEL=qwen/qwen3-vl-8b-instruct
+VISION_TIMEOUT_SECONDS=60
+DEMO_MODE=false
+```
+
+هذا الخيار يرسل الصور إلى OpenRouter من الخادم باستخدام API متوافق مع OpenAI. لا يتطلب تثبيت Ollama أو تنزيل النموذج. لا يلزم مفتاح Cohere لمساري تحديد المعدة والقطعة.
+
+### الخيار B — Cohere للمحادثة العامة (اختياري)
+
+```env
 CHAT_PROVIDER=cohere
 CHAT_MODEL=command-a-plus-05-2026
 CHAT_TIMEOUT_SECONDS=45
@@ -137,16 +148,7 @@ COHERE_API_KEY=...
 COHERE_BASE_URL=https://api.cohere.com/v2
 ```
 
-### الخيار B — OpenAI أو أي بوابة متوافقة
-
-```env
-VISION_PROVIDER=openai
-OPENAI_API_KEY=...
-OPENAI_BASE_URL=https://api.openai.com/v1
-VISION_MODEL=gpt-4o-mini
-```
-
-يمكن استخدام OpenRouter عبر الخيار B بوضع `OPENAI_BASE_URL=https://openrouter.ai/api/v1` ومفتاح OpenRouter في `OPENAI_API_KEY`، بشرط توفّر رصيد في الحساب.
+إذا لم تكن خدمة المحادثة العامة مطلوبة، استخدم `CHAT_PROVIDER=off`. يمكن أيضًا استمرار استخدام `VISION_PROVIDER=cohere` أو `VISION_PROVIDER=openai` بدل OpenRouter.
 
 1. عدّل `.env` في جذر المشروع ثم أعد تشغيل الخادم.
 2. تحقق: `GET /health` يجب أن يعيد `vision_provider: "cohere"` و`chat_provider: "cohere"` و`chat_ready: true`.
@@ -384,4 +386,4 @@ docker compose up --build
 - بيانات الصيانة التسع ما زالت `sample`؛ لا تستخدم عزمًا أو إجراءً صناعيًا قبل استيراد كتيب OEM مرخّص ومراجعته من شخصين مستقلين.
 - اختبارات الكاميرا والميكروفون الآلية تستخدم أجهزة وهمية. اختبار الأجهزة الفعلية موثق في `docs/REAL_DEVICE_TEST_CHECKLIST_AR.md`.
 
-التفاصيل في [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md).
+التفاصيل في [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md) و[دليل إعداد Qwen3-VL عبر OpenRouter API](docs/OPENROUTER_QWEN3_VL_SETUP_AR.md).
