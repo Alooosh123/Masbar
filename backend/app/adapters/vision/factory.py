@@ -10,7 +10,7 @@ from app.knowledge.loader import KnowledgeBase
 DEFAULT_VISION_MODELS = {
     "openai": "gpt-4o-mini",
     "cohere": "command-a-vision-07-2025",
-    "openrouter": "qwen/qwen3-vl-8b-instruct",
+    "openrouter": "nvidia/nemotron-3.5-super-vl:free",
 }
 
 
