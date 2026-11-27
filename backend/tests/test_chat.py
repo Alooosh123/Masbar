@@ -267,7 +267,9 @@ def test_manual_rag_without_valid_synthesis_abstains_instead_of_showing_raw_chun
         score=3.2,
     )
     library = SimpleNamespace(documents={"manual-1": object()}, search=lambda *args, **kwargs: [hit])
-    monkeypatch.setattr(app.deps, "get_manual_library", lambda: library)
+    getter = lambda: library
+    getter.cache_clear = lambda: None
+    monkeypatch.setattr(app.deps, "get_manual_library", getter)
 
     start = _chat(client, "ابدأ جلسة على S7-1200")
     body = _chat(
