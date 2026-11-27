@@ -386,4 +386,4 @@ docker compose up --build
 - بيانات الصيانة التسع ما زالت `sample`؛ لا تستخدم عزمًا أو إجراءً صناعيًا قبل استيراد كتيب OEM مرخّص ومراجعته من شخصين مستقلين.
 - اختبارات الكاميرا والميكروفون الآلية تستخدم أجهزة وهمية. اختبار الأجهزة الفعلية موثق في `docs/REAL_DEVICE_TEST_CHECKLIST_AR.md`.
 
-التفاصيل في [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md) و[دليل إعداد Nemotron 3.5 Super VL عبر OpenRouter API](docs/OPENROUTER_QWEN3_VL_SETUP_AR.md).
+التفاصيل في [دليل النشر السحابي](docs/RAILWAY_DEPLOYMENT_GUIDE_AR.md) و[دليل إعداد Nemotron 3.5 Super VL عبر OpenRouter API](docs/OPENROUTER_NEMOTRON_3_5_SUPER_VL_SETUP_AR.md).
