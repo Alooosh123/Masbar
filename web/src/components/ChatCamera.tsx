@@ -36,6 +36,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
   const submittedRef = useRef(false);
+  const capturedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +92,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
     () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
+      if (capturedRef.current) return;
       if (!video || !canvas || !ready || video.videoWidth === 0) {
         setError("الكاميرا لم تجهز بعد. انتظر لحظة ثم أعد المحاولة.");
         return;
@@ -111,6 +113,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       }
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+      capturedRef.current = true;
       submittedRef.current = false;
       setPreview(dataUrl);
       setReady(false);
@@ -128,6 +131,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   }, [onCapture, preview]);
 
   const retake = useCallback(() => {
+    capturedRef.current = false;
     submittedRef.current = false;
     setPreview(null);
     setAttempt((value) => value + 1);
