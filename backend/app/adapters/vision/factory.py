@@ -10,6 +10,7 @@ from app.knowledge.loader import KnowledgeBase
 DEFAULT_VISION_MODELS = {
     "openai": "gpt-4o-mini",
     "cohere": "command-a-vision-07-2025",
+    "openrouter": "qwen/qwen3-vl-8b-instruct",
 }
 
 
@@ -22,23 +23,35 @@ def build_vision_adapter(kb: KnowledgeBase, settings: Settings):
     if provider not in DEFAULT_VISION_MODELS:
         raise RuntimeError(
             f"Unsupported VISION_PROVIDER={settings.vision_provider!r}. "
-            "Use mock, openai, or cohere."
+            "Use mock, openai, cohere, or openrouter."
         )
 
     model = settings.vision_model or DEFAULT_VISION_MODELS[provider]
 
-    if provider == "openai":
-        if not settings.openai_api_key:
+    if provider in {"openai", "openrouter"}:
+        api_key = (
+            settings.openrouter_api_key
+            if provider == "openrouter"
+            else settings.openai_api_key
+        )
+        base_url = (
+            settings.openrouter_base_url
+            if provider == "openrouter"
+            else settings.openai_base_url
+        )
+        key_name = "OPENROUTER_API_KEY" if provider == "openrouter" else "OPENAI_API_KEY"
+        if not api_key:
             raise RuntimeError(
-                "VISION_PROVIDER=openai but OPENAI_API_KEY is not set. "
-                "Add the key to .env or set VISION_PROVIDER=mock."
+                f"VISION_PROVIDER={provider} but {key_name} is not set. "
+                "Add the key to the backend environment or choose another provider."
             )
         return OpenAIVisionAdapter(
             kb=kb,
-            api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url,
+            api_key=api_key,
+            base_url=base_url,
             model=model,
             timeout_seconds=settings.vision_timeout_seconds,
+            provider_name=provider,
         )
 
     if provider == "cohere":
@@ -68,6 +81,17 @@ def build_equipment_vision_adapter(settings: Settings) -> EquipmentVisionAdapter
     if provider == "mock":
         return None
 
+    if provider == "openrouter":
+        if not settings.openrouter_api_key:
+            raise RuntimeError("OPENROUTER_API_KEY is required for equipment image identification.")
+        return EquipmentVisionAdapter(
+            provider=provider,
+            api_key=settings.openrouter_api_key,
+            base_url=settings.openrouter_base_url,
+            model=settings.vision_model or DEFAULT_VISION_MODELS["openrouter"],
+            timeout_seconds=settings.vision_timeout_seconds,
+        )
+
     if provider == "cohere":
         if not settings.cohere_api_key:
             raise RuntimeError("COHERE_API_KEY is required for equipment image identification.")
@@ -90,4 +114,7 @@ def build_equipment_vision_adapter(settings: Settings) -> EquipmentVisionAdapter
             timeout_seconds=settings.vision_timeout_seconds,
         )
 
-    raise RuntimeError(f"Unsupported VISION_PROVIDER={settings.vision_provider!r}.")
+    raise RuntimeError(
+        f"Unsupported VISION_PROVIDER={settings.vision_provider!r}. "
+        "Use mock, openai, cohere, or openrouter."
+    )
