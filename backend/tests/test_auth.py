@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
-from app.deps import reset_caches
+from app.deps import get_assistant, reset_caches
+from app.domain.api_models import SessionCreateRequest
 from app.main import app
 
 
@@ -16,7 +17,7 @@ def _configure_auth(monkeypatch):
     reset_caches()
 
 
-def test_sessions_require_login_and_bootstrapped_owner_can_create_session(monkeypatch):
+def test_sessions_require_login_and_owner_cannot_create_manual_session(monkeypatch):
     _configure_auth(monkeypatch)
     with TestClient(app) as client:
         denied = client.post(
@@ -41,8 +42,8 @@ def test_sessions_require_login_and_bootstrapped_owner_can_create_session(monkey
             "/api/v1/sessions",
             json={"equipment_model": "Caterpillar C15 ACERT"},
         )
-        assert created.status_code == 201
-        assert created.json()["session_id"]
+        assert created.status_code == 409
+        assert created.json()["detail"]["code"] == "image_identification_required"
 
 
 def test_admin_can_create_technician_but_technician_cannot_manage_users(monkeypatch):
@@ -117,12 +118,10 @@ def test_owner_can_create_customer_and_customer_can_chat_but_not_execute_mainten
         assert created.status_code == 201
         assert created.json()["user"]["role"] == "customer"
 
-        session = owner_client.post(
-            "/api/v1/sessions",
-            json={"equipment_model": "Caterpillar C15 ACERT"},
-        )
-        assert session.status_code == 201
-        session_id = session.json()["session_id"]
+        session = get_assistant().create_session(
+            SessionCreateRequest(equipment_model="Caterpillar C15 ACERT")
+        ).model_dump()
+        session_id = session["session_id"]
 
     with TestClient(app) as customer_client:
         login = customer_client.post(
@@ -143,14 +142,14 @@ def test_owner_can_create_customer_and_customer_can_chat_but_not_execute_mainten
         assert rotated.status_code == 200
 
         # Customers can open a session and inspect it after password rotation.
-        created_session = customer_client.post(
+        # A customer cannot create an equipment context by naming a model.
+        rejected_session = customer_client.post(
             "/api/v1/sessions",
             json={"equipment_model": "Caterpillar C15 ACERT"},
         )
-        assert created_session.status_code == 201
-        assert customer_client.get(
-            f"/api/v1/sessions/{created_session.json()['session_id']}"
-        ).status_code == 200
+        assert rejected_session.status_code == 409
+        assert rejected_session.json()["detail"]["code"] == "image_identification_required"
+        assert customer_client.get(f"/api/v1/sessions/{session_id}").status_code == 200
 
         # Customer accounts cannot confirm LOTO or advance field execution.
         assert customer_client.post(
