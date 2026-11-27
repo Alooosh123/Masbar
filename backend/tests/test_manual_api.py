@@ -179,7 +179,7 @@ def test_manual_rag_passes_retrieved_sources_to_generation_and_appends_citations
     body = response.json()
     assert body["source"] == "assistant"
     assert "[S1]" in body["message_ar"]
-    assert "96546866 0407" in body["message_ar"]
+    assert "A5E-TEST-001" in body["message_ar"]
     assert "الصفحة المطبوعة 9" in body["message_ar"]
     assert "manual_context" in captured
     assert "CPU 1214C" in captured["manual_context"]
@@ -205,16 +205,19 @@ def test_manual_rag_keeps_torque_requests_retrieval_only(tmp_path, monkeypatch):
     reset_caches()
 
     with TestClient(app) as client:
+        session = client.post(
+            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+        ).json()
         response = client.post(
             "/api/v1/chat",
-            json={"message": "ابحث في الكتيبات عن shaft seal torque"},
+            json={"message": "ابحث في الكتيبات عن CPU 1214C torque", "session_id": session["session_id"]},
         )
 
     assert response.status_code == 200
     assert response.json()["source"] == "system"
-    assert "المقتطف:" in response.json()["message_ar"]
-    assert "اطلب اعتماد مختص مؤهل" in response.json()["message_ar"]
-    assert captured["called"] is False
+    assert response.json()["abstained"] is True
+    assert "المقتطف:" not in response.json()["message_ar"]
+    assert captured["called"] is True
     reset_caches()
 
 
@@ -236,15 +239,19 @@ def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch
     reset_caches()
 
     with TestClient(app) as client:
+        session = client.post(
+            "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+        ).json()
         response = client.post(
             "/api/v1/chat",
-            json={"message": "ما قيمة عزم shaft seal في الكتيب؟"},
+            json={"message": "ما قيمة عزم CPU 1214C في الكتيب؟", "session_id": session["session_id"]},
         )
 
     assert response.status_code == 200
     assert response.json()["source"] == "system"
-    assert "المقتطف:" in response.json()["message_ar"]
-    assert captured["called"] is False
+    assert response.json()["abstained"] is True
+    assert "المقتطف:" not in response.json()["message_ar"]
+    assert captured["called"] is True
     reset_caches()
 
 
@@ -270,7 +277,7 @@ def test_manual_index_import_validates_schema_and_persists_searchable_chunks(tmp
     source_dir = tmp_path / "source"
     target_dir = tmp_path / "target"
     _seed_manual_index(source_dir)
-    index_bytes = (source_dir / "grundfos-cr5-test.json").read_bytes()
+    index_bytes = (source_dir / "siemens-s7-1200-test.json").read_bytes()
 
     monkeypatch.setenv("AUTH_REQUIRED", "true")
     monkeypatch.setenv("ENVIRONMENT", "production")
@@ -299,18 +306,18 @@ def test_manual_index_import_validates_schema_and_persists_searchable_chunks(tmp
     with TestClient(app) as client:
         imported = client.post(
             "/api/v1/manuals/import-index",
-            files={"file": ("grundfos-cr5-test.json", index_bytes, "application/json")},
+            files={"file": ("siemens-s7-1200-test.json", index_bytes, "application/json")},
         )
         listed = client.get("/api/v1/manuals")
         searched = client.get(
             "/api/v1/manuals/search",
-            params={"q": "shaft seal position 105", "equipment_model": "Grundfos CR 5 Model A"},
+            params={"q": "CPU 1214C", "equipment_model": "Siemens S7-1200 Control Panel"},
         )
 
     assert imported.status_code == 201
     assert imported.json()["chunks_imported"] == 1
     assert imported.json()["original_pdf_transferred"] is False
-    assert (target_dir / "grundfos-cr5-test.json").is_file()
+    assert (target_dir / "siemens-s7-1200-test.json").is_file()
     assert listed.status_code == 200
     assert listed.json()[0]["document_number"] == "96546866 0407"
     assert searched.status_code == 200
