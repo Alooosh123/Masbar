@@ -90,9 +90,11 @@ def test_chat_manual_search_returns_citation_not_a_generated_procedure(tmp_path,
         session = client.post(
             "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
         ).json()
+        session_id = session["session_id"]
+        client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
             "/api/v1/chat",
-            json={"message": "ابحث في الكتيبات عن CPU 1214C", "session_id": session["session_id"]},
+            json={"message": "ابحث في الكتيبات عن CPU 1214C", "session_id": session_id},
         )
 
     assert response.status_code == 200
@@ -170,6 +172,7 @@ def test_manual_rag_passes_retrieved_sources_to_generation_and_appends_citations
             "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
         ).json()
         session_id = session["session_id"]
+        client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
             "/api/v1/chat",
             json={"message": "اسأل الكتيبات عن CPU 1214C technical specifications", "session_id": session_id},
@@ -208,9 +211,11 @@ def test_manual_rag_keeps_torque_requests_retrieval_only(tmp_path, monkeypatch):
         session = client.post(
             "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
         ).json()
+        session_id = session["session_id"]
+        client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
             "/api/v1/chat",
-            json={"message": "ابحث في الكتيبات عن CPU 1214C torque", "session_id": session["session_id"]},
+            json={"message": "ابحث في الكتيبات عن CPU 1214C torque", "session_id": session_id},
         )
 
     assert response.status_code == 200
@@ -242,9 +247,11 @@ def test_direct_manual_torque_question_uses_retrieval_only(tmp_path, monkeypatch
         session = client.post(
             "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
         ).json()
+        session_id = session["session_id"]
+        client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
         response = client.post(
             "/api/v1/chat",
-            json={"message": "ما قيمة عزم CPU 1214C في الكتيب؟", "session_id": session["session_id"]},
+            json={"message": "ما قيمة عزم CPU 1214C في الكتيب؟", "session_id": session_id},
         )
 
     assert response.status_code == 200
