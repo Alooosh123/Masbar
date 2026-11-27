@@ -111,7 +111,7 @@ class EquipmentVisionAdapter:
                 ],
                 "response_format": {"type": "json_object", "schema": schema},
             }
-        elif self.provider == "openai":
+        elif self.provider in {"openai", "openrouter"}:
             endpoint = f"{self.base_url}/chat/completions"
             payload = {
                 "model": self.model,
