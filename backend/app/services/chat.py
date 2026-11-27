@@ -36,14 +36,6 @@ _STATE_AR: dict[SessionState, str] = {
 
 # Aliases are matched after Arabic normalization (ة → ه, أ/إ/آ → ا).
 _EQUIPMENT_ALIASES: dict[str, tuple[str, ...]] = {
-    "Caterpillar 320D Excavator": (
-        "320d",
-        "320",
-        "excavator",
-        "حفار",
-        "حفاره",
-        "كاتربلر 320",
-    ),
     "Caterpillar C15 ACERT": (
         "c15",
         "acert",
