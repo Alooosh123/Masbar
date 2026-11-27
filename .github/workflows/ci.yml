@@ -131,10 +131,17 @@ jobs:
           echo "Backend read-only root filesystem: $readonly_root"
           test "$readonly_root" = "true"
 
-          session_response="$(curl --fail --silent --show-error \
-            -X POST http://127.0.0.1:8080/api/v1/sessions \
-            -H 'Content-Type: application/json' \
-            -d '{"equipment_model":"Caterpillar C15 ACERT"}')"
+          session_response="$(docker compose exec -T backend python - <<'PY'
+          import json
+          from app.deps import get_assistant
+          from app.domain.api_models import SessionCreateRequest
+
+          session = get_assistant().create_session(
+              SessionCreateRequest(equipment_model="Caterpillar C15 ACERT")
+          )
+          print(json.dumps(session.model_dump()))
+          PY
+          )"
           session_id="$(python -c 'import json,sys; print(json.load(sys.stdin)["session_id"])' <<< "$session_response")"
 
           echo "Created session through frontend origin: $session_id"
@@ -184,10 +191,14 @@ jobs:
           test "$runtime_uid" = "10001"
           test "$volume_owner" = "10001:10001"
 
-          curl --fail --silent --show-error \
-            -X POST http://127.0.0.1:8011/api/v1/sessions \
-            -H 'Content-Type: application/json' \
-            -d '{"equipment_model":"Caterpillar C15 ACERT"}' >/tmp/railway-volume-session.json
+          docker exec masbar-railway-volume-smoke python - <<'PY'
+          from app.deps import get_assistant
+          from app.domain.api_models import SessionCreateRequest
+
+          get_assistant().create_session(
+              SessionCreateRequest(equipment_model="Caterpillar C15 ACERT")
+          )
+          PY
 
           db_owner="$(docker exec masbar-railway-volume-smoke stat -c '%u:%g' /app/data/sessions/sessions.sqlite3)"
           test "$db_owner" = "10001:10001"
