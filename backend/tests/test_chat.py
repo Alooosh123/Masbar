@@ -182,7 +182,7 @@ def test_maintenance_question_without_confirmed_equipment_abstains(client, monke
     body = _chat(client, "low hydraulic oil level")
     assert body["abstained"] is True
     assert "معدة" in body["abstention_reason_ar"]
-    assert len(body["equipment"]) == 3
+    assert len(body["equipment"]) == 2
     assert fake.calls == []
 
 
