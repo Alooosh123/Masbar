@@ -1031,6 +1031,8 @@ class ChatService:
             source="system",
             equipment=equipment,
             quick_replies=self._equipment_quick_replies(equipment),
+            abstained=True,
+            abstention_reason_ar="لم يتم تحديد معدة مدعومة بشكل مؤكد؛ اختر من القائمة المتاحة.",
         )
 
     def _equipment_text(self, equipment: list[EquipmentSummary]) -> str:
