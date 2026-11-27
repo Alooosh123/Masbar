@@ -161,13 +161,23 @@ class EquipmentVisionAdapter:
             else:
                 content = data["choices"][0]["message"]["content"]
             parsed = json.loads(content)
-            equipment_model = str(parsed.get("equipment_model") or "").strip()
-            confidence = float(parsed.get("confidence") or 0.0)
+            if not isinstance(parsed, dict):
+                return EquipmentVisionResult(None, 0.0, provider_label, "invalid_provider_response")
+            raw_model = parsed.get("equipment_model")
+            raw_confidence = parsed.get("confidence")
+            if not isinstance(raw_model, str):
+                return EquipmentVisionResult(None, 0.0, provider_label, "invalid_provider_response")
+            if isinstance(raw_confidence, bool) or not isinstance(raw_confidence, (int, float)):
+                return EquipmentVisionResult(None, 0.0, provider_label, "invalid_confidence")
+            equipment_model = raw_model.strip()
+            confidence = float(raw_confidence)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             return EquipmentVisionResult(None, 0.0, provider_label, "invalid_provider_response")
 
-        if equipment_model not in allowed:
-            return EquipmentVisionResult(None, 0.0, provider_label, "unsupported_equipment_result")
         if not 0.0 <= confidence <= 1.0:
             return EquipmentVisionResult(None, 0.0, provider_label, "invalid_confidence")
+        if not equipment_model:
+            return EquipmentVisionResult(None, confidence, provider_label, "unclear_image")
+        if equipment_model not in allowed:
+            return EquipmentVisionResult(None, confidence, provider_label, "unsupported_equipment_result")
         return EquipmentVisionResult(equipment_model, confidence, provider_label)
