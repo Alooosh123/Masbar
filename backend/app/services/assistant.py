@@ -154,22 +154,6 @@ class AssistantService:
             if confidence is None:
                 confidence = 1.0
 
-        elif req.transcript:
-            match, hits = self._match_text(req.transcript, session.equipment_model)
-            candidates = [self._candidate(hit) for hit in hits]
-            if match is None:
-                return self._inspection_response(
-                    session,
-                    "لم أتمكن من تحديد القطعة بدرجة كافية من النص. "
-                    "قرّب الكاميرا أو اختر القطعة من النتائج المقترحة.",
-                    candidates=candidates,
-                    event="identification_ambiguous",
-                )
-            record = match
-            source = IdentificationSource.TEXT_SEARCH
-            if confidence is None:
-                confidence = 0.9
-
         elif req.image_base64:
             result = await self._run_vision(req.image_base64, session.equipment_model, req.transcript)
             candidates = []
@@ -194,6 +178,22 @@ class AssistantService:
             if confidence is None:
                 confidence = result.confidence
             bounding_box = bounding_box or result.bounding_box
+
+        elif req.transcript:
+            match, hits = self._match_text(req.transcript, session.equipment_model)
+            candidates = [self._candidate(hit) for hit in hits]
+            if match is None:
+                return self._inspection_response(
+                    session,
+                    "لم أتمكن من تحديد القطعة بدرجة كافية من النص. "
+                    "قرّب الكاميرا أو اختر القطعة من النتائج المقترحة.",
+                    candidates=candidates,
+                    event="identification_ambiguous",
+                )
+            record = match
+            source = IdentificationSource.TEXT_SEARCH
+            if confidence is None:
+                confidence = 0.9
 
         elif self.settings.demo_mode:
             return self._inspection_response(
@@ -841,6 +841,8 @@ class AssistantService:
             message=message,
             candidates=candidates or [],
             inspection_prompt=message,
+            abstained=True,
+            abstention_reason_ar=message,
         )
 
     def _candidate(self, hit: RetrievalHit) -> RetrievalCandidate:
