@@ -275,6 +275,7 @@ def test_manual_rag_rejects_numeric_claims_not_found_in_question_or_evidence(tmp
                 "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
             ).json()
             session_id = session["session_id"]
+            client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
             response = client.post(
                 "/api/v1/chat",
                 json={"message": "Search manuals for CPU 1214C", "session_id": session_id},
