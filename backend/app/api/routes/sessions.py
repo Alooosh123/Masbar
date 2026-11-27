@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.deps import get_assistant
 from app.domain.api_models import (
@@ -17,7 +17,18 @@ router = APIRouter(prefix="/api/v1/sessions", tags=["sessions"])
 @router.post("", response_model=AssistantResponse, status_code=201)
 @router.post("/", response_model=AssistantResponse, status_code=201, include_in_schema=False)
 def create_session(req: SessionCreateRequest) -> AssistantResponse:
-    return get_assistant().create_session(req)
+    # Public callers cannot choose an equipment model and create a session.
+    # The image-identification service creates pending candidates internally.
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "code": "image_identification_required",
+            "message_ar": (
+                "لا يمكن إنشاء جلسة باختيار المعدة يدوياً. أرسل صورة أولاً؛ "
+                "سيحدد النظام المعدة المدعومة ثم يطلب تأكيدك."
+            ),
+        },
+    )
 
 
 @router.get("/{session_id}", response_model=AssistantResponse)
