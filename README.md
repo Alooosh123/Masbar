@@ -19,7 +19,7 @@
 | محرك السلامة الحتمي (LOTO + العزم) | ✅ يُفرض على الخادم ولا يمكن تجاوزه من الواجهة أو المحادثة |
 | البحث الهجين في قاعدة المعرفة | ✅ يعمل محليًا بدون أي خدمة خارجية |
 | سجل مصادر OEM الرسمية | ✅ **31 شركة و126 عائلة موديلات** مع روابط رسمية وبحث |
-| تحديد القطعة بالنص / الرقم / الصورة | ✅ Mock افتراضي + Cohere/OpenAI VLM اختياري |
+| تحديد القطعة بالنص / الرقم / الصورة | ✅ Mock افتراضي + OpenRouter Qwen3-VL / Cohere / OpenAI VLM |
 | وصف الصور العامة | ✅ Cohere Command A Vision — مستقل عن تاريخ الكاميرا |
 | الكاميرا داخل المحادثة | ✅ فتح/إغلاق بالأمر، التقاط ووصف، والتقاط وتحديد صريح |
 | الصوت العربي (ASR/TTS) | ✅ TTS عصبي عربي من الخادم (`ar-SA-ZariyahNeural`) + ذاكرة صوتية محلية + ASR عربي في المتصفح |
@@ -79,7 +79,7 @@ cd web; npm.cmd install; cd ..
 Invoke-RestMethod http://localhost:8010/health
 ```
 
-المتوقع: `status=online`، `components=9`، `equipment=3`، `vision_provider=cohere`، `chat_provider=cohere` مع `chat_ready=true`، و`tts_provider=edge` مع `tts_ready=true`، و`manufacturers=31`، و`manual_documents=0` و`manual_chunks=0` قبل إضافة فهارس محلية.
+المتوقع: `status=online`، `components=9`، `equipment=3`، `vision_provider` حسب مزودك (مثلاً `openrouter`)، و`chat_provider` حسب إعداد المحادثة، و`tts_provider=edge` مع `tts_ready=true`، و`manufacturers=31`، و`manual_documents=0` و`manual_chunks=0` قبل إضافة فهارس محلية.
 
 ### اختبار سريع لواجهة الـ API
 
@@ -123,7 +123,7 @@ cd backend; ..\.venv\Scripts\python.exe -m pytest -q
 
 ## 4. إضافة مفاتيح الذكاء الاصطناعي
 
-المشروع يعمل بدون أي مفتاح عبر `VISION_PROVIDER=mock` و`CHAT_PROVIDER=off`، لكن الوصف الذكي والمحادثة العامة يحتاجان مزوّدًا. المزوّد المفعّل حاليًا هو Cohere:
+المشروع يعمل بدون أي مفتاح عبر `VISION_PROVIDER=mock` و`CHAT_PROVIDER=off`، لكن الوصف الذكي والمحادثة العامة يحتاجان مزوّدًا. يمكن تفعيل الرؤية عبر OpenRouter أو Cohere أو OpenAI. الإعداد المقترح للرؤية هو OpenRouter + Qwen3-VL:
 
 ### الخيار A — OpenRouter + Qwen3-VL (رؤية الصور عبر API فقط)
 
@@ -151,7 +151,7 @@ COHERE_BASE_URL=https://api.cohere.com/v2
 إذا لم تكن خدمة المحادثة العامة مطلوبة، استخدم `CHAT_PROVIDER=off`. يمكن أيضًا استمرار استخدام `VISION_PROVIDER=cohere` أو `VISION_PROVIDER=openai` بدل OpenRouter.
 
 1. عدّل `.env` في جذر المشروع ثم أعد تشغيل الخادم.
-2. تحقق: `GET /health` يجب أن يعيد `vision_provider: "cohere"` و`chat_provider: "cohere"` و`chat_ready: true`.
+2. تحقق: `GET /health` يجب أن يعيد `vision_provider: "openrouter"` عند تفعيل Qwen3-VL. اختبر طلب صورة حقيقيًا؛ وجود اسم المتغير لا يثبت الاتصال.
 3. إذا تُرك `VISION_MODEL` أو `CHAT_MODEL` فارغًا، يستخدم الخادم النموذج الافتراضي للمزوّد.
 4. لتعطيل المحادثة العامة مع إبقاء أوامر الجلسة والكاميرا تعمل: `CHAT_PROVIDER=off`.
 
@@ -379,8 +379,8 @@ docker compose up --build
 
 يستخدم نشر Railway خدمتين: Backend خاص وFrontend عام، مع تمرير `/api` و`/health` و`/ws` عبر Nginx من نفس نطاق الواجهة.
 
-- مزود الرؤية والمحادثة المدعوم في الإعداد الحالي: Cohere. تحفظ `COHERE_API_KEY` في متغيرات Railway السرية فقط، وليس في Git أو ملفات الواجهة.
-- يتطلب التفعيل `VISION_PROVIDER=cohere` و`CHAT_PROVIDER=cohere`، مع `DEMO_MODE=false`.
+- يمكن تشغيل الرؤية عبر OpenRouter + Qwen3-VL باستخدام `OPENROUTER_API_KEY` المحفوظ كسر في Backend، مع فصل إعداد المحادثة العامة.
+- إعداد الرؤية المقترح: `VISION_PROVIDER=openrouter` و`VISION_MODEL=qwen/qwen3-vl-8b-instruct` و`DEMO_MODE=false`. لا يحتاج إلى Ollama أو تنزيل نموذج.
 - المصادقة الحالية على `main` تستخدم Cookie آمنًا HttpOnly، وتُفعّل عبر `AUTH_REQUIRED=true` و`JWT_SECRET_KEY` وبيانات المالك الأول الموضحة في دليل Railway.
 - يستخدم الخادم Volume دائمًا في `/app/data/sessions` لقاعدة SQLite. التخزين مناسب لنسخة Backend واحدة، وليس لتشغيل عدة نسخ متزامنة.
 - بيانات الصيانة التسع ما زالت `sample`؛ لا تستخدم عزمًا أو إجراءً صناعيًا قبل استيراد كتيب OEM مرخّص ومراجعته من شخصين مستقلين.
