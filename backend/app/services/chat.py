@@ -288,7 +288,7 @@ class ChatService:
             if not self.settings.manual_search_available:
                 return ChatResponse(
                     message_ar=(
-                        "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. لم أقدم معلومات صيانة غير موثقة."
+                        "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. لا تعرض الخادم للإنترنت قبل إضافة المصادقة والصلاحيات؛ لم أقدم معلومات صيانة غير موثقة."
                     ),
                     source="system",
                     session=self._safe_session(session),
