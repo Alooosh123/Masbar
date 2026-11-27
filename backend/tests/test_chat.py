@@ -163,6 +163,12 @@ def test_out_of_scope_general_chat_abstains(client, monkeypatch):
     assert fake.calls == []
 
 
+def test_manual_search_disabled_abstains_with_authentication_guidance(client):
+    body = _chat(client, "ابحث في الكتيبات عن shaft seal")
+    assert body["abstained"] is True
+    assert "المصادقة والصلاحيات" in body["message_ar"]
+
+
 def test_image_defaults_to_identification_not_general_description(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "", image_base64="AA==")
