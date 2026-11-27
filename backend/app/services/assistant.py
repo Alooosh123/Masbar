@@ -176,6 +176,12 @@ class AssistantService:
         elif req.image_base64:
             result = await self._run_vision(req.image_base64, session.equipment_model, req.transcript)
             candidates = []
+            if result.provider.startswith("mock"):
+                return self._inspection_response(
+                    session,
+                    "وضع الرؤية الحالي تجريبي ولا يستطيع تأكيد هوية القطعة. فعّل مزود رؤية حقيقياً ثم أعد المحاولة.",
+                    event="vision_mock_abstained",
+                )
             if result.error or not result.part_number:
                 return self._inspection_response(
                     session,
@@ -193,18 +199,11 @@ class AssistantService:
             bounding_box = bounding_box or result.bounding_box
 
         elif self.settings.demo_mode:
-            result = await self.fallback_vision.identify(None, session.equipment_model)
-            if not result.part_number:
-                return self._inspection_response(
-                    session,
-                    "لا توجد قطعة محددة لهذه المعدة. اختر القطعة يدويًا.",
-                    event="identification_no_candidate",
-                )
-            record = self.guard.require_component(result.part_number)
-            source = IdentificationSource.VISION_MOCK
-            if confidence is None:
-                confidence = result.confidence
-            bounding_box = bounding_box or result.bounding_box
+            return self._inspection_response(
+                session,
+                "لم تصل صورة صالحة للتعرف. التقط صورة واضحة أو استخدم مسار التصحيح اليدوي.",
+                event="identification_no_input",
+            )
         else:
             return self._inspection_response(
                 session,
