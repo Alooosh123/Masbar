@@ -6,7 +6,9 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, Query, Request, UploadFile
 
 from app.core.config import get_settings
-from app.deps import get_manual_library
+from app.deps import get_manual_library, get_store
+from app.domain.enums import SessionState
+from app.services.session import SessionNotFound
 from app.knowledge.manual_index import (
     MAX_PDF_BYTES,
     ManualDocumentSummary,
@@ -31,6 +33,7 @@ def list_manuals() -> list[ManualDocumentSummary]:
 @router.get("/manuals/search", response_model=ManualSearchResponse)
 def search_manuals(
     q: str = Query(min_length=2, max_length=500, description="Search text in Arabic or English"),
+    session_id: str = Query(min_length=8, max_length=100),
     equipment_model: str | None = Query(default=None, max_length=160),
     limit: int = Query(default=5, ge=1, le=20),
 ) -> ManualSearchResponse:
@@ -48,11 +51,38 @@ def search_manuals(
             },
         )
 
+    try:
+        session = get_store().get(session_id)
+    except SessionNotFound:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "equipment_session_not_found",
+                "message_ar": "جلسة المعدة غير موجودة أو انتهت صلاحيتها. أعد تحديد المعدة من الصورة.",
+            },
+        ) from None
+    if session.state == SessionState.PENDING_CONFIRMATION:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "equipment_confirmation_required",
+                "message_ar": "أكد المعدة أولاً قبل البحث في دليل الصيانة.",
+            },
+        )
+    if equipment_model and equipment_model != session.equipment_model:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "equipment_context_mismatch",
+                "message_ar": "لا يمكن تغيير طراز المعدة داخل طلب البحث. ابدأ تحديداً جديداً من الصورة.",
+            },
+        )
+
     library = get_manual_library()
-    hits = library.search(q, equipment_model=equipment_model, limit=limit)
+    hits = library.search(q, equipment_model=session.equipment_model, limit=limit)
     return ManualSearchResponse(
         query=q,
-        equipment_model=equipment_model,
+        equipment_model=session.equipment_model,
         retrieval_method="bm25_lexical",
         vector_search_enabled=False,
         hits=hits,
