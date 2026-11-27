@@ -163,17 +163,48 @@ def test_general_chat_uses_adapter(client, monkeypatch):
     assert fake.calls[0]["describe"] is False
 
 
-def test_image_defaults_to_description_not_identification(client, monkeypatch):
+def test_image_defaults_to_identification_not_general_description(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "", image_base64="AA==")
-    assert body["source"] == "vision"
-    assert "وصف عام" in body["message_ar"]
-    assert fake.calls[0]["describe"] is True
-    assert fake.calls[0]["image_base64"] == "AA=="
-    assert body["session"] is None
-    # Camera commands in the chat history must not bias the description.
-    assert fake.calls[0]["history"] == []
-    assert fake.calls[0]["context"] is None
+    assert body["source"] == "system"
+    assert len(body["equipment"]) == 3
+    assert "اختر المعدة" in body["message_ar"]
+    assert fake.calls == []
+
+
+def test_maintenance_question_without_confirmed_equipment_abstains(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "low hydraulic oil level")
+    assert body["abstained"] is True
+    assert "المعدة" in body["abstention_reason_ar"]
+    assert len(body["equipment"]) == 3
+    assert fake.calls == []
+
+
+def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
+    from app.deps import get_chat_service
+    from app.services.chat import ChatService
+
+    service = get_chat_service()
+    service.settings.manual_search_enabled = True
+    service.settings.environment = "test"
+
+    class EmptyManualLibrary:
+        documents = [object()]
+
+        def search(self, query, equipment_model=None, limit=5):
+            assert equipment_model == "Caterpillar 320D Excavator"
+            assert "oil" in query.lower() or "hydraulic" in query.lower()
+            return []
+
+    monkeypatch.setattr("app.deps.get_manual_library", lambda: EmptyManualLibrary())
+    fake = _use_fake_chat(monkeypatch)
+    start = _chat(client, "ابدأ جلسة على 320D")
+    session_id = start["session"]["session_id"]
+    body = _chat(client, "low hydraulic oil level", session_id=session_id)
+    assert body["abstained"] is True
+    assert "لم أجد دليلاً" in body["message_ar"]
+    assert fake.calls == []
 
 
 def test_explicit_image_identification_uses_grounded_part(client, monkeypatch):
