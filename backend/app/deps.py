@@ -3,7 +3,7 @@ import logging
 
 from app.adapters.chat.factory import build_chat_adapter
 from app.adapters.tts.edge import EdgeTtsAdapter
-from app.adapters.vision.factory import build_vision_adapter
+from app.adapters.vision.factory import build_equipment_vision_adapter, build_vision_adapter
 from app.core.config import Settings, get_settings
 from app.knowledge.loader import KnowledgeBase, load_knowledge_base
 from app.knowledge.manual_index import ManualLibrary
@@ -107,6 +107,7 @@ def get_chat_service() -> ChatService:
         store=get_store(),
         chat=build_chat_adapter(settings),
         settings=settings,
+        equipment_vision=build_equipment_vision_adapter(settings),
     )
 
 
