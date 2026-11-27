@@ -70,7 +70,7 @@ def build_vision_adapter(kb: KnowledgeBase, settings: Settings):
 
     raise RuntimeError(
         f"Unsupported VISION_PROVIDER={settings.vision_provider!r}. "
-        "Use mock, openai, or cohere."
+        "Use mock, openai, cohere, or openrouter."
     )
 
 
