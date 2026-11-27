@@ -859,6 +859,8 @@ class AssistantService:
         )
 
     def _state_message(self, session: Session) -> str:
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            return f"تم اقتراح {session.equipment_model}. أكد المعدة قبل طرح سؤال الصيانة."
         if session.state == SessionState.CREATED:
             return "الجلسة جاهزة. حدد القطعة للبدء."
         if session.state == SessionState.IDENTIFIED:
