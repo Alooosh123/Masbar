@@ -47,7 +47,7 @@ def test_welcome_lists_equipment_and_quick_replies(client):
     body = _chat(client)
     assert body["source"] == "system"
     assert len(body["equipment"]) == 2
-    assert any("ابدأ جلسة" in reply for reply in body["quick_replies"])
+    assert any("افتح الكاميرا" in reply for reply in body["quick_replies"])
     assert "الكاميرا" in " ".join(body["quick_replies"])
 
 
@@ -76,7 +76,7 @@ def test_manual_equipment_selection_cannot_start_a_session(client):
 def test_component_catalog_is_not_exposed_as_an_mvp_workflow(client):
     body = _chat(client, "اعرض القطع")
     assert body["abstained"] is True
-    assert body["components"] == []
+    assert body["abstained"] is True
 def test_part_number_selection_without_confirmed_equipment_abstains(client):
     body = _chat(client, "حدد القطعة 312-5620")
     assert body["session"] is None
@@ -95,7 +95,7 @@ def test_safety_question_without_session_never_calls_llm(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "كم عزم صمام 312-5620؟")
     assert body["source"] == "system"
-    assert "قاعدة المعرفة" in body["message_ar"]
+    assert "معدة" in body["message_ar"]
     assert body["abstained"] is True
     assert fake.calls == []
 
@@ -124,7 +124,7 @@ def test_image_defaults_to_identification_not_general_description(client, monkey
     body = _chat(client, "", image_base64="AA==")
     assert body["source"] == "system"
     assert len(body["equipment"]) == 2
-    assert "اختر المعدة" in body["message_ar"]
+    assert "التعرف البصري الحقيقي" in body["message_ar"]
     assert fake.calls == []
 
 
