@@ -373,10 +373,10 @@ export function ChatScreen() {
   function applyChatResponse(response: ChatResponse, speak = true) {
     if (response.conversation_id) setConversationId(response.conversation_id);
     setMessages((current) => [...current, toAssistantMessage(response)]);
-    if (response.session) {
-      setSession(response.session);
-      sessionRef.current = response.session;
-    }
+    // The backend response is authoritative: a null session means there is
+    // no active equipment context (for example, an expired or missing session).
+    setSession(response.session ?? null);
+    sessionRef.current = response.session ?? null;
     if (
       speak &&
       autoSpeakRef.current &&
