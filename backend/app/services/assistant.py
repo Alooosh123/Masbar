@@ -116,11 +116,16 @@ class AssistantService:
             )
 
         session = self.store.create(req.equipment_model)
+        session.state = SessionState.PENDING_CONFIRMATION
+        self.store.audit(
+            session,
+            "equipment_confirmation_required",
+            f"تم تسجيل اختيار {req.equipment_model} بانتظار تأكيد المستخدم.",
+        )
         return self._build_response(
             session,
             message=(
-                "بدأت جلسة العمل. وجّه الكاميرا نحو القطعة واضغط «التقاط وتحديد»، "
-                "أو اختر القطعة يدويًا من القائمة."
+                f"المعدة المختارة هي {req.equipment_model}. أكد هويتها قبل طرح أي سؤال صيانة."
             ),
         )
 
