@@ -198,6 +198,7 @@ def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeyp
     start = _chat(client, "ابدأ جلسة على 320D")
     assert start["session"] is None
     assert start["abstained"] is True
+    assert "320D غير مدعومة" in start["message_ar"]
     assert "المعدات المتاحة" in start["message_ar"]
     body = _chat(client, "low hydraulic oil level")
     assert body["abstained"] is True
