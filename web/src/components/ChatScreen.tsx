@@ -754,6 +754,33 @@ export function ChatScreen() {
         if (restoreRequest !== restoreRequestRef.current) return;
         setSession(restoredSession);
         sessionRef.current = restoredSession;
+        setMessages((current) => {
+          const next = [...current];
+          let lastAssistantIndex = -1;
+          for (let index = next.length - 1; index >= 0; index -= 1) {
+            if (next[index].role === "assistant") {
+              lastAssistantIndex = index;
+              break;
+            }
+          }
+          if (lastAssistantIndex >= 0) {
+            next[lastAssistantIndex] = {
+              ...next[lastAssistantIndex],
+              session: restoredSession,
+              quickReplies: quickRepliesForSession(restoredSession),
+            };
+          } else {
+            next.push({
+              id: nextMessageId(),
+              role: "assistant",
+              source: "system",
+              text: restoredSession.assistant_message_ar,
+              session: restoredSession,
+              quickReplies: quickRepliesForSession(restoredSession),
+            });
+          }
+          return next;
+        });
       } catch {
         if (restoreRequest !== restoreRequestRef.current) return;
         setSession(null);
