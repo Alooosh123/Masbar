@@ -184,9 +184,11 @@ def test_manual_rag_removes_forged_source_ids_and_keeps_real_citation(tmp_path, 
             session = client.post(
                 "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
             ).json()
+            session_id = session["session_id"]
+            client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
             response = client.post(
                 "/api/v1/chat",
-                json={"message": "ابحث في الكتيبات عن CPU 1214C", "session_id": session["session_id"]},
+                json={"message": "ابحث في الكتيبات عن CPU 1214C", "session_id": session_id},
             )
 
         assert response.status_code == 200, response.text
@@ -231,6 +233,7 @@ def test_torque_question_abstains_when_synthesis_is_not_grounded(tmp_path, monke
                 "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
             ).json()
             session_id = session["session_id"]
+            client.post("/api/v1/chat", json={"message": "تأكيد المعدة", "session_id": session_id})
             response = client.post(
                 "/api/v1/chat",
                 json={"message": "ابحث في الكتيبات عن عزم CPU 1214C", "session_id": session_id},
