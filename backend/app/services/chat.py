@@ -477,7 +477,8 @@ class ChatService:
             return ChatResponse(
                 message_ar=(
                     "المعدة Caterpillar 320D غير مدعومة حالياً. لا يمكن إنشاء جلسة لها. "
-                    "التقط صورة لمعدة مدعومة حتى يحددها النظام ويعرضها للتأكيد."
+                    "التقط صورة لمعدة مدعومة حتى يحددها النظام ويعرضها للتأكيد.\\n\\n"
+                    + self._equipment_text(equipment)
                 ),
                 source="system",
                 session=self._safe_session(session),
