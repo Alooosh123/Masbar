@@ -44,7 +44,7 @@ def _use_fake_chat(monkeypatch) -> FakeChat:
 def test_welcome_lists_equipment_and_quick_replies(client):
     body = _chat(client)
     assert body["source"] == "system"
-    assert len(body["equipment"]) == 3
+    assert len(body["equipment"]) == 2
     assert any("ابدأ جلسة" in reply for reply in body["quick_replies"])
     assert "الكاميرا" in " ".join(body["quick_replies"])
 
@@ -60,7 +60,6 @@ def test_equipment_catalog_from_chat(client):
     body = _chat(client, "ما المعدات المتاحة؟")
     names = {item["equipment_family"] for item in body["equipment"]}
     assert names == {
-        "Caterpillar 320D Excavator",
         "Caterpillar C15 ACERT",
         "Siemens S7-1200 Control Panel",
     }
@@ -195,25 +194,14 @@ def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeyp
     service.settings.manual_search_enabled = True
     service.settings.environment = "test"
 
-    class EmptyManualLibrary:
-        documents = [object()]
-
-        def search(self, query, equipment_model=None, limit=5):
-            assert equipment_model == "Caterpillar 320D Excavator"
-            assert "oil" in query.lower() or "hydraulic" in query.lower()
-            return []
-
-    def fake_manual_library():
-        return EmptyManualLibrary()
-
-    fake_manual_library.cache_clear = lambda: None
-    monkeypatch.setattr("app.deps.get_manual_library", fake_manual_library)
     fake = _use_fake_chat(monkeypatch)
     start = _chat(client, "ابدأ جلسة على 320D")
-    session_id = start["session"]["session_id"]
-    body = _chat(client, "low hydraulic oil level", session_id=session_id)
+    assert start["session"] is None
+    assert start["abstained"] is True
+    assert "المعدات المتاحة" in start["message_ar"]
+    body = _chat(client, "low hydraulic oil level")
     assert body["abstained"] is True
-    assert "لم أجد دليلاً" in body["message_ar"]
+    assert "معدة" in body["abstention_reason_ar"]
     assert fake.calls == []
 
 
