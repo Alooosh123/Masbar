@@ -288,7 +288,7 @@ class ChatService:
             if not self.settings.manual_search_available:
                 return ChatResponse(
                     message_ar=(
-                        "البحث في الكتيبات غير متاح حالياً. لم أقدم معلومات صيانة غير موثقة."
+                        "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. لم أقدم معلومات صيانة غير موثقة."
                     ),
                     source="system",
                     session=self._safe_session(session),
@@ -689,19 +689,6 @@ class ChatService:
             if count:
                 break
         query = query.strip(" ؟?،,:;")
-        if session is None:
-            equipment = self.assistant.list_equipment()
-            return ChatResponse(
-                message_ar=(
-                    "يجب تحديد المعدة من الصورة وتأكيدها قبل البحث في دليل الصيانة "
-                    "حتى لا أخلط بين أدلة موديلات مختلفة."
-                ),
-                source="system",
-                equipment=equipment,
-                quick_replies=self._equipment_quick_replies(equipment),
-                abstained=True,
-                abstention_reason_ar="لم يتم تأكيد طراز المعدة.",
-            )
         if len(query) < 2:
             return self._system_reply(
                 "اكتب موضوع السؤال بعد الأمر، مثل: «ابحث في الكتيبات عن مواصفات CPU 1214C».",
