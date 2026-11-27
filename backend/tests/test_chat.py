@@ -14,6 +14,7 @@ class FakeChat:
         message: str,
         history: list[dict[str, str]] | None = None,
         context: str | None = None,
+        manual_context: str | None = None,
         image_base64: str | None = None,
         describe: bool = False,
     ) -> ChatReply:
@@ -22,6 +23,7 @@ class FakeChat:
                 "message": message,
                 "history": history or [],
                 "context": context,
+                "manual_context": manual_context,
                 "image_base64": image_base64,
                 "describe": describe,
             }
@@ -221,6 +223,63 @@ def test_explicit_image_identification_uses_grounded_part(client, monkeypatch):
     assert body["session"]["state"] == "AWAITING_LOTO"
     assert body["session"]["identified_component"]["part_number"] == "312-5620"
     assert fake.calls == []  # identification never goes through the LLM
+
+
+def test_mock_vision_never_claims_successful_image_identification(client):
+    start = _chat(client, "ابدأ جلسة على C15")
+    session_id = start["session"]["session_id"]
+
+    body = _chat(
+        client,
+        "حدد المعدة من الصورة",
+        image_base64="AA==",
+        mode="identify",
+        session_id=session_id,
+    )
+
+    assert body["abstained"] is True
+    assert "تجريبي" in body["message_ar"]
+    assert body["session"]["identified_component"] is None
+
+
+def test_manual_rag_without_valid_synthesis_abstains_instead_of_showing_raw_chunks(
+    client, monkeypatch
+):
+    from types import SimpleNamespace
+    import app.deps
+
+    service = get_chat_service()
+    service.settings.manual_search_enabled = True
+    service.settings.environment = "test"
+    fake = _use_fake_chat(monkeypatch)
+
+    hit = SimpleNamespace(
+        document_id="manual-1",
+        title="Approved OEM Manual",
+        manufacturer="Siemens",
+        document_number="DOC-1",
+        revision="A",
+        pdf_page_number=12,
+        printed_page_number=10,
+        section_title="Pump maintenance",
+        excerpt="SECRET RAW MANUAL EXCERPT MUST NOT BE SHOWN",
+        source_url=None,
+        score=3.2,
+    )
+    library = SimpleNamespace(documents={"manual-1": object()}, search=lambda *args, **kwargs: [hit])
+    monkeypatch.setattr(app.deps, "get_manual_library", lambda: library)
+
+    start = _chat(client, "ابدأ جلسة على S7-1200")
+    body = _chat(
+        client,
+        "ابحث في الكتيبات عن صيانة المضخة",
+        session_id=start["session"]["session_id"],
+    )
+
+    assert body["abstained"] is True
+    assert "SECRET RAW MANUAL EXCERPT MUST NOT BE SHOWN" not in body["message_ar"]
+    assert fake.calls
+    assert fake.calls[0]["manual_context"]
 
 
 def test_chat_unhandled_provider_exception_returns_safe_service_error(client, monkeypatch):
