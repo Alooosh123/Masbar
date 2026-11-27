@@ -34,12 +34,18 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [attempt, setAttempt] = useState(0);
+  const [preview, setPreview] = useState<string | null>(null);
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     let stream: MediaStream | null = null;
     setReady(false);
     setError(null);
+
+    if (preview) {
+      return () => { cancelled = true; };
+    }
 
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -77,8 +83,9 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       cancelled = true;
       stream?.getTracks().forEach((track) => track.stop());
       if (streamRef.current === stream) streamRef.current = null;
+      if (videoRef.current?.srcObject === stream) videoRef.current.srcObject = null;
     };
-  }, [facing, attempt]);
+  }, [facing, attempt, preview]);
 
   const capture = useCallback(
     () => {
@@ -104,10 +111,27 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       }
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-      onCapture(dataUrl);
+      submittedRef.current = false;
+      setPreview(dataUrl);
+      setReady(false);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      video.srcObject = null;
     },
-    [onCapture, ready]
+    [ready]
   );
+
+  const submitPreview = useCallback(() => {
+    if (!preview || submittedRef.current) return;
+    submittedRef.current = true;
+    onCapture(preview);
+  }, [onCapture, preview]);
+
+  const retake = useCallback(() => {
+    submittedRef.current = false;
+    setPreview(null);
+    setAttempt((value) => value + 1);
+  }, []);
 
   return (
     <div
@@ -119,7 +143,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       <header className="chat-camera-head">
         <div>
           <strong>كاميرا المحادثة</strong>
-          <span>{ready ? "الكاميرا جاهزة — وجّهها نحو الهدف" : "جارٍ تشغيل الكاميرا…"}</span>
+          <span>{preview ? "راجع الصورة قبل إرسالها" : ready ? "الكاميرا جاهزة — وجّهها نحو المعدة" : "جارٍ تشغيل الكاميرا…"}</span>
         </div>
         <button
           type="button"
@@ -132,22 +156,26 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       </header>
 
       <div className="chat-camera-stage">
-        <video
-          ref={videoRef}
-          className={`chat-camera-video ${ready ? "is-ready" : ""}`}
-          playsInline
-          muted
-          autoPlay
-        />
+        {preview ? (
+          <img className="chat-camera-preview" src={preview} alt="معاينة الصورة الملتقطة للمعدة" />
+        ) : (
+          <video
+            ref={videoRef}
+            className={`chat-camera-video ${ready ? "is-ready" : ""}`}
+            playsInline
+            muted
+            autoPlay
+          />
+        )}
 
-        {!ready && !error && (
+        {!preview && !ready && !error && (
           <div className="chat-camera-state">
             <span className="chat-spinner large" />
             <p>جارٍ طلب إذن الكاميرا…</p>
           </div>
         )}
 
-        {error && (
+        {!preview && error && (
           <div className="chat-camera-state is-error">
             <AlertIcon size={28} />
             <p>{error}</p>
@@ -161,7 +189,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
           </div>
         )}
 
-        {ready && !error && (
+        {!preview && ready && !error && (
           <div className="chat-camera-frame" aria-hidden="true">
             <span />
             <span />
@@ -172,20 +200,22 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       </div>
 
       <div className="chat-camera-actions">
-        <button
-          type="button"
-          className="chat-capture-btn primary"
-          onClick={capture}
-          disabled={!ready}
-        >
-          <CameraIcon size={20} />
-          التقاط الصورة
-        </button>
+        {preview ? (
+          <>
+            <button type="button" className="chat-capture-btn" onClick={retake}>إعادة الالتقاط</button>
+            <button type="button" className="chat-capture-btn primary" onClick={submitPreview}>تأكيد الصورة وإرسالها</button>
+          </>
+        ) : (
+          <button type="button" className="chat-capture-btn primary" onClick={capture} disabled={!ready}>
+            <CameraIcon size={20} />
+            التقاط الصورة
+          </button>
+        )}
       </div>
 
       <footer className="chat-camera-foot">
         <span>التقاط صورة لتحديد المعدات المدعومة. إذا لم تكن واضحة، سيطلب مسبار إعادة التصوير.</span>
-        <button
+        {!preview && <button
           type="button"
           className="chat-camera-flip"
           onClick={() =>
@@ -195,7 +225,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
         >
           <RotateCwIcon size={17} />
           تبديل الكاميرا
-        </button>
+        </button>}
       </footer>
 
       <canvas ref={canvasRef} hidden />
