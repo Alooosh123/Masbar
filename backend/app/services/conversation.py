@@ -39,6 +39,7 @@ class ConversationStore:
                     id TEXT PRIMARY KEY,
                     user_id TEXT NOT NULL,
                     title TEXT NOT NULL DEFAULT 'محادثة جديدة',
+                    session_id TEXT,
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
@@ -57,6 +58,11 @@ class ConversationStore:
                 )
                 """
             )
+            columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(conversations)")
+            }
+            if "session_id" not in columns:
+                connection.execute("ALTER TABLE conversations ADD COLUMN session_id TEXT")
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_conversations_user_updated "
                 "ON conversations(user_id, updated_at DESC)"
@@ -71,6 +77,7 @@ class ConversationStore:
         return {
             "id": row["id"],
             "title": row["title"],
+            "session_id": row["session_id"],
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
             "message_count": int(row["message_count"]),
@@ -82,12 +89,13 @@ class ConversationStore:
         now = _now()
         with self._connect() as connection:
             connection.execute(
-                "INSERT INTO conversations(id,user_id,title,created_at,updated_at) VALUES(?,?,?,?,?)",
-                (conversation_id, user_id, "محادثة جديدة", now, now),
+                "INSERT INTO conversations(id,user_id,title,session_id,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+                (conversation_id, user_id, "محادثة جديدة", None, now, now),
             )
         return {
             "id": conversation_id,
             "title": "محادثة جديدة",
+            "session_id": None,
             "created_at": now,
             "updated_at": now,
             "message_count": 0,
@@ -98,7 +106,7 @@ class ConversationStore:
         with self._connect() as connection:
             row = connection.execute(
                 """
-                SELECT c.id,c.title,c.created_at,c.updated_at,
+                SELECT c.id,c.title,c.session_id,c.created_at,c.updated_at,
                     (SELECT COUNT(*) FROM conversation_messages m WHERE m.conversation_id=c.id) AS message_count,
                     (SELECT content FROM conversation_messages m WHERE m.conversation_id=c.id
                      ORDER BY m.id DESC LIMIT 1) AS preview
@@ -122,6 +130,18 @@ class ConversationStore:
                 (user_id, max(1, min(limit, 100))),
             ).fetchall()
         return [self._summary(row) for row in rows]
+
+    def set_session_id(
+        self, user_id: str, conversation_id: str, session_id: str | None
+    ) -> None:
+        """Persist the backend-owned equipment session linked to a conversation."""
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE conversations SET session_id=?, updated_at=? WHERE id=? AND user_id=?",
+                (session_id, _now(), conversation_id, user_id),
+            )
+            if cursor.rowcount == 0:
+                raise LookupError("Conversation not found")
 
     def append_message(
         self,
