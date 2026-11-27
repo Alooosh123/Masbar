@@ -15,12 +15,10 @@ def test_valve_leak_query_matches_injection_actuator():
     assert hits[0].record.part_number == "312-5620"
 
 
-def test_pump_query_matches_hydraulic_pump():
-    hits = _retriever().search(
-        "الطرمبة الهيدروليكية تسرب زيت", "Caterpillar 320D Excavator"
-    )
-    assert hits
-    assert hits[0].record.part_number == "DEMO-320D-HYD-01"
+def test_removed_caterpillar_320d_has_no_knowledge_base_entries():
+    kb = load_knowledge_base(get_settings().kb_dir)
+    assert "Caterpillar 320D Excavator" not in kb.equipment
+    assert _retriever().search("hydraulic pump leak", "Caterpillar 320D Excavator") == []
 
 
 def test_relay_query_matches_relay_module():
