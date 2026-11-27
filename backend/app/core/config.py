@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     sqlite_backup_dir: Path | None = None
     sqlite_backup_retention_days: int = Field(default=14, ge=1, le=365)
 
-    # Vision provider: "mock" | "openai" | "cohere"
+    # Vision provider: "mock" | "openai" | "cohere" | "openrouter"
     vision_provider: str = "mock"
     vision_model: str | None = None
     vision_timeout_seconds: float = 30.0
