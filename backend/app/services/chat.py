@@ -608,7 +608,7 @@ class ChatService:
         self, session: Session, message: str
     ) -> ChatResponse:
         normalized = normalize_arabic(message).strip()
-        if normalized in {"تأكيد المعدة", "اكد المعده", "نعم اكد", "صحيح", "نعم"}:
+        if normalized in {"تاكيد المعده", "اكد المعده", "نعم اكد", "صحيح", "نعم"}:
             session.state = SessionState.CREATED
             self.store.audit(
                 session,
