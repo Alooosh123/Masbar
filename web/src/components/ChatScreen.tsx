@@ -43,6 +43,7 @@ import {
 } from "./Icons";
 
 const STATE_LABELS: Record<SessionState, string> = {
+  PENDING_CONFIRMATION: "بانتظار تأكيد المعدة",
   CREATED: "بانتظار التحديد",
   IDENTIFIED: "تم التحديد",
   AWAITING_LOTO: "بوابة السلامة",
