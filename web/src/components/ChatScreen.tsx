@@ -318,6 +318,7 @@ export function ChatScreen() {
   const stopListeningRef = useRef<() => void>(() => undefined);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const restoreRequestRef = useRef(0);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -724,7 +725,8 @@ export function ChatScreen() {
     void loadWelcome();
   }
 
-  function openStoredConversation(detail: ConversationDetail) {
+  async function openStoredConversation(detail: ConversationDetail) {
+    const restoreRequest = ++restoreRequestRef.current;
     stopListening();
     stopSpeaking();
     setCameraOpen(false);
@@ -740,9 +742,36 @@ export function ChatScreen() {
       text: item.has_image
         ? `${item.content} (الصورة الأصلية غير محفوظة)`
         : item.content,
-      source: item.role === "assistant" ? (item.source || "general") as ChatSource : undefined,
+      source: item.role === "assistant" ? (item.source || "system") as ChatSource : undefined,
     }));
     setMessages(restored);
+
+    // Restore equipment context only through the backend session endpoint.
+    // Never infer confirmation from saved conversation text.
+    if (detail.conversation.session_id) {
+      try {
+        const restoredSession = await api.getSession(detail.conversation.session_id);
+        if (restoreRequest !== restoreRequestRef.current) return;
+        setSession(restoredSession);
+        sessionRef.current = restoredSession;
+      } catch {
+        if (restoreRequest !== restoreRequestRef.current) return;
+        setSession(null);
+        sessionRef.current = null;
+        setMessages((current) => [
+          ...current,
+          {
+            id: nextMessageId(),
+            role: "assistant",
+            source: "system",
+            text: "انتهت صلاحية جلسة المعدة المرتبطة بهذه المحادثة أو لم تعد متاحة. التقط صورة للمعدة وأكدها قبل متابعة أسئلة الصيانة.",
+            abstained: true,
+            abstentionReason: "جلسة المعدة غير متاحة.",
+            quickReplies: ["افتح الكاميرا"],
+          },
+        ]);
+      }
+    }
   }
 
   function toggleSpeaking() {
