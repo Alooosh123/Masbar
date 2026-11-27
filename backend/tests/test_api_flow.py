@@ -32,6 +32,30 @@ def test_health_reports_loaded_knowledge(client):
     assert body["equipment"] == 2
 
 
+def test_session_requires_explicit_equipment_confirmation(client):
+    created = client.post(
+        "/api/v1/sessions",
+        json={"equipment_model": "Siemens S7-1200 Control Panel"},
+    )
+    assert created.status_code == 201
+    session_id = created.json()["session_id"]
+    assert created.json()["state"] == "PENDING_CONFIRMATION"
+
+    blocked = client.post(
+        f"/api/v1/sessions/{session_id}/ask",
+        json={"transcript": "كيف أصون المعدة؟"},
+    )
+    assert blocked.status_code == 200
+    assert blocked.json()["abstained"] is True
+    assert "بانتظار تأكيدك" in blocked.json()["assistant_message_ar"]
+
+    confirmed = client.post(
+        "/api/v1/chat",
+        json={"message": "تأكيد المعدة", "session_id": session_id},
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["session"]["state"] == "CREATED"
+
 def test_unknown_equipment_is_rejected(client):
     response = client.post(
         "/api/v1/sessions", json={"equipment_model": "Unknown Machine"}
