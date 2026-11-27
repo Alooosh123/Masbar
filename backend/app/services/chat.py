@@ -472,7 +472,7 @@ class ChatService:
 
     def _start_session(self, message: str, session: Session | None) -> ChatResponse:
         normalized = normalize_arabic(message).lower()
-        if re.search(r"\\b320\\s*d\\b|320d", normalized):
+        if "320d" in normalized.replace(" ", ""):
             equipment = self.assistant.list_equipment()
             return ChatResponse(
                 message_ar=(
