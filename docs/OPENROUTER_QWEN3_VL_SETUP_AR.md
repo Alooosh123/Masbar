@@ -1,8 +1,8 @@
-# إعداد Qwen3-VL عبر OpenRouter API في MISBAR
+# إعداد Nemotron 3.5 Super VL عبر OpenRouter API في MISBAR
 
 ## الهدف
 
-استخدام نموذج الرؤية Qwen3-VL-8B-Instruct عن طريق API مستضاف. لا يتم تنزيل النموذج ولا تثبيت Ollama على جهاز المطور أو Backend.
+استخدام نموذج الرؤية NVIDIA Nemotron 3.5 Super VL (free) عن طريق API مستضاف. لا يتم تنزيل النموذج ولا تثبيت Ollama على جهاز المطور أو Backend.
 
 ## حساب OpenRouter ومفتاح API
 
@@ -20,7 +20,7 @@
 VISION_PROVIDER=openrouter
 OPENROUTER_API_KEY=<YOUR_OPENROUTER_API_KEY>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-VISION_MODEL=qwen/qwen3-vl-8b-instruct
+VISION_MODEL=nvidia/nemotron-3.5-super-vl:free
 VISION_TIMEOUT_SECONDS=60
 DEMO_MODE=false
 ```
@@ -46,7 +46,7 @@ CHAT_PROVIDER=off
 `POST https://openrouter.ai/api/v1/chat/completions`
 
 ويرسل:
-- `model=qwen/qwen3-vl-8b-instruct`
+- `model=nvidia/nemotron-3.5-super-vl:free`
 - صورة داخل رسالة متعددة الوسائط بصيغة `image_url` وData URL.
 - تعليمات ومجموعة مغلقة من المعدات أو أرقام القطع المسموح بها.
 
@@ -54,13 +54,13 @@ CHAT_PROVIDER=off
 
 ## التكلفة والحدود
 
-Qwen3-VL-8B-Instruct عبر OpenRouter ليس مجانيًا في صفحة النموذج وقت إعداد هذا الدليل. السعر المدرج هو:
+NVIDIA Nemotron 3.5 Super VL (free) عبر OpenRouter ليس مجانيًا في صفحة النموذج وقت إعداد هذا الدليل. السعر المدرج هو:
 - 0.117 دولار لكل مليون رمز إدخال.
 - 0.455 دولار لكل مليون رمز إخراج.
 
-قد يتغير السعر أو مزودو الاستضافة وحدود الطلبات. راجع صفحة النموذج مباشرة: https://openrouter.ai/qwen/qwen3-vl-8b-instruct
+قد يتغير السعر أو مزودو الاستضافة وحدود الطلبات. راجع صفحة النموذج مباشرة: https://openrouter.ai/nvidia/nemotron-3.5-super-vl:free
 
-توجد نماذج مجانية أخرى على OpenRouter، لكن معرف `openrouter/free` يختار نموذجًا مجانيًا مناسبًا ولا يضمن استخدام Qwen3-VL؛ لا تستخدمه في اختبار الدقة الثابت أو اعتماد قبول الإنتاج.
+توجد نماذج مجانية أخرى على OpenRouter، لكن معرف `openrouter/free` يختار نموذجًا مجانيًا مناسبًا ولا يضمن استخدام Nemotron 3.5 Super VL؛ لا تستخدمه في اختبار الدقة الثابت أو اعتماد قبول الإنتاج.
 
 ## خطة الاختبار
 
