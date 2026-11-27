@@ -55,7 +55,7 @@ class OpenAIVisionAdapter:
             return VisionResult(
                 part_number=None,
                 confidence=0.0,
-                provider=f"openai:{self.model}",
+                provider=f"{self.provider_name}:{self.model}",
                 error="no_components_for_equipment",
             )
 
@@ -105,7 +105,7 @@ class OpenAIVisionAdapter:
             return VisionResult(
                 part_number=None,
                 confidence=0.0,
-                provider=f"openai:{self.model}",
+                provider=f"{self.provider_name}:{self.model}",
                 error=f"vision_provider_error: {exc}",
             )
 
@@ -116,7 +116,7 @@ class OpenAIVisionAdapter:
             return VisionResult(
                 part_number=None,
                 confidence=0.0,
-                provider=f"openai:{self.model}",
+                provider=f"{self.provider_name}:{self.model}",
                 error="invalid_provider_json",
             )
 
@@ -125,7 +125,7 @@ class OpenAIVisionAdapter:
             return VisionResult(
                 part_number=None,
                 confidence=float(parsed.get("confidence") or 0.0),
-                provider=f"openai:{self.model}",
+                provider=f"{self.provider_name}:{self.model}",
                 error="no_match",
             )
 
@@ -134,7 +134,7 @@ class OpenAIVisionAdapter:
             return VisionResult(
                 part_number=None,
                 confidence=0.0,
-                provider=f"openai:{self.model}",
+                provider=f"{self.provider_name}:{self.model}",
                 error="part_number_not_in_candidates",
             )
 
@@ -148,7 +148,7 @@ class OpenAIVisionAdapter:
             confidence=confidence,
             bounding_box=clamp_box(parsed.get("bounding_box")),
             label=parsed.get("label"),
-            provider=f"openai:{self.model}",
+            provider=f"{self.provider_name}:{self.model}",
         )
 
 
