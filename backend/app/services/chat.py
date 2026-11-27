@@ -184,12 +184,10 @@ _HELP_TERMS = ("مساعده", "مساعدة", "help", "ماذا تستطيع", 
 
 
 class ChatService:
-    """Conversation orchestration on top of the deterministic maintenance engine.
+    """Coordinate equipment identification, manual-grounded maintenance, and abstention.
 
-    The LLM handles general conversation, free-form image description and
-    evidence-grounded non-operational manual Q&A. Torque values, maintenance
-    steps, part numbers and LOTO rules remain controlled by the verified
-    knowledge base and never become executable through manual RAG alone.
+    General-purpose chat and free-form image description are intentionally
+    outside the MISBAR MVP.
     """
 
     def __init__(
@@ -832,72 +830,6 @@ class ChatService:
         )
         return answer_numbers.issubset(allowed_numbers)
 
-    def _is_restricted_manual_rag_query(self, query: str) -> bool:
-        restricted_terms = (
-            "عزم",
-            "شد",
-            "torque",
-            "tightening",
-            "dismantling",
-            "assembly",
-            "install",
-            "installation",
-            "removal",
-            "remove",
-            "replacement",
-            "wiring",
-            "wire",
-            "terminal torque",
-            "disconnect",
-            "electrical supply",
-            "loto",
-            "lockout",
-            "isolation",
-            "خطوات",
-            "كيف افك",
-            "كيف اركب",
-            "فك",
-            "تركيب",
-            "استبدال",
-            "توصيل",
-            "اسلاك",
-            "كهرباء",
-            "افصل",
-            "عزل",
-            "اجراء صيانة",
-            "اصلاح",
-            "procedure",
-            "procedures",
-            "commission",
-            "commissioning",
-            "configure",
-            "configuration",
-            "parameter",
-            "program",
-            "programming",
-            "download",
-            "upload",
-            "reset",
-            "restart",
-            "calibrate",
-            "adjust",
-            "connect",
-            "startup",
-            "start-up",
-            "energize",
-            "energise",
-            "test run",
-            "diagnostic procedure",
-            "how",
-            "كيف",
-            "error code",
-            "fault code",
-            "alarm reset",
-        )
-        return self._needs_grounded_answer(query) or any(
-            term_in_text(query, term) for term in restricted_terms
-        )
-
     def _manual_rag_context(self, hits) -> str:
         blocks: list[str] = []
         for index, hit in enumerate(hits, start=1):
@@ -934,40 +866,6 @@ class ChatService:
             if hit.source_url:
                 lines.append(f"رابط المصدر: {hit.source_url}")
         return "\n".join(lines)
-
-    def _manual_snippets_reply(
-        self, session: Session | None, query: str, hits
-    ) -> ChatResponse:
-        lines: list[str] = []
-        for index, hit in enumerate(hits, start=1):
-            page = (
-                f"الصفحة المطبوعة {hit.printed_page_number} "
-                f"(صفحة PDF {hit.pdf_page_number})"
-                if hit.printed_page_number
-                else f"صفحة PDF {hit.pdf_page_number}"
-            )
-            document_ref = hit.document_number or hit.document_id
-            revision = f" — الإصدار: {hit.revision}" if hit.revision else ""
-            section = f" — القسم: {hit.section_title}" if hit.section_title else ""
-            lines.append(
-                f"[S{index}] {hit.manufacturer} — {hit.title}{revision}\n"
-                f"المرجع: {document_ref} — {page}{section}\n"
-                f"المقتطف: {hit.excerpt}"
-            )
-            if hit.source_url:
-                lines.append(f"رابط المصدر: {hit.source_url}")
-
-        return ChatResponse(
-            message_ar=(
-                "تحذير السلامة: لا تنفذ خطوة صيانة أو إجراء أو تستخدم قيمة عزم اعتماداً على "
-                "مقتطف البحث وحده. طابق لوحة بيانات المعدة والإصدار، واطلب اعتماد مختص مؤهل.\n\n"
-                f"وجدت {len(hits)} مقطعاً ذا صلة بموضوع «{query}»:\n\n"
-                + "\n\n".join(lines)
-            ),
-            source="system",
-            session=self._safe_session(session),
-            quick_replies=["اسأل عن موضوع موثق في الدليل", "ما المعدات المتاحة؟"],
-        )
 
     # ----------------------------------------------------------------- grounded
     def _grounded_reply(self, session: Session | None, message: str) -> ChatResponse:
