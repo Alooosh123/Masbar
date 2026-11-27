@@ -292,7 +292,7 @@ class ChatService:
 
         # Maintenance questions that are not handled by deterministic safety
         # commands must use the approved manual index, never general chat.
-        if self._is_maintenance_query(message) and not self._needs_grounded_answer(message):
+        if self._is_maintenance_query(message):
             if session is None:
                 equipment = self.assistant.list_equipment()
                 return ChatResponse(
@@ -707,7 +707,20 @@ class ChatService:
                 abstention_reason_ar="دليل OEM غير موجود في فهرس البحث.",
             )
 
-        equipment_model = session.equipment_model if session is not None else None
+        if session is None:
+            return ChatResponse(
+                message_ar=(
+                    "لا أستطيع اختيار دليل عشوائي للإجابة عن سؤال صيانة. "
+                    "التقط صورة للمعدة المدعومة، أكّد هويتها، ثم أعد السؤال."
+                ),
+                source="system",
+                equipment=self.assistant.list_equipment(),
+                quick_replies=["افتح الكاميرا"],
+                abstained=True,
+                abstention_reason_ar="لا توجد معدة مؤكدة لتقييد البحث في دليلها.",
+            )
+
+        equipment_model = session.equipment_model
         hits = library.search(query, equipment_model=equipment_model, limit=5)
         if not hits:
             return ChatResponse(
@@ -723,11 +736,11 @@ class ChatService:
                 abstention_reason_ar="لم يعثر البحث على أدلة مناسبة في الدليل المطابق.",
             )
 
-        # Operationally sensitive queries remain retrieval-only. The RAG model
-        # may explain descriptive facts, but it never turns these excerpts into
-        # executable torque, isolation, wiring, or maintenance instructions.
-        if self.chat is None or self._is_restricted_manual_rag_query(query) or self._is_maintenance_query(query):
-            return self._manual_snippets_reply(session, query, hits)
+        # Synthesize only the equipment-scoped manual evidence. Never expose raw chunks.
+        if self.chat is None:
+            return self._manual_answer_abstention(
+                session, "خدمة صياغة الإجابة غير متاحة حالياً."
+            )
 
         manual_context = self._manual_rag_context(hits)
         try:
@@ -739,7 +752,9 @@ class ChatService:
             )
         except Exception:
             logger.exception("Manual RAG generation failed")
-            return self._manual_snippets_reply(session, query, hits)
+            return self._manual_answer_abstention(
+                session, "حدث عطل أثناء صياغة الإجابة من الدليل."
+            )
 
         safe_text = sanitize_user_facing_text(reply.text)
         if safe_text:
@@ -751,6 +766,8 @@ class ChatService:
                 else "",
                 safe_text,
             )
+        if safe_text and not re.search(r"\[S[1-5]\]", safe_text):
+            safe_text = None
         if safe_text and not self._manual_answer_numbers_are_grounded(safe_text, query, hits):
             logger.warning("Manual RAG answer rejected because it contains unsupported numeric claims")
             safe_text = None
@@ -760,7 +777,9 @@ class ChatService:
                 "Manual RAG answer unavailable or rejected: %s",
                 reply.error or "unsafe_or_invalid_output",
             )
-            return self._manual_snippets_reply(session, query, hits)
+            return self._manual_answer_abstention(
+                session, "لم أتمكن من التحقق من إجابة مستندة إلى المقاطع المسترجعة."
+            )
 
         sources = self._manual_source_lines(hits)
         return ChatResponse(
@@ -770,9 +789,22 @@ class ChatService:
                 "طابق رقم الطراز ولوحة البيانات ومراجعة الدليل، واطلب مراجعة مختص قبل "
                 "أي عمل ميداني. لا تعتمد على الإجابة وحدها لقيم العزم أو إجراءات العزل."
             ),
-            source="general",
+            source="assistant",
             session=self._safe_session(session),
-            quick_replies=["اسأل عن قسم آخر في الكتيب", "ما الكتيبات المفهرسة؟"],
+            quick_replies=["اسأل سؤال صيانة آخر", "افتح الكاميرا"],
+        )
+
+    def _manual_answer_abstention(self, session: Session, reason: str) -> ChatResponse:
+        return ChatResponse(
+            message_ar=(
+                "لم أقدم تعليمات صيانة لأن الإجابة لم تجتز التحقق من الدليل. "
+                f"{reason} أعد صياغة السؤال أو اطلب مراجعة الدليل من مختص."
+            ),
+            source="system",
+            session=self._safe_session(session),
+            quick_replies=["أعد صياغة السؤال", "افتح الكاميرا"],
+            abstained=True,
+            abstention_reason_ar=reason,
         )
 
     def _manual_answer_numbers_are_grounded(self, answer: str, query: str, hits) -> bool:
