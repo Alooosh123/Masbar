@@ -324,9 +324,15 @@ def test_manual_index_import_validates_schema_and_persists_searchable_chunks(tmp
             files={"file": ("siemens-s7-1200-test.json", index_bytes, "application/json")},
         )
         listed = client.get("/api/v1/manuals")
+        pending = _create_pending_session("Siemens S7-1200 Control Panel")
+        confirmed = client.post(
+            "/api/v1/chat",
+            json={"message": "تأكيد المعدة", "session_id": pending["session_id"]},
+        )
+        assert confirmed.status_code == 200
         searched = client.get(
             "/api/v1/manuals/search",
-            params={"q": "CPU 1214C", "equipment_model": "Siemens S7-1200 Control Panel"},
+            params={"q": "CPU 1214C", "session_id": pending["session_id"]},
         )
 
     assert imported.status_code == 201
