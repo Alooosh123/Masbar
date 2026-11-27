@@ -67,73 +67,30 @@ def test_equipment_catalog_from_chat(client):
     }
 
 
-def test_start_session_from_arabic_message(client):
+def test_manual_equipment_selection_cannot_start_a_session(client):
     body = _chat(client, "ابدأ جلسة على C15")
-    assert body["session"] is not None
-    assert body["session"]["equipment_model"] == "Caterpillar C15 ACERT"
-    assert body["session"]["state"] == "CREATED"
-
-
-def test_component_catalog_in_chat(client):
-    start = _chat(client, "ابدأ جلسة على C15 طرمبة")
-    session_id = start["session"]["session_id"]
-    body = _chat(client, "اعرض القطع", session_id=session_id)
-    part_numbers = {item["part_number"] for item in body["components"]}
-    assert "312-5620" in part_numbers
-    assert len(body["components"]) == 3
-
-
-def test_identify_by_part_number_from_chat(client):
-    start = _chat(client, "ابدأ جلسة على C15")
-    session_id = start["session"]["session_id"]
-    body = _chat(client, "حدد القطعة 312-5620", session_id=session_id)
-    assert body["session"]["state"] == "AWAITING_LOTO"
-    assert body["session"]["identified_component"]["part_number"] == "312-5620"
-    assert body["session"]["current_step"] is None
-    assert body["session"]["procedure_available"] is False
-    assert body["session"]["safety_lockout"]["source_status"] == "unverified"
-    assert body["session"]["safety_lockout"]["checklist"] == []
-
-
-def test_unverified_torque_and_loto_are_blocked_in_chat(client):
-    start = _chat(client, "ابدأ جلسة على C15")
-    session_id = start["session"]["session_id"]
-    identified = _chat(client, "حدد القطعة 312-5620", session_id=session_id)
-
-    assert identified["session"]["procedure_available"] is False
-    assert identified["session"]["safety_lockout"]["checklist"] == []
-
-    blocked = _chat(client, "كم العزم؟", session_id=session_id)
-    assert blocked["session"]["state"] == "AWAITING_LOTO"
-    assert "إيقاف آمن" in blocked["message_ar"]
-    assert "45" not in blocked["message_ar"]
-
-    loto = client.post(
-        f"/api/v1/sessions/{session_id}/loto",
-        json={"confirmed_item_ids": []},
-    )
-    assert loto.status_code == 409
-    assert loto.json()["detail"]["code"] == "safety_not_verified"
-
-    torque = _chat(client, "كم العزم؟", session_id=session_id)
-    assert "45" not in torque["message_ar"]
-    assert torque["session"]["current_step"] is None
-    assert torque["session"]["procedure_available"] is False
-
-
-
-def test_next_step_from_chat_is_blocked_for_unverified_component(client):
-    start = _chat(client, "ابدأ جلسة على C15")
-    session_id = start["session"]["session_id"]
-    _chat(client, "312-5620", session_id=session_id)
-
-    body = _chat(client, "الخطوة التالية", session_id=session_id)
-    assert body["session"]["current_step"] is None
-    assert body["session"]["procedure_available"] is False
+    assert body["session"] is None
     assert body["abstained"] is True
-
-
-
+    assert body["action"] == "open_camera"
+    assert "التقط صورة" in body["message_ar"]
+def test_component_catalog_is_not_exposed_as_an_mvp_workflow(client):
+    body = _chat(client, "اعرض القطع")
+    assert body["abstained"] is True
+    assert body["components"] == []
+def test_part_number_selection_without_confirmed_equipment_abstains(client):
+    body = _chat(client, "حدد القطعة 312-5620")
+    assert body["session"] is None
+    assert body["abstained"] is True
+def test_maintenance_question_without_equipment_context_abstains(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "كم العزم؟")
+    assert body["abstained"] is True
+    assert "معدة" in body["abstention_reason_ar"]
+    assert fake.calls == []
+def test_step_commands_are_outside_the_mvp_chat_flow(client):
+    body = _chat(client, "الخطوة التالية")
+    assert body["session"] is None
+    assert body["abstained"] is True
 def test_safety_question_without_session_never_calls_llm(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "كم عزم صمام 312-5620؟")
@@ -143,18 +100,10 @@ def test_safety_question_without_session_never_calls_llm(client, monkeypatch):
     assert fake.calls == []
 
 
-def test_voice_loto_confirmation_is_rejected(client):
-    start = _chat(client, "ابدأ جلسة على C15")
-    session_id = start["session"]["session_id"]
-    _chat(client, "حدد القطعة 312-5620", session_id=session_id)
-
-    body = _chat(client, "تم العزل", session_id=session_id)
-    assert "غير معتمدة" in body["message_ar"]
-    assert body["session"]["state"] == "AWAITING_LOTO"
-    assert body["session"]["procedure_available"] is False
+def test_voice_loto_confirmation_without_session_abstains(client):
+    body = _chat(client, "تم العزل")
+    assert body["session"] is None
     assert body["abstained"] is True
-
-
 def test_out_of_scope_general_chat_abstains(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "tell me a joke")
@@ -208,40 +157,18 @@ def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeyp
     assert fake.calls == []
 
 
-def test_explicit_image_identification_uses_grounded_part(client, monkeypatch):
+def test_image_identification_does_not_fall_back_to_mock_provider(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
-    start = _chat(client, "ابدأ جلسة على C15")
-    session_id = start["session"]["session_id"]
-
-    body = _chat(
-        client,
-        "حدد القطعة 312-5620",
-        image_base64="AA==",
-        mode="identify",
-        session_id=session_id,
-    )
-    assert body["session"]["state"] == "AWAITING_LOTO"
-    assert body["session"]["identified_component"]["part_number"] == "312-5620"
-    assert fake.calls == []  # identification never goes through the LLM
-
-
-def test_mock_vision_never_claims_successful_image_identification(client):
-    start = _chat(client, "ابدأ جلسة على C15")
-    session_id = start["session"]["session_id"]
-
-    body = _chat(
-        client,
-        "حدد المعدة من الصورة",
-        image_base64="AA==",
-        mode="identify",
-        session_id=session_id,
-    )
-
+    body = _chat(client, "حدد المعدة من الصورة", image_base64="AA==", mode="identify")
+    assert body["session"] is None
     assert body["abstained"] is True
-    assert "تجريبي" in body["message_ar"]
-    assert body["session"]["identified_component"] is None
-
-
+    assert "المحاكاة" in body["message_ar"] or "غير مهيأ" in body["message_ar"]
+    assert fake.calls == []
+def test_mock_vision_never_claims_successful_image_identification(client):
+    body = _chat(client, "حدد المعدة من الصورة", image_base64="AA==", mode="identify")
+    assert body["abstained"] is True
+    assert body["session"] is None
+    assert "غير مهيأ" in body["message_ar"]
 def test_manual_rag_without_valid_synthesis_abstains_instead_of_showing_raw_chunks(
     client, monkeypatch
 ):
@@ -271,19 +198,21 @@ def test_manual_rag_without_valid_synthesis_abstains_instead_of_showing_raw_chun
     getter.cache_clear = lambda: None
     monkeypatch.setattr(app.deps, "get_manual_library", getter)
 
-    start = _chat(client, "ابدأ جلسة على S7-1200")
+    session = client.post(
+        "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+    ).json()
+    confirmed = _chat(client, "تأكيد المعدة", session_id=session["session_id"])
+    assert confirmed["session"]["state"] == "CREATED"
     body = _chat(
         client,
         "ابحث في الكتيبات عن صيانة المضخة",
-        session_id=start["session"]["session_id"],
+        session_id=session["session_id"],
     )
 
     assert body["abstained"] is True
     assert "SECRET RAW MANUAL EXCERPT MUST NOT BE SHOWN" not in body["message_ar"]
     assert fake.calls
     assert fake.calls[0]["manual_context"]
-
-
 def test_chat_unhandled_provider_exception_returns_safe_service_error(client, monkeypatch):
     from app.api.routes import chat as chat_route
 
@@ -307,11 +236,7 @@ def test_out_of_scope_request_does_not_expose_model_internal_text(client, monkey
     assert fake.calls == []
 
 
-def test_unverified_part_number_is_not_presented_as_oem_citation(client):
-    start = _chat(client, "ابدأ جلسة على C15")
-    session_id = start["session"]["session_id"]
-    _chat(client, "حدد القطعة 312-5620", session_id=session_id)
-    body = _chat(client, "ما رقم القطعة؟", session_id=session_id)
+def test_part_number_questions_without_identified_component_abstain(client):
+    body = _chat(client, "ما رقم القطعة؟")
     assert body["abstained"] is True
-    assert "SENR9834-08" not in body["message_ar"]
-    assert "تجريبي" in body["message_ar"]
+    assert "قاعدة المعرفة" not in body["message_ar"]
