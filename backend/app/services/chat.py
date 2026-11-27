@@ -934,26 +934,15 @@ class ChatService:
     def _equipment_quick_replies(
         self, equipment: list[EquipmentSummary]
     ) -> list[str]:
-        return [f"ابدأ جلسة على {item.equipment_family}" for item in equipment[:4]]
+        return ["افتح الكاميرا لبدء تحديد المعدة"]
 
     def _base_quick_replies(self, session: Session | None) -> list[str]:
-        quick = ["ما المعدات المتاحة؟", "افتح الكاميرا", "شغّل الميكروفون"]
-        if session is not None:
-            quick.append("اعرض القطع")
-        return quick
+        return ["افتح الكاميرا", "شغّل الميكروفون"]
 
     def _session_quick_replies(self, response) -> list[str]:
-        if response.identified_component is not None and not response.procedure_available:
-            return ["تحذيرات السلامة", "راجع حالة اعتماد المصدر", "اعرض القطع"]
-        if response.state == SessionState.AWAITING_LOTO:
-            return ["تحذيرات السلامة", "كيف أكمل العزل؟", "اعرض القطع"]
-        if response.state in (SessionState.READY, SessionState.IN_PROGRESS):
-            return ["الخطوة التالية", "كم العزم؟", "أعد الخطوة", "تحذيرات السلامة"]
-        if response.state == SessionState.COMPLETED:
-            return ["ابدأ جلسة جديدة", "ما المعدات المتاحة؟"]
-        if response.identified_component is not None:
-            return ["تحذيرات السلامة", "اعرض القطع", "كم العزم؟"]
-        return ["اعرض القطع", "افتح الكاميرا", "ما المعدات المتاحة؟"]
+        if response.state == SessionState.PENDING_CONFIRMATION:
+            return ["تأكيد المعدة", "إعادة التصوير"]
+        return ["اسأل عن الصيانة", "افتح الكاميرا"]
 
     def _component_summaries(self, equipment_model: str) -> list[ComponentSummary]:
         return [
