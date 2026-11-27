@@ -120,7 +120,7 @@ class ConversationStore:
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT c.id,c.title,c.created_at,c.updated_at,
+                SELECT c.id,c.title,c.session_id,c.created_at,c.updated_at,
                     (SELECT COUNT(*) FROM conversation_messages m WHERE m.conversation_id=c.id) AS message_count,
                     (SELECT content FROM conversation_messages m WHERE m.conversation_id=c.id
                      ORDER BY m.id DESC LIMIT 1) AS preview
