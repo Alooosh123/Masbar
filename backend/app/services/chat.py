@@ -477,6 +477,12 @@ class ChatService:
     def _start_session(self, message: str, session: Session | None) -> ChatResponse:
         equipment_name = self._find_equipment(message)
         if equipment_name is None:
+            if "320d" in normalize_arabic(message):
+                return self._ask_for_equipment(
+                    "Caterpillar 320D غير مدعومة في مسبار وتم حذفها من الكتالوج. اختر معدة مدعومة:",
+                    abstained=True,
+                    reason="المعدة المطلوبة Caterpillar 320D غير مدعومة.",
+                )
             prefix = "لبدء جلسة، اختر المعدة أولًا:"
             if session is not None:
                 prefix = (
@@ -1024,15 +1030,17 @@ class ChatService:
             quick_replies=quick_replies or self._base_quick_replies(session),
         )
 
-    def _ask_for_equipment(self, prefix: str) -> ChatResponse:
+    def _ask_for_equipment(
+        self, prefix: str, *, abstained: bool = False, reason: str | None = None
+    ) -> ChatResponse:
         equipment = self.assistant.list_equipment()
         return ChatResponse(
             message_ar=f"{prefix}\n\n{self._equipment_text(equipment)}",
             source="system",
             equipment=equipment,
             quick_replies=self._equipment_quick_replies(equipment),
-            abstained=True,
-            abstention_reason_ar="لم يتم تحديد معدة مدعومة بشكل مؤكد؛ اختر من القائمة المتاحة.",
+            abstained=abstained,
+            abstention_reason_ar=reason,
         )
 
     def _equipment_text(self, equipment: list[EquipmentSummary]) -> str:
