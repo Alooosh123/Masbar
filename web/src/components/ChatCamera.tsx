@@ -4,13 +4,10 @@ import {
   CameraIcon,
   CloseIcon,
   RotateCwIcon,
-  ShieldIcon,
 } from "./Icons";
 
-type CaptureMode = "describe" | "identify";
-
 interface Props {
-  onCapture: (imageBase64: string, mode: CaptureMode) => void;
+  onCapture: (imageBase64: string) => void;
   onClose: () => void;
 }
 
@@ -84,7 +81,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   }, [facing, attempt]);
 
   const capture = useCallback(
-    (mode: CaptureMode) => {
+    () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
       if (!video || !canvas || !ready || video.videoWidth === 0) {
@@ -107,7 +104,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       }
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-      onCapture(dataUrl, mode);
+      onCapture(dataUrl);
     },
     [onCapture, ready]
   );
@@ -177,26 +174,17 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       <div className="chat-camera-actions">
         <button
           type="button"
-          className="chat-capture-btn secondary"
-          onClick={() => capture("identify")}
-          disabled={!ready}
-        >
-          <ShieldIcon size={19} />
-          التقاط وتحديد
-        </button>
-        <button
-          type="button"
           className="chat-capture-btn primary"
-          onClick={() => capture("describe")}
+          onClick={capture}
           disabled={!ready}
         >
           <CameraIcon size={20} />
-          التقاط ووصف
+          التقاط الصورة
         </button>
       </div>
 
       <footer className="chat-camera-foot">
-        <span>الوصف عام. التحديد يستخدم قاعدة المعرفة ولا يخمّن.</span>
+        <span>التقاط صورة لتحديد المعدات المدعومة. إذا لم تكن واضحة، سيطلب مسبار إعادة التصوير.</span>
         <button
           type="button"
           className="chat-camera-flip"

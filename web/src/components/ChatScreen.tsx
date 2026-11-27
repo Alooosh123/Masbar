@@ -143,7 +143,8 @@ function renderInline(text: string) {
 }
 
 function ChatText({ text }: { text: string }) {
-  const lines = text.split("\n");
+  const normalizedText = text.replace(/\\r?\\n/g, "\n");
+  const lines = normalizedText.split("\n");
   return (
     <div className="chat-text">
       {lines.map((line, index) => {
@@ -722,10 +723,10 @@ export function ChatScreen() {
     void send(reply);
   }
 
-  function handleCameraCapture(image: string, mode: "describe" | "identify") {
+  function handleCameraCapture(image: string) {
     setCameraOpen(false);
     lastImageRef.current = image;
-    void send(mode === "identify" ? "حدد القطعة" : "", { image, mode });
+    void send("حدد المعدات من الصورة", { image, mode: "identify" });
   }
 
   function resetConversation() {

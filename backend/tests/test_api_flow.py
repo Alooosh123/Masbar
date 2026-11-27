@@ -22,8 +22,8 @@ def _checklist_ids(body: dict) -> list[str]:
 def test_health_reports_loaded_knowledge(client):
     body = client.get("/health").json()
     assert body["status"] == "online"
-    assert body["components"] == 9
-    assert body["equipment"] == 3
+    assert body["components"] == 6
+    assert body["equipment"] == 2
 
 
 def test_unknown_equipment_is_rejected(client):

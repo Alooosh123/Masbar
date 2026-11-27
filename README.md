@@ -265,7 +265,6 @@ scripts/             # تشغيل + اختبار + smoke + e2e_chat.py
 | الملف | المعدة | القطع |
 | --- | --- | --- |
 | `data/kb/cat_c15_fuel_system.json` | Caterpillar C15 | 3 |
-| `data/kb/cat_320d_hydraulics.json` | Caterpillar 320D | 3 |
 | `data/kb/siemens_s7_panel.json` | Siemens S7 Panel | 3 |
 
 كل ملف يمر عبر `loader.py` الذي يتحقق من: الحقول الإلزامية، تطابق أرقام القطع، وجود مصدر لكل عزم، ووجود بنود LOTO. أي ملف غير صالح يمنع إقلاع الخادم برسالة واضحة.

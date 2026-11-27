@@ -44,7 +44,7 @@ def _use_fake_chat(monkeypatch) -> FakeChat:
 def test_welcome_lists_equipment_and_quick_replies(client):
     body = _chat(client)
     assert body["source"] == "system"
-    assert len(body["equipment"]) == 3
+    assert len(body["equipment"]) == 2
     assert any("ابدأ جلسة" in reply for reply in body["quick_replies"])
     assert "الكاميرا" in " ".join(body["quick_replies"])
 
@@ -60,7 +60,6 @@ def test_equipment_catalog_from_chat(client):
     body = _chat(client, "ما المعدات المتاحة؟")
     names = {item["equipment_family"] for item in body["equipment"]}
     assert names == {
-        "Caterpillar 320D Excavator",
         "Caterpillar C15 ACERT",
         "Siemens S7-1200 Control Panel",
     }
@@ -154,26 +153,57 @@ def test_voice_loto_confirmation_is_rejected(client):
     assert body["abstained"] is True
 
 
-def test_general_chat_uses_adapter(client, monkeypatch):
+def test_out_of_scope_general_chat_abstains(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
-    body = _chat(client, "كيف تعمل المضخة الهيدروليكية؟")
-    assert body["source"] == "general"
-    assert body["message_ar"] == "هذه إجابة عامة تجريبية."
-    assert len(fake.calls) == 1
-    assert fake.calls[0]["describe"] is False
+    body = _chat(client, "tell me a joke")
+    assert body["source"] == "system"
+    assert body["abstained"] is True
+    assert "خارج نطاق" in body["message_ar"]
+    assert fake.calls == []
 
 
-def test_image_defaults_to_description_not_identification(client, monkeypatch):
+def test_manual_search_disabled_abstains_with_authentication_guidance(client):
+    body = _chat(client, "ابحث في الكتيبات عن shaft seal")
+    assert body["abstained"] is True
+    assert "المصادقة والصلاحيات" in body["message_ar"]
+
+
+def test_image_defaults_to_identification_not_general_description(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "", image_base64="AA==")
-    assert body["source"] == "vision"
-    assert "وصف عام" in body["message_ar"]
-    assert fake.calls[0]["describe"] is True
-    assert fake.calls[0]["image_base64"] == "AA=="
-    assert body["session"] is None
-    # Camera commands in the chat history must not bias the description.
-    assert fake.calls[0]["history"] == []
-    assert fake.calls[0]["context"] is None
+    assert body["source"] == "system"
+    assert len(body["equipment"]) == 2
+    assert "اختر المعدة" in body["message_ar"]
+    assert fake.calls == []
+
+
+def test_maintenance_question_without_confirmed_equipment_abstains(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "low hydraulic oil level")
+    assert body["abstained"] is True
+    assert "معدة" in body["abstention_reason_ar"]
+    assert len(body["equipment"]) == 2
+    assert fake.calls == []
+
+
+def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
+    from app.deps import get_chat_service
+    from app.services.chat import ChatService
+
+    service = get_chat_service()
+    service.settings.manual_search_enabled = True
+    service.settings.environment = "test"
+
+    fake = _use_fake_chat(monkeypatch)
+    start = _chat(client, "ابدأ جلسة على 320D")
+    assert start["session"] is None
+    assert start["abstained"] is True
+    assert "320D غير مدعومة" in start["message_ar"]
+    assert "المعدات المتاحة" in start["message_ar"]
+    body = _chat(client, "low hydraulic oil level")
+    assert body["abstained"] is True
+    assert "معدة" in body["abstention_reason_ar"]
+    assert fake.calls == []
 
 
 def test_explicit_image_identification_uses_grounded_part(client, monkeypatch):
@@ -207,18 +237,13 @@ def test_chat_unhandled_provider_exception_returns_safe_service_error(client, mo
     assert "private provider stack trace" not in response.text
 
 
-def test_prompt_leakage_is_rejected_and_not_rendered(client, monkeypatch):
+def test_out_of_scope_request_does_not_expose_model_internal_text(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
-    async def leaking_reply(*args, **kwargs):
-        return ChatReply(
-            text="User asks for maintenance. We should respond with steps.",
-            provider="fake",
-        )
-    fake.reply = leaking_reply
     body = _chat(client, "اشرح معنى لوحة التحكم بشكل مبسط.")
     assert body["abstained"] is True
     assert "User asks" not in body["message_ar"]
     assert "We should respond" not in body["message_ar"]
+    assert fake.calls == []
 
 
 def test_unverified_part_number_is_not_presented_as_oem_citation(client):

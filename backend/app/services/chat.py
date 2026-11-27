@@ -36,14 +36,6 @@ _STATE_AR: dict[SessionState, str] = {
 
 # Aliases are matched after Arabic normalization (ة → ه, أ/إ/آ → ا).
 _EQUIPMENT_ALIASES: dict[str, tuple[str, ...]] = {
-    "Caterpillar 320D Excavator": (
-        "320d",
-        "320",
-        "excavator",
-        "حفار",
-        "حفاره",
-        "كاتربلر 320",
-    ),
     "Caterpillar C15 ACERT": (
         "c15",
         "acert",
@@ -227,7 +219,18 @@ class ChatService:
         if has_image and req.mode == "identify":
             return await self._identify(req, session, message, from_image=True)
         if has_image and req.mode == "describe":
-            return await self._describe(req, session, message)
+            return ChatResponse(
+                message_ar=(
+                    "وصف الصور العام خارج نطاق مسبار. أرسل صورة لتحديد إحدى المعدات المدعومة "
+                    "أو أعد التقاط صورة أوضح."
+                ),
+                source="system",
+                session=self._safe_session(session),
+                equipment=self.assistant.list_equipment() if session is None else [],
+                quick_replies=["ما المعدات المدعومة؟", "افتح الكاميرا"],
+                abstained=True,
+                abstention_reason_ar="الصورة لم تُرسل في وضع تحديد المعدات.",
+            )
 
         if self._is_close_camera(message):
             return ChatResponse(
@@ -275,15 +278,50 @@ class ChatService:
         # API access. The ingestion route independently enforces owner/admin roles.
         if self._is_manual_search(message):
             if not self.settings.manual_search_available:
-                return self._system_reply(
-                    "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. فعّله فقط في بيئة محلية/خاصة، "
-                    "ولا تعرض الخادم للإنترنت قبل إضافة المصادقة والصلاحيات.",
-                    session,
+                return ChatResponse(
+                    message_ar=(
+                        "بحث الكتيبات معطل افتراضياً لحماية محتوى الأدلة. لا تعرض الخادم للإنترنت قبل إضافة المصادقة والصلاحيات؛ لم أقدم معلومات صيانة غير موثقة."
+                    ),
+                    source="system",
+                    session=self._safe_session(session),
+                    quick_replies=self._base_quick_replies(session),
+                    abstained=True,
+                    abstention_reason_ar="خدمة البحث في الكتيبات غير مفعلة.",
                 )
             return await self._manual_search_reply(session, message)
 
-        # Safety-critical questions always resolve through the knowledge base,
-        # even when they happen to mention a catalog noun.
+        # Maintenance questions that are not handled by deterministic safety
+        # commands must use the approved manual index, never general chat.
+        if self._is_maintenance_query(message) and not self._needs_grounded_answer(message):
+            if session is None:
+                equipment = self.assistant.list_equipment()
+                return ChatResponse(
+                    message_ar=(
+                        "أحتاج أولاً إلى صورة وتأكيد المعدة حتى أبحث في دليلها المعتمد. "
+                        "لا أستخدم قاعدة معرفة عامة لإعطاء معلومات صيانة."
+                    ),
+                    source="system",
+                    equipment=equipment,
+                    quick_replies=self._equipment_quick_replies(equipment),
+                    abstained=True,
+                    abstention_reason_ar="لا توجد معدة مؤكدة لتقييد البحث في دليلها.",
+                )
+            if not self.settings.manual_search_available:
+                return ChatResponse(
+                    message_ar=(
+                        "البحث في دليل الصيانة غير متاح حالياً. لم أستخدم المحادثة العامة "
+                        "لإعطاء معلومات صيانة؛ تحقق من إعدادات الوصول ثم أعد السؤال."
+                    ),
+                    source="system",
+                    session=self._safe_session(session),
+                    quick_replies=self._base_quick_replies(session),
+                    abstained=True,
+                    abstention_reason_ar="خدمة البحث في دليل الصيانة غير مفعلة.",
+                )
+            return await self._manual_search_reply(session, message)
+
+        # Safety-critical deterministic commands continue through the existing
+        # verified knowledge/safety gate.
         if self._needs_grounded_answer(message):
             return self._grounded_reply(session, message)
 
@@ -306,7 +344,9 @@ class ChatService:
             return await self._identify(req, session, message, from_image=has_image)
 
         if has_image:
-            return await self._describe(req, session, message)
+            # Images are identification inputs in the MVP; never fall back to
+            # general-purpose image chat/description.
+            return await self._identify(req, session, message, from_image=True)
 
         part = self._find_part(message)
         if part is not None:
@@ -319,10 +359,9 @@ class ChatService:
         equipment = self.assistant.list_equipment()
         return ChatResponse(
             message_ar=(
-                "مرحبًا! أنا مسبار، مساعد المصنع. أستطيع فتح الكاميرا ووصف الصور، "
-                "والاستماع لصوتك، وبدء جلسة صيانة آمنة خطوة بخطوة.\n\n"
-                "جرّب: «افتح الكاميرا»، «ما المعدات المتاحة؟»، أو "
-                "«ابدأ جلسة على Caterpillar C15 ACERT»."
+                "مرحبًا! أنا مسبار. أساعدك في تحديد المعدات المدعومة من الصورة، "
+                "ثم أبحث عن معلومات الصيانة في دليل OEM المطابق. إذا كانت الصورة أو الأدلة غير كافية، "
+                "سأوضح ذلك دون تخمين.\n\nابدأ بالتقاط صورة واضحة للمعدة."
             ),
             source="system",
             equipment=equipment,
@@ -334,12 +373,9 @@ class ChatService:
         return ChatResponse(
             message_ar=(
                 "يمكنني تنفيذ هذه الطلبات من داخل المحادثة:\n"
-                "• «افتح الكاميرا» أو «أغلق الكاميرا»\n"
-                "• «شغّل الميكروفون» أو «أوقف الاستماع»\n"
-                "• «ما المعدات المتاحة؟» ثم «ابدأ جلسة على …»\n"
-                "• «ما الشركات المتاحة؟» لعرض سجل مصادر OEM الرسمي\n"
-                "• «ابحث في الكتيبات عن shaft seal» لعرض المقتطفات ومراجع الصفحات\n"
-                "• «اعرض القطع» و«حدد القطعة 312-5620»\n"
+                "• التقط صورة للمعدة لتحديدها ثم أكد النتيجة\n"
+                "• اسأل سؤال صيانة بعد تأكيد المعدة\n"
+                "• «ابحث في الكتيبات عن …» لاسترجاع مقتطفات الدليل المطابق\n"
                 "• «تحذيرات السلامة»، «كم العزم؟»، «الخطوة التالية»\n\n"
                 "أسئلة العزم والفك والعزل لا يجيب عنها إلا محرك قاعدة المعرفة "
                 "بعد تحديد المعدة والقطعة."
@@ -441,6 +477,12 @@ class ChatService:
     def _start_session(self, message: str, session: Session | None) -> ChatResponse:
         equipment_name = self._find_equipment(message)
         if equipment_name is None:
+            if "320d" in normalize_arabic(message):
+                return self._ask_for_equipment(
+                    "Caterpillar 320D غير مدعومة في مسبار وتم حذفها من الكتالوج. اختر معدة مدعومة:",
+                    abstained=True,
+                    reason="المعدة المطلوبة Caterpillar 320D غير مدعومة.",
+                )
             prefix = "لبدء جلسة، اختر المعدة أولًا:"
             if session is not None:
                 prefix = (
@@ -653,25 +695,38 @@ class ChatService:
 
         library = get_manual_library()
         if not library.documents:
-            return self._system_reply(
-                "لا توجد كتيبات مفهرسة في الخادم حالياً. ارفع ملف PDF مصرحاً بمعالجته "
-                "من واجهة API المخصصة للمالك/المدير، ثم أعد السؤال.",
-                session,
+            return ChatResponse(
+                message_ar=(
+                    "لا توجد كتيبات معتمدة مفهرسة حالياً. لم أختلق إجابة صيانة. "
+                    "يلزم إتاحة دليل OEM مطابق للمعدة."
+                ),
+                source="system",
+                session=self._safe_session(session),
+                quick_replies=self._base_quick_replies(session),
+                abstained=True,
+                abstention_reason_ar="دليل OEM غير موجود في فهرس البحث.",
             )
 
         equipment_model = session.equipment_model if session is not None else None
         hits = library.search(query, equipment_model=equipment_model, limit=5)
         if not hits:
-            return self._system_reply(
-                "لم أجد مقاطع مطابقة في الكتيبات المفهرسة. جرّب مصطلحاً فنياً أدق، "
-                "أو تحقق من طراز المعدة المحدد في الجلسة.",
-                session,
+            return ChatResponse(
+                message_ar=(
+                    "لم أجد دليلاً معتمداً مطابقاً للمعدة أو مقاطع كافية للإجابة. "
+                    "لن أستخدم معرفة عامة أو أخمّن خطوات الصيانة. تحقق من موديل المعدة "
+                    "أو أرفق الدليل المعتمد للمراجعة."
+                ),
+                source="system",
+                session=self._safe_session(session),
+                quick_replies=self._base_quick_replies(session),
+                abstained=True,
+                abstention_reason_ar="لم يعثر البحث على أدلة مناسبة في الدليل المطابق.",
             )
 
         # Operationally sensitive queries remain retrieval-only. The RAG model
         # may explain descriptive facts, but it never turns these excerpts into
         # executable torque, isolation, wiring, or maintenance instructions.
-        if self.chat is None or self._is_restricted_manual_rag_query(query):
+        if self.chat is None or self._is_restricted_manual_rag_query(query) or self._is_maintenance_query(query):
             return self._manual_snippets_reply(session, query, hits)
 
         manual_context = self._manual_rag_context(hits)
@@ -872,16 +927,14 @@ class ChatService:
 
         return ChatResponse(
             message_ar=(
+                "تحذير السلامة: لا تنفذ خطوة صيانة أو إجراء أو تستخدم قيمة عزم اعتماداً على "
+                "مقتطف البحث وحده. طابق لوحة بيانات المعدة والإصدار، واطلب اعتماد مختص مؤهل.\n\n"
                 f"وجدت {len(hits)} مقطعاً ذا صلة بموضوع «{query}»:\n\n"
                 + "\n\n".join(lines)
-                + "\n\nتنبيه: هذا بحث نصي في صفحات الكتيبات، وليس اعتماداً فنياً "
-                "ولا تحققاً من مطابقة رقم الطراز أو الإصدار. لا تنفذ خطوة صيانة أو "
-                "تستخدم قيمة عزم من المقتطف وحده؛ راجع الصفحة الأصلية وطابق لوحة "
-                "بيانات المعدة واطلب اعتماد مختص مؤهل."
             ),
             source="system",
             session=self._safe_session(session),
-            quick_replies=["اسأل سؤالاً عاماً عن الكتيبات", "ما المعدات المتاحة؟"],
+            quick_replies=["اسأل عن موضوع موثق في الدليل", "ما المعدات المتاحة؟"],
         )
 
     # ----------------------------------------------------------------- grounded
@@ -931,42 +984,18 @@ class ChatService:
     async def _general_reply(
         self, req: ChatRequest, session: Session | None, message: str
     ) -> ChatResponse:
-        if self.chat is None:
-            return self._system_reply(
-                "المحادثة العامة غير مهيأة على الخادم. أستطيع تنفيذ أوامر الكاميرا "
-                "والميكروفون وبدء الجلسات وعرض القطع والسلامة والخطوات.",
-                session,
-            )
-
-        reply = await self.chat.reply(
-            message=message,
-            history=[turn.model_dump() for turn in req.history],
-            context=self._context(session),
-        )
-        safe_text = sanitize_user_facing_text(reply.text)
-        if reply.error or not safe_text:
-            logger.warning(
-                "General chat unavailable or rejected: %s",
-                reply.error or "unsafe_or_invalid_output",
-            )
-            return ChatResponse(
-                message_ar=(
-                    "لم أتمكن من إنشاء إجابة يمكن التحقق من سلامة عرضها الآن. "
-                    "أعد صياغة السؤال أو استخدم أوامر تحديد المعدة والقطعة."
-                ),
-                source="system",
-                session=self._safe_session(session),
-                quick_replies=self._base_quick_replies(session),
-                abstained=True,
-                abstention_reason_ar="تعذر التحقق من مخرجات نموذج المحادثة.",
-            )
-
-        quick = list(self._base_quick_replies(session))
+        # General-purpose conversation is intentionally outside the locked MVP.
+        # Do not call the LLM for unrelated requests.
         return ChatResponse(
-            message_ar=safe_text,
-            source="general",
+            message_ar=(
+                "هذا الطلب خارج نطاق مسبار. أستطيع تحديد المعدات المدعومة من الصور، "
+                "والبحث في دليل الصيانة المطابق، أو الامتناع عندما لا تتوفر أدلة كافية."
+            ),
+            source="system",
             session=self._safe_session(session),
-            quick_replies=quick,
+            quick_replies=self._base_quick_replies(session),
+            abstained=True,
+            abstention_reason_ar="الطلب لا يندرج ضمن ميزات MVP المعتمدة.",
         )
 
     # ------------------------------------------------------------------ helpers
@@ -1001,13 +1030,17 @@ class ChatService:
             quick_replies=quick_replies or self._base_quick_replies(session),
         )
 
-    def _ask_for_equipment(self, prefix: str) -> ChatResponse:
+    def _ask_for_equipment(
+        self, prefix: str, *, abstained: bool = False, reason: str | None = None
+    ) -> ChatResponse:
         equipment = self.assistant.list_equipment()
         return ChatResponse(
             message_ar=f"{prefix}\n\n{self._equipment_text(equipment)}",
             source="system",
             equipment=equipment,
             quick_replies=self._equipment_quick_replies(equipment),
+            abstained=abstained,
+            abstention_reason_ar=reason,
         )
 
     def _equipment_text(self, equipment: list[EquipmentSummary]) -> str:
@@ -1207,6 +1240,17 @@ class ChatService:
         return bool(tokens & {"مساعده", "help", "مساعدتك"}) or any(
             term_in_text(message, term) for term in _HELP_TERMS
         )
+
+    def _is_maintenance_query(self, message: str) -> bool:
+        terms = (
+            "hydraulic", "oil", "fluid", "filter", "level", "leak", "maintenance",
+            "service", "fault", "failure", "symptom", "diagnosis", "diagnostic",
+            "repair", "troubleshoot", "pump", "pressure", "coolant", "lubrication",
+            "هيدروليك", "زيت", "زيوت", "سائل", "فلتر", "مستوى", "تهريب",
+            "تسريب", "صيانة", "عطل", "خلل", "تشخيص", "اصلاح", "مضخه",
+            "ضغط", "تبريد", "شحوم", "تزييت",
+        )
+        return any(term_in_text(message, term) for term in terms)
 
     def _needs_grounded_answer(self, message: str) -> bool:
         return any(term_in_text(message, term) for term in _GROUNDED_TERMS)
