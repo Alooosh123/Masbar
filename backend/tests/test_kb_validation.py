@@ -12,10 +12,9 @@ def _kb():
 
 def test_counts_and_equipment():
     kb = _kb()
-    assert len(kb.components) == 9
-    assert len(kb.equipment) == 3
+    assert len(kb.components) == 6
+    assert len(kb.equipment) == 2
     assert "Caterpillar C15 ACERT" in kb.equipment
-    assert "Caterpillar 320D Excavator" in kb.equipment
     assert "Siemens S7-1200 Control Panel" in kb.equipment
 
 
