@@ -164,12 +164,6 @@ export const api = {
     return request<ComponentSummary[]>(`/api/v1/components${suffix}`);
   },
 
-  createSession: (equipmentModel: string) =>
-    request<AssistantResponse>("/api/v1/sessions", {
-      method: "POST",
-      body: JSON.stringify({ equipment_model: equipmentModel }),
-    }),
-
   getSession: (sessionId: string) =>
     request<AssistantResponse>(`/api/v1/sessions/${sessionId}`),
 
