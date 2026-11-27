@@ -17,6 +17,7 @@ class CueType(str, Enum):
 
 
 class SessionState(str, Enum):
+    PENDING_CONFIRMATION = "PENDING_CONFIRMATION"
     CREATED = "CREATED"
     IDENTIFIED = "IDENTIFIED"
     AWAITING_LOTO = "AWAITING_LOTO"
