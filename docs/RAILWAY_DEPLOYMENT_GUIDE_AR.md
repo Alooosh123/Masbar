@@ -31,8 +31,8 @@
 | `ENVIRONMENT` | `production` |
 | `PORT` | `8000` |
 | `CORS_ORIGINS` | عنوان الواجهة بعد إنشائه، مثل `https://<frontend-domain>` |
-| `VISION_PROVIDER` | `cohere` عند استخدام مفتاح Cohere |
-| `CHAT_PROVIDER` | `cohere` عند استخدام مفتاح Cohere |
+| `VISION_PROVIDER` | `openrouter` لاستخدام Qwen3-VL عبر API، أو `cohere` / `openai` |
+| `CHAT_PROVIDER` | `cohere` عند توفر مفتاح Cohere، أو `off` لتعطيل المحادثة العامة |
 | `DEMO_MODE` | `false` |
 | `MANUAL_SEARCH_ENABLED` | `false` |
 | `SESSION_DB_PATH` | `/app/data/sessions/sessions.sqlite3` |
@@ -103,22 +103,32 @@ BACKEND_UPSTREAM=http://<backend-private-domain>:8000
 5. لا تضبط `VITE_API_URL`؛ الواجهة الإنتاجية تستخدم نطاقها الحالي وترسل الطلبات إلى Nginx.
 6. أنشئ Public Domain لخدمة Frontend.
 
-## 3. تفعيل مزود الذكاء الاصطناعي
+## 3. تفعيل مزود الرؤية عبر API
 
-يستخدم المشروع Cohere لكل من الرؤية والمحادثة. أضف السر في متغيرات Backend داخل Railway فقط:
+يدعم MISBAR الآن Qwen3-VL عبر OpenRouter باستخدام واجهة OpenAI-compatible. لا يحتاج Backend إلى تثبيت Ollama أو تنزيل أوزان النموذج؛ يرسل الصورة إلى خدمة API من الخادم فقط.
+
+أضف المتغيرات التالية في Backend داخل Railway أو في ملف `.env` المحلي:
 
 ```env
-COHERE_API_KEY=<secret>
-VISION_PROVIDER=cohere
-CHAT_PROVIDER=cohere
-VISION_MODEL=command-a-vision-07-2025
-CHAT_MODEL=command-a-plus-05-2026
+VISION_PROVIDER=openrouter
+OPENROUTER_API_KEY=<secret>
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+VISION_MODEL=qwen/qwen3-vl-8b-instruct
+VISION_TIMEOUT_SECONDS=60
 DEMO_MODE=false
 ```
 
-يمكن بدل Cohere استخدام OpenAI للرؤية عبر `OPENAI_API_KEY` و`VISION_PROVIDER=openai`؛ المحادثة العامة الحالية موصولة بـCohere، لذا لا تغيّر `CHAT_PROVIDER` إلى مزود غير مدعوم.
+اترك `VISION_MODEL` فارغًا لاستخدام الطراز الافتراضي أعلاه. مفتاح OpenRouter سرّ خاص بالـBackend؛ لا تضعه في الواجهة أو Git أو ترسله في المحادثة. لا يلزم `COHERE_API_KEY` لمسار تحديد المعدات أو القطع عند اختيار OpenRouter.
 
-بعد الإعداد، افحص `GET /health` وتأكد من `vision_provider=cohere` و`chat_ready=true`. لا تعتبر الاتصال ناجحًا لمجرد وجود اسم المتغير؛ اختبر وصف صورة وتحديدًا على صورة معروفة.
+المحادثة العامة إعداد منفصل عن تحديد الصور:
+- اضبط `CHAT_PROVIDER=cohere` و`COHERE_API_KEY` فقط إذا أردت الإبقاء على خدمة محادثة Cohere.
+- اضبط `CHAT_PROVIDER=off` إذا لم يكن لديك مزود محادثة. تظل بوابة الصيانة والبحث المقيد منفصلين عن الدردشة العامة.
+
+الطلب يذهب إلى `POST https://openrouter.ai/api/v1/chat/completions` مع صورة Base64 واسم النموذج. لا توجد خدمة Ollama أو ملفات نماذج محلية مطلوبة.
+
+**التكلفة:** Qwen3-VL-8B عبر OpenRouter ليس مجانيًا حاليًا؛ التسعير المنشور هو 0.117 دولار/مليون رمز إدخال و0.455 دولار/مليون رمز إخراج، وقد يتغير. النماذج المجانية في OpenRouter لها حدود يومية/دقيقة وقد لا تكون Qwen3-VL نفسه. راجع صفحة السعر قبل الاستخدام المكثف.
+
+بعد الإعداد، افحص `GET /health` واختبر صورة فعلية معروفة. وجود المفتاح أو نجاح الاختبارات الوهمية لا يثبت نجاح الاتصال أو دقة التعرف. لا ترسل صور المعدات إلى مزود خارجي قبل مراجعة سياسة الخصوصية.
 
 **الخصوصية:** عند تفعيل مزود سحابي، ترسل الصور الملتقطة إليه. لا ترسل صور معدات العملاء قبل مراجعة سياسة الاحتفاظ والخصوصية والحصول على الموافقات المناسبة.
 
