@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
-from app.deps import reset_caches
-from app.domain.api_models import ChatResponse
+from app.deps import get_assistant, reset_caches
+from app.domain.api_models import ChatResponse, SessionCreateRequest
 from app.main import app
 
 
@@ -26,6 +26,7 @@ class _ChatStub:
         return ChatResponse(
             message_ar=f"رد محفوظ رقم {len(self.requests)}",
             source="general",
+            session=getattr(self, "session", None),
         )
 
 
@@ -53,6 +54,12 @@ def test_customer_conversations_persist_and_are_isolated_by_account(monkeypatch)
         )
         assert first.status_code == 201
         assert second.status_code == 201
+
+    # The session is created by the backend identification workflow and
+    # attached to the authenticated conversation response.
+    chat_stub.session = get_assistant().create_session(
+        SessionCreateRequest(equipment_model="Siemens S7-1200 Control Panel")
+    )
 
     with TestClient(app) as customer_one, TestClient(app) as customer_two:
         password_one = first.json()["temporary_password"]
@@ -97,12 +104,14 @@ def test_customer_conversations_persist_and_are_isolated_by_account(monkeypatch)
         assert summary["id"] == conversation_id
         assert summary["title"] == "أحتاج فحص المضخة"
         assert summary["message_count"] == 4
+        assert summary["session_id"] == chat_stub.session.session_id
 
         opened = customer_one.get(f"/api/v1/conversations/{conversation_id}")
         assert opened.status_code == 200
         assert [item["role"] for item in opened.json()["messages"]] == [
             "user", "assistant", "user", "assistant"
         ]
+        assert opened.json()["conversation"]["session_id"] == chat_stub.session.session_id
 
         # A different customer cannot list, read, continue, or delete this record.
         assert customer_two.get("/api/v1/conversations").json()["conversations"] == []
