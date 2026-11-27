@@ -58,7 +58,6 @@ class AssistantService:
         retriever: HybridRetriever,
         store: SessionStore,
         vision,
-        fallback_vision: MockVisionAdapter,
         settings: Settings,
     ):
         self.kb = kb
@@ -66,7 +65,6 @@ class AssistantService:
         self.retriever = retriever
         self.store = store
         self.vision = vision
-        self.fallback_vision = fallback_vision
         self.settings = settings
 
     # ----------------------------------------------------------------- catalog
