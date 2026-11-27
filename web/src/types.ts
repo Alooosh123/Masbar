@@ -1,4 +1,5 @@
 export type SessionState =
+  | "PENDING_CONFIRMATION"
   | "CREATED"
   | "IDENTIFIED"
   | "AWAITING_LOTO"
