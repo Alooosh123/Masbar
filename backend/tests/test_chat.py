@@ -154,13 +154,13 @@ def test_voice_loto_confirmation_is_rejected(client):
     assert body["abstained"] is True
 
 
-def test_general_chat_uses_adapter(client, monkeypatch):
+def test_out_of_scope_general_chat_abstains(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
-    body = _chat(client, "كيف تعمل المضخة الهيدروليكية؟")
-    assert body["source"] == "general"
-    assert body["message_ar"] == "هذه إجابة عامة تجريبية."
-    assert len(fake.calls) == 1
-    assert fake.calls[0]["describe"] is False
+    body = _chat(client, "tell me a joke")
+    assert body["source"] == "system"
+    assert body["abstained"] is True
+    assert "خارج نطاق" in body["message_ar"]
+    assert fake.calls == []
 
 
 def test_image_defaults_to_identification_not_general_description(client, monkeypatch):
@@ -238,18 +238,13 @@ def test_chat_unhandled_provider_exception_returns_safe_service_error(client, mo
     assert "private provider stack trace" not in response.text
 
 
-def test_prompt_leakage_is_rejected_and_not_rendered(client, monkeypatch):
+def test_out_of_scope_request_does_not_expose_model_internal_text(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
-    async def leaking_reply(*args, **kwargs):
-        return ChatReply(
-            text="User asks for maintenance. We should respond with steps.",
-            provider="fake",
-        )
-    fake.reply = leaking_reply
     body = _chat(client, "اشرح معنى لوحة التحكم بشكل مبسط.")
     assert body["abstained"] is True
     assert "User asks" not in body["message_ar"]
     assert "We should respond" not in body["message_ar"]
+    assert fake.calls == []
 
 
 def test_unverified_part_number_is_not_presented_as_oem_citation(client):
