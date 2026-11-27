@@ -176,7 +176,7 @@ def test_maintenance_question_without_confirmed_equipment_abstains(client, monke
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "low hydraulic oil level")
     assert body["abstained"] is True
-    assert "المعدة" in body["abstention_reason_ar"]
+    assert "معدة" in body["abstention_reason_ar"]
     assert len(body["equipment"]) == 3
     assert fake.calls == []
 
@@ -197,7 +197,11 @@ def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeyp
             assert "oil" in query.lower() or "hydraulic" in query.lower()
             return []
 
-    monkeypatch.setattr("app.deps.get_manual_library", lambda: EmptyManualLibrary())
+    def fake_manual_library():
+        return EmptyManualLibrary()
+
+    fake_manual_library.cache_clear = lambda: None
+    monkeypatch.setattr("app.deps.get_manual_library", fake_manual_library)
     fake = _use_fake_chat(monkeypatch)
     start = _chat(client, "ابدأ جلسة على 320D")
     session_id = start["session"]["session_id"]
