@@ -3,7 +3,6 @@ from __future__ import annotations
 import secrets
 
 from app.adapters.vision.base import VisionResult
-from app.adapters.vision.mock import MockVisionAdapter
 from app.core.config import Settings
 from app.domain.api_models import (
     ARVisualCue,
@@ -58,7 +57,6 @@ class AssistantService:
         retriever: HybridRetriever,
         store: SessionStore,
         vision,
-        fallback_vision: MockVisionAdapter,
         settings: Settings,
     ):
         self.kb = kb
@@ -66,7 +64,6 @@ class AssistantService:
         self.retriever = retriever
         self.store = store
         self.vision = vision
-        self.fallback_vision = fallback_vision
         self.settings = settings
 
     # ----------------------------------------------------------------- catalog
@@ -119,11 +116,16 @@ class AssistantService:
             )
 
         session = self.store.create(req.equipment_model)
+        session.state = SessionState.PENDING_CONFIRMATION
+        self.store.audit(
+            session,
+            "equipment_confirmation_required",
+            f"تم تسجيل اختيار {req.equipment_model} بانتظار تأكيد المستخدم.",
+        )
         return self._build_response(
             session,
             message=(
-                "بدأت جلسة العمل. وجّه الكاميرا نحو القطعة واضغط «التقاط وتحديد»، "
-                "أو اختر القطعة يدويًا من القائمة."
+                f"المعدة المختارة هي {req.equipment_model}. أكد هويتها قبل طرح أي سؤال صيانة."
             ),
         )
 
@@ -142,6 +144,11 @@ class AssistantService:
     # ----------------------------------------------------------------- identify
     async def identify(self, session_id: str, req: IdentifyRequest) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            raise SafetyViolation(
+                "equipment_confirmation_required",
+                "أكد هوية المعدة أولاً قبل تحديد أي مكون.",
+            )
         self._reset_identification(session)
         self.store.audit(session, "identification_started", "بدأت محاولة تحديد القطعة")
 
@@ -156,6 +163,31 @@ class AssistantService:
             source = IdentificationSource.MANUAL
             if confidence is None:
                 confidence = 1.0
+
+        elif req.image_base64:
+            result = await self._run_vision(req.image_base64, session.equipment_model, req.transcript)
+            candidates = []
+            if result.provider.startswith("mock"):
+                return self._inspection_response(
+                    session,
+                    "وضع الرؤية الحالي تجريبي ولا يستطيع تأكيد هوية القطعة. فعّل مزود رؤية حقيقياً ثم أعد المحاولة.",
+                    event="vision_mock_abstained",
+                )
+            if result.error or not result.part_number:
+                return self._inspection_response(
+                    session,
+                    "تعذر تحديد القطعة من الصورة. قرّب الكاميرا، حسّن الإضاءة، أو اختر القطعة يدويًا.",
+                    event="vision_rejected",
+                )
+            record = self.guard.require_component(result.part_number)
+            source = (
+                IdentificationSource.VISION_VLM
+                if not result.provider.startswith("mock")
+                else IdentificationSource.VISION_MOCK
+            )
+            if confidence is None:
+                confidence = result.confidence
+            bounding_box = bounding_box or result.bounding_box
 
         elif req.transcript:
             match, hits = self._match_text(req.transcript, session.equipment_model)
@@ -173,38 +205,12 @@ class AssistantService:
             if confidence is None:
                 confidence = 0.9
 
-        elif req.image_base64:
-            result = await self._run_vision(req.image_base64, session.equipment_model, req.transcript)
-            candidates = []
-            if result.error or not result.part_number:
-                return self._inspection_response(
-                    session,
-                    "تعذر تحديد القطعة من الصورة. قرّب الكاميرا، حسّن الإضاءة، أو اختر القطعة يدويًا.",
-                    event="vision_rejected",
-                )
-            record = self.guard.require_component(result.part_number)
-            source = (
-                IdentificationSource.VISION_VLM
-                if not result.provider.startswith("mock")
-                else IdentificationSource.VISION_MOCK
-            )
-            if confidence is None:
-                confidence = result.confidence
-            bounding_box = bounding_box or result.bounding_box
-
         elif self.settings.demo_mode:
-            result = await self.fallback_vision.identify(None, session.equipment_model)
-            if not result.part_number:
-                return self._inspection_response(
-                    session,
-                    "لا توجد قطعة محددة لهذه المعدة. اختر القطعة يدويًا.",
-                    event="identification_no_candidate",
-                )
-            record = self.guard.require_component(result.part_number)
-            source = IdentificationSource.VISION_MOCK
-            if confidence is None:
-                confidence = result.confidence
-            bounding_box = bounding_box or result.bounding_box
+            return self._inspection_response(
+                session,
+                "لم تصل صورة صالحة للتعرف. التقط صورة واضحة أو استخدم مسار التصحيح اليدوي.",
+                event="identification_no_input",
+            )
         else:
             return self._inspection_response(
                 session,
@@ -274,6 +280,11 @@ class AssistantService:
         self, session_id: str, req: LotoConfirmRequest
     ) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            raise SafetyViolation(
+                "equipment_confirmation_required",
+                "أكد هوية المعدة أولاً قبل أي إجراء سلامة.",
+            )
         record = self._record(session)
         if record is None:
             raise SafetyViolation(
@@ -348,6 +359,11 @@ class AssistantService:
         self, session_id: str, req: StepActionRequest
     ) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            raise SafetyViolation(
+                "equipment_confirmation_required",
+                "أكد هوية المعدة أولاً قبل طلب أي خطوة.",
+            )
         record = self._record(session)
         if record is None:
             raise SafetyViolation(
@@ -412,6 +428,14 @@ class AssistantService:
     # --------------------------------------------------------------------- ask
     def ask(self, session_id: str, req: AskRequest) -> AssistantResponse:
         session = self.store.get(session_id)
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            message = "هوية المعدة ما زالت بانتظار تأكيدك. لا أستطيع البحث في دليلها قبل التأكيد."
+            return self._build_response(
+                session,
+                message=message,
+                abstained=True,
+                abstention_reason_ar="لم يؤكد المستخدم هوية المعدة بعد.",
+            )
         expanded = self.retriever.expand(req.transcript)
         intent = expanded.intent
         record = self._record(session)
@@ -671,6 +695,8 @@ class AssistantService:
                     "لا تبدأ أي فك قبل معرفة متطلبات العزل."
                 ),
                 intent=Intent.SAFETY_QUERY,
+                abstained=True,
+                abstention_reason_ar="لم يتم تحديد القطعة، لذلك لا يمكن اختيار تحذيراتها بأمان.",
             )
 
         protocol = self.guard.build_safety(
@@ -794,13 +820,16 @@ class AssistantService:
     def _needs_identification(
         self, session: Session, intent: Intent
     ) -> AssistantResponse:
+        message = (
+            "لم يتم تحديد قطعة بعد. التقط صورة واضحة للمعدة والقطعة، "
+            "ولا أستطيع تقديم إرشادات صيانة قبل التحقق."
+        )
         return self._build_response(
             session,
-            message=(
-                "لم يتم تحديد قطعة بعد. وجّه الكاميرا نحو القطعة واضغط «التقاط وتحديد»، "
-                "أو اخترها من قائمة القطع."
-            ),
+            message=message,
             intent=intent,
+            abstained=True,
+            abstention_reason_ar="لم يتم تحديد القطعة بصورة موثوقة.",
         )
 
     def _blocked_by_loto(
@@ -845,6 +874,8 @@ class AssistantService:
             message=message,
             candidates=candidates or [],
             inspection_prompt=message,
+            abstained=True,
+            abstention_reason_ar=message,
         )
 
     def _candidate(self, hit: RetrievalHit) -> RetrievalCandidate:
@@ -856,6 +887,8 @@ class AssistantService:
         )
 
     def _state_message(self, session: Session) -> str:
+        if session.state == SessionState.PENDING_CONFIRMATION:
+            return f"تم اقتراح {session.equipment_model}. أكد المعدة قبل طرح سؤال الصيانة."
         if session.state == SessionState.CREATED:
             return "الجلسة جاهزة. حدد القطعة للبدء."
         if session.state == SessionState.IDENTIFIED:

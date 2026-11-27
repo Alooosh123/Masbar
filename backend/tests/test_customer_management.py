@@ -58,10 +58,12 @@ def test_owner_can_create_list_update_and_disable_only_customer_accounts(monkeyp
         )
         assert changed.status_code == 200
         assert changed.json()["user"]["must_change_password"] is False
-        assert customer.post(
+        rejected_session = customer.post(
             "/api/v1/sessions",
             json={"equipment_model": "Caterpillar C15 ACERT"},
-        ).status_code == 201
+        )
+        assert rejected_session.status_code == 409
+        assert rejected_session.json()["detail"]["code"] == "image_identification_required"
 
         customer_id = payload["user"]["id"]
         updated = owner.patch(

@@ -1,10 +1,21 @@
+import pytest
+
+from app.deps import get_assistant
+from app.domain.api_models import SessionCreateRequest
 from app.main import app  # noqa: F401  (ensures app imports cleanly in tests)
+from app.safety.guard import SafetyViolation
 
 
 def _create(client, equipment: str = "Caterpillar C15 ACERT") -> dict:
-    response = client.post("/api/v1/sessions", json={"equipment_model": equipment})
-    assert response.status_code == 201, response.text
-    return response.json()
+    pending = get_assistant().create_session(
+        SessionCreateRequest(equipment_model=equipment)
+    ).model_dump()
+    confirmed = client.post(
+        "/api/v1/chat",
+        json={"message": "تأكيد المعدة", "session_id": pending["session_id"]},
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    return client.get(f"/api/v1/sessions/{pending['session_id']}").json()
 
 
 def _identify(client, session_id: str, payload: dict | None = None) -> dict:
@@ -26,26 +37,54 @@ def test_health_reports_loaded_knowledge(client):
     assert body["equipment"] == 2
 
 
-def test_unknown_equipment_is_rejected(client):
-    response = client.post(
-        "/api/v1/sessions", json={"equipment_model": "Unknown Machine"}
+def test_session_requires_explicit_equipment_confirmation(client):
+    created = get_assistant().create_session(
+        SessionCreateRequest(equipment_model="Siemens S7-1200 Control Panel")
+    ).model_dump()
+    session_id = created["session_id"]
+    assert created["state"] == "PENDING_CONFIRMATION"
+
+    blocked = client.post(
+        f"/api/v1/sessions/{session_id}/ask",
+        json={"transcript": "كيف أصون المعدة؟"},
     )
-    assert response.status_code == 404
-    assert response.json()["detail"]["code"] == "unknown_equipment"
+    assert blocked.status_code == 200
+    assert blocked.json()["abstained"] is True
+    assert "بانتظار تأكيدك" in blocked.json()["assistant_message_ar"]
+
+    confirmed = client.post(
+        "/api/v1/chat",
+        json={"message": "تأكيد المعدة", "session_id": session_id},
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["session"]["state"] == "CREATED"
+
+def test_public_session_creation_requires_image_identification(client):
+    response = client.post(
+        "/api/v1/sessions", json={"equipment_model": "Siemens S7-1200 Control Panel"}
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "image_identification_required"
 
 
-def test_demo_identification_opens_safety_gate_only(client):
+def test_unknown_equipment_is_rejected_by_internal_session_service():
+    with pytest.raises(SafetyViolation) as error:
+        get_assistant().create_session(
+            SessionCreateRequest(equipment_model="Unknown Machine")
+        )
+    assert error.value.code == "unknown_equipment"
+
+
+def test_missing_image_abstains_without_identifying_a_component(client):
     body = _create(client)
     assert body["state"] == "CREATED"
 
-    identified = _identify(client, body["session_id"])
-    assert identified["state"] == "AWAITING_LOTO"
-    assert identified["identified_component"]["part_number"] == "312-5620"
-    assert identified["current_step"] is None
-    assert identified["safety_lockout"]["loto_required"] is True
-    assert identified["safety_lockout"]["source_status"] == "unverified"
-    assert identified["safety_lockout"]["checklist"] == []
-    assert identified["procedure_available"] is False
+    result = _identify(client, body["session_id"])
+    assert result["state"] == "CREATED"
+    assert result["identified_component"] is None
+    assert result["requires_closer_inspection"] is True
+    assert result["abstained"] is True
+    assert result["procedure_available"] is False
 
 
 def test_steps_are_blocked_until_loto_confirmed(client):
@@ -57,25 +96,24 @@ def test_steps_are_blocked_until_loto_confirmed(client):
         f"/api/v1/sessions/{session_id}/step", json={"action": "next"}
     )
     assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "loto_required"
+    assert response.json()["detail"]["code"] == "no_identification"
 
 
 def test_incomplete_loto_checklist_is_rejected(client):
     body = _create(client)
     session_id = body["session_id"]
-    identified = _identify(client, session_id)
-    ids = _checklist_ids(identified)
+    _identify(client, session_id)
 
     response = client.post(
         f"/api/v1/sessions/{session_id}/loto",
-        json={"confirmed_item_ids": ids[:1]},
+        json={"confirmed_item_ids": []},
     )
     assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "safety_not_verified"
+    assert response.json()["detail"]["code"] == "no_identification"
 
     session = client.get(f"/api/v1/sessions/{session_id}").json()
-    assert session["state"] == "AWAITING_LOTO"
-    assert session["current_step"] is None
+    assert session["state"] == "CREATED"
+    assert session["identified_component"] is None
     assert session["procedure_available"] is False
 
 
@@ -88,14 +126,15 @@ def test_voice_confirmation_cannot_bypass_loto(client):
         f"/api/v1/sessions/{session_id}/ask", json={"transcript": "تم العزل أكمل"}
     )
     assert response.status_code == 200
-    assert "غير معتمدة" in response.json()["assistant_message_ar"]
-    assert response.json()["state"] == "AWAITING_LOTO"
+    assert response.json()["state"] == "CREATED"
     assert response.json()["abstained"] is True
+    assert response.json()["identified_component"] is None
 
     blocked = client.post(
         f"/api/v1/sessions/{session_id}/step", json={"action": "next"}
     )
     assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "no_identification"
 
 
 def test_unverified_demo_blocks_entire_maintenance_flow(client):
@@ -103,15 +142,16 @@ def test_unverified_demo_blocks_entire_maintenance_flow(client):
     session_id = body["session_id"]
 
     identified = _identify(client, session_id)
+    assert identified["abstained"] is True
+    assert identified["identified_component"] is None
     assert identified["procedure_available"] is False
-    assert identified["current_step"] is None
 
     loto = client.post(
         f"/api/v1/sessions/{session_id}/loto",
-        json={"confirmed_item_ids": _checklist_ids(identified)},
+        json={"confirmed_item_ids": []},
     )
     assert loto.status_code == 409
-    assert loto.json()["detail"]["code"] == "safety_not_verified"
+    assert loto.json()["detail"]["code"] == "no_identification"
 
     step = client.post(
         f"/api/v1/sessions/{session_id}/step", json={"action": "next"}
@@ -126,7 +166,7 @@ def test_unverified_demo_blocks_entire_maintenance_flow(client):
     assert "45" not in torque["assistant_message_ar"]
 
     session = client.get(f"/api/v1/sessions/{session_id}").json()
-    assert session["state"] == "AWAITING_LOTO"
+    assert session["state"] == "CREATED"
     assert session["procedure_available"] is False
     assert session["current_step"] is None
 
@@ -160,7 +200,7 @@ def test_safety_query_lists_warnings(client):
     response = client.post(
         f"/api/v1/sessions/{session_id}/ask", json={"transcript": "تحذيرات السلامة"}
     ).json()
-    assert "لا توجد تحذيرات أو إجراءات عزل موثقة ومعتمدة" in response["assistant_message_ar"]
+    assert "حدد القطعة أولًا" in response["assistant_message_ar"]
     assert response["abstained"] is True
     assert "افصل مفتاح البطاريات" not in response["assistant_message_ar"]
 
@@ -174,4 +214,5 @@ def test_audit_records_rejected_attempts(client):
     audit = client.get(f"/api/v1/sessions/{session_id}/audit").json()
     events = [entry["event"] for entry in audit["entries"]]
     assert "identification_started" in events
-    assert "component_identified" in events
+    assert "identification_no_input" in events
+    assert "component_identified" not in events

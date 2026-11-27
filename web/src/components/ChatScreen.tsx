@@ -43,6 +43,7 @@ import {
 } from "./Icons";
 
 const STATE_LABELS: Record<SessionState, string> = {
+  PENDING_CONFIRMATION: "بانتظار تأكيد المعدة",
   CREATED: "بانتظار التحديد",
   IDENTIFIED: "تم التحديد",
   AWAITING_LOTO: "بوابة السلامة",
@@ -111,16 +112,10 @@ function toAssistantMessage(response: ChatResponse): UiMessage {
 }
 
 function quickRepliesForSession(session: AssistantResponse): string[] {
-  if (session.state === "AWAITING_LOTO") {
-    return ["تحذيرات السلامة", "كيف أكمل العزل؟", "اعرض القطع"];
+  if (session.state === "PENDING_CONFIRMATION") {
+    return ["تأكيد المعدة", "إعادة التصوير"];
   }
-  if (session.state === "READY" || session.state === "IN_PROGRESS") {
-    return ["الخطوة التالية", "كم العزم؟", "أعد الخطوة", "تحذيرات السلامة"];
-  }
-  if (session.state === "COMPLETED") {
-    return ["ابدأ جلسة جديدة", "ما المعدات المتاحة؟"];
-  }
-  return ["اعرض القطع", "افتح الكاميرا", "ما المعدات المتاحة؟"];
+  return ["اسأل عن الصيانة", "افتح الكاميرا"];
 }
 
 function shortEquipment(name: string): string {
@@ -164,25 +159,11 @@ function equipmentGlyph(name: string) {
   return <EngineIcon size={21} />;
 }
 
-function EquipmentStrip({
-  items,
-  busy,
-  onPick,
-}: {
-  items: EquipmentSummary[];
-  busy: boolean;
-  onPick: (name: string) => void;
-}) {
+function EquipmentStrip({ items }: { items: EquipmentSummary[] }) {
   return (
-    <div className="chat-equipment-grid">
+    <div className="chat-equipment-grid" aria-label="المعدات المدعومة">
       {items.map((item) => (
-        <button
-          key={item.equipment_family}
-          type="button"
-          className="chat-equipment-card"
-          onClick={() => onPick(item.equipment_family)}
-          disabled={busy}
-        >
+        <div key={item.equipment_family} className="chat-equipment-card">
           <span className="chat-equipment-icon">{equipmentGlyph(item.equipment_family)}</span>
           <span className="chat-equipment-copy">
             <strong>{item.equipment_family}</strong>
@@ -190,7 +171,7 @@ function EquipmentStrip({
               {item.manufacturer} · {item.component_count} قطع
             </small>
           </span>
-        </button>
+        </div>
       ))}
     </div>
   );
@@ -337,6 +318,7 @@ export function ChatScreen() {
   const stopListeningRef = useRef<() => void>(() => undefined);
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const restoreRequestRef = useRef(0);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -392,10 +374,10 @@ export function ChatScreen() {
   function applyChatResponse(response: ChatResponse, speak = true) {
     if (response.conversation_id) setConversationId(response.conversation_id);
     setMessages((current) => [...current, toAssistantMessage(response)]);
-    if (response.session) {
-      setSession(response.session);
-      sessionRef.current = response.session;
-    }
+    // The backend response is authoritative: a null session means there is
+    // no active equipment context (for example, an expired or missing session).
+    setSession(response.session ?? null);
+    sessionRef.current = response.session ?? null;
     if (
       speak &&
       autoSpeakRef.current &&
@@ -743,7 +725,8 @@ export function ChatScreen() {
     void loadWelcome();
   }
 
-  function openStoredConversation(detail: ConversationDetail) {
+  async function openStoredConversation(detail: ConversationDetail) {
+    const restoreRequest = ++restoreRequestRef.current;
     stopListening();
     stopSpeaking();
     setCameraOpen(false);
@@ -759,9 +742,63 @@ export function ChatScreen() {
       text: item.has_image
         ? `${item.content} (الصورة الأصلية غير محفوظة)`
         : item.content,
-      source: item.role === "assistant" ? (item.source || "general") as ChatSource : undefined,
+      source: item.role === "assistant" ? (item.source || "system") as ChatSource : undefined,
     }));
     setMessages(restored);
+
+    // Restore equipment context only through the backend session endpoint.
+    // Never infer confirmation from saved conversation text.
+    if (detail.conversation.session_id) {
+      try {
+        const restoredSession = await api.getSession(detail.conversation.session_id);
+        if (restoreRequest !== restoreRequestRef.current) return;
+        setSession(restoredSession);
+        sessionRef.current = restoredSession;
+        setMessages((current) => {
+          const next = [...current];
+          let lastAssistantIndex = -1;
+          for (let index = next.length - 1; index >= 0; index -= 1) {
+            if (next[index].role === "assistant") {
+              lastAssistantIndex = index;
+              break;
+            }
+          }
+          if (lastAssistantIndex >= 0) {
+            next[lastAssistantIndex] = {
+              ...next[lastAssistantIndex],
+              session: restoredSession,
+              quickReplies: quickRepliesForSession(restoredSession),
+            };
+          } else {
+            next.push({
+              id: nextMessageId(),
+              role: "assistant",
+              source: "system",
+              text: restoredSession.assistant_message_ar,
+              session: restoredSession,
+              quickReplies: quickRepliesForSession(restoredSession),
+            });
+          }
+          return next;
+        });
+      } catch {
+        if (restoreRequest !== restoreRequestRef.current) return;
+        setSession(null);
+        sessionRef.current = null;
+        setMessages((current) => [
+          ...current,
+          {
+            id: nextMessageId(),
+            role: "assistant",
+            source: "system",
+            text: "انتهت صلاحية جلسة المعدة المرتبطة بهذه المحادثة أو لم تعد متاحة. التقط صورة للمعدة وأكدها قبل متابعة أسئلة الصيانة.",
+            abstained: true,
+            abstentionReason: "جلسة المعدة غير متاحة.",
+            quickReplies: ["افتح الكاميرا"],
+          },
+        ]);
+      }
+    }
   }
 
   function toggleSpeaking() {
@@ -933,11 +970,7 @@ export function ChatScreen() {
                   )}
 
                   {message.equipment && message.equipment.length > 0 && (
-                    <EquipmentStrip
-                      items={message.equipment}
-                      busy={busy}
-                      onPick={(name) => void send(`ابدأ جلسة على ${name}`)}
-                    />
+                    <EquipmentStrip items={message.equipment} />
                   )}
 
                   {message.components && message.components.length > 0 && (

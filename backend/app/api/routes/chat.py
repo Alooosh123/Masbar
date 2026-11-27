@@ -2,8 +2,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request
 
-from app.deps import get_chat_service, get_conversation_store
+from app.deps import get_chat_service, get_conversation_store, get_store
 from app.domain.api_models import ChatRequest, ChatResponse, ChatTurn
+from app.services.session import SessionNotFound
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["chat"])
@@ -64,6 +65,18 @@ async def _handle_chat(req: ChatRequest, request: Request) -> ChatResponse:
         }
     )
     response = await get_chat_service().handle(request_with_history)
+
+    # Keep only a live, backend-validated session association. Conversation
+    # history alone is never used to reconstruct equipment confirmation.
+    linked_session_id = (
+        response.session.session_id if response.session is not None else req.session_id
+    )
+    if linked_session_id:
+        try:
+            get_store().get(linked_session_id)
+        except SessionNotFound:
+            linked_session_id = None
+    store.set_session_id(user.id, conversation_id, linked_session_id)
 
     stored_user_text = message or (
         "أرسل صورة لطلب تحديد قطعة." if req.mode == "identify" else "أرسل صورة للمحادثة."
