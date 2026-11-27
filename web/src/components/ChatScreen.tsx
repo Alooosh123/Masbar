@@ -115,16 +115,7 @@ function quickRepliesForSession(session: AssistantResponse): string[] {
   if (session.state === "PENDING_CONFIRMATION") {
     return ["تأكيد المعدة", "إعادة التصوير"];
   }
-  if (session.state === "AWAITING_LOTO") {
-    return ["تحذيرات السلامة", "كيف أكمل العزل؟", "اعرض القطع"];
-  }
-  if (session.state === "READY" || session.state === "IN_PROGRESS") {
-    return ["الخطوة التالية", "كم العزم؟", "أعد الخطوة", "تحذيرات السلامة"];
-  }
-  if (session.state === "COMPLETED") {
-    return ["ابدأ جلسة جديدة", "ما المعدات المتاحة؟"];
-  }
-  return ["اعرض القطع", "افتح الكاميرا", "ما المعدات المتاحة؟"];
+  return ["اسأل عن الصيانة", "افتح الكاميرا"];
 }
 
 function shortEquipment(name: string): string {
