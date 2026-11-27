@@ -790,13 +790,16 @@ class AssistantService:
     def _needs_identification(
         self, session: Session, intent: Intent
     ) -> AssistantResponse:
+        message = (
+            "لم يتم تحديد قطعة بعد. التقط صورة واضحة للمعدة والقطعة، "
+            "ولا أستطيع تقديم إرشادات صيانة قبل التحقق."
+        )
         return self._build_response(
             session,
-            message=(
-                "لم يتم تحديد قطعة بعد. وجّه الكاميرا نحو القطعة واضغط «التقاط وتحديد»، "
-                "أو اخترها من قائمة القطع."
-            ),
+            message=message,
             intent=intent,
+            abstained=True,
+            abstention_reason_ar="لم يتم تحديد القطعة بصورة موثوقة.",
         )
 
     def _blocked_by_loto(
