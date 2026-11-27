@@ -196,7 +196,7 @@ def test_manual_rag_removes_forged_source_ids_and_keeps_real_citation(tmp_path, 
         assert "[S99]" not in body["message_ar"]
         assert "A5E02486680-AQ" in body["message_ar"]
         assert "صفحة PDF 1132" in body["message_ar"]
-        assert "shaft seal" in captured["manual_context"].lower()
+        assert "CPU 1214C" in captured["manual_context"]
     finally:
         reset_caches()
         get_settings.cache_clear()
