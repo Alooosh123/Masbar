@@ -15,7 +15,6 @@
       "verified_at": "2026-11-20",
       "notes_ar": "أدلة الخدمة والقطع متاحة عبر اشتراك Cat SIS أو شبكة الوكلاء المعتمدين.",
       "model_families": [
-        {"model": "320", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
         {"model": "336", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
         {"model": "349", "category_ar": "حفار هيدروليكي", "category_en": "Hydraulic Excavator"},
         {"model": "950M", "category_ar": "لودر بعجلات", "category_en": "Wheel Loader"},
