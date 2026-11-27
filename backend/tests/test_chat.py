@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.adapters.chat.cohere_chat import ChatReply
+from app.domain.api_models import SessionCreateRequest
 from app.deps import get_chat_service
 from app.main import app  # noqa: F401  (imports the FastAPI application)
 
@@ -139,7 +140,6 @@ def test_maintenance_question_without_confirmed_equipment_abstains(client, monke
 
 def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
     from app.deps import get_chat_service
-    from app.domain.api_models import SessionCreateRequest
 
     service = get_chat_service()
     service.settings.manual_search_enabled = True
