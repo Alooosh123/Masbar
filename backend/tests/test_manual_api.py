@@ -319,7 +319,7 @@ def test_manual_index_import_validates_schema_and_persists_searchable_chunks(tmp
     assert imported.json()["original_pdf_transferred"] is False
     assert (target_dir / "siemens-s7-1200-test.json").is_file()
     assert listed.status_code == 200
-    assert listed.json()[0]["document_number"] == "96546866 0407"
+    assert listed.json()[0]["document_number"] == "A5E-TEST-001"
     assert searched.status_code == 200
     assert searched.json()["hits"][0]["pdf_page_number"] == 9
 
