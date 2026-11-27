@@ -217,6 +217,24 @@ class ChatService:
         if has_image:
             return await self._identify_equipment(req.image_base64)
 
+        if session is not None and message.strip():
+            normalized_confirmation = normalize_arabic(message).strip().casefold()
+            confirmation_phrases = {
+                "تأكيد المعدة", "اكد المعدة", "نعم اكد", "نعم صحيحة",
+                "صحيح", "confirm equipment", "confirm", "yes confirm",
+            }
+            if normalized_confirmation in {
+                normalize_arabic(item).casefold() for item in confirmation_phrases
+            }:
+                if session.state == SessionState.PENDING_CONFIRMATION:
+                    return self._handle_pending_equipment_confirmation(session, message)
+                return ChatResponse(
+                    message_ar=f"المعدة {session.equipment_model} مؤكدة بالفعل.",
+                    source="system",
+                    session=self._safe_session(session),
+                    quick_replies=["اسأل عن الصيانة", "افتح الكاميرا"],
+                )
+
         if session is not None and session.state == SessionState.PENDING_CONFIRMATION:
             return self._handle_pending_equipment_confirmation(session, message)
 
@@ -512,6 +530,9 @@ class ChatService:
             if invalid_image:
                 message = "الصورة غير صالحة أو يتجاوز حجمها الحد المسموح. التقط صورة JPEG أو PNG أو WebP أصغر ثم أعد المحاولة."
                 reason = "صورة غير صالحة أو كبيرة جداً."
+            elif result.error == "unclear_image":
+                message = "لم أتمكن من تحديد المعدة من الصورة بوضوح. أعد التصوير مع إظهار المعدة ولوحة بياناتها."
+                reason = "الصورة غير واضحة بما يكفي للتعرف."
             elif unsupported:
                 message = "لم تطابق الصورة أياً من المعدات المدعومة. لا يمكنني إسنادها إلى طراز آخر بالتخمين."
                 reason = "المعدة الظاهرة غير مدعومة أو لم تطابق القائمة المغلقة."
