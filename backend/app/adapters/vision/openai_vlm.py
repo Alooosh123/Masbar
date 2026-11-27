@@ -27,12 +27,14 @@ class OpenAIVisionAdapter:
         base_url: str = "https://api.openai.com/v1",
         model: str = "gpt-4o-mini",
         timeout_seconds: float = 30.0,
+        provider_name: str = "openai",
     ):
         self.kb = kb
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout_seconds = timeout_seconds
+        self.provider_name = provider_name
 
     async def identify(
         self,
@@ -44,7 +46,7 @@ class OpenAIVisionAdapter:
             return VisionResult(
                 part_number=None,
                 confidence=0.0,
-                provider=f"openai:{self.model}",
+                provider=f"{self.provider_name}:{self.model}",
                 error="image_required",
             )
 
