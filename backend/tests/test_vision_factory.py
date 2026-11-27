@@ -56,7 +56,7 @@ def test_openrouter_requires_api_key(kb):
         build_vision_adapter(kb, settings)
 
 
-def test_openrouter_uses_qwen3_vl_defaults(kb):
+def test_openrouter_uses_nemotron_super_vl_free_defaults(kb):
     settings = Settings(
         vision_provider="openrouter",
         openrouter_api_key="test-openrouter-key",
@@ -68,17 +68,17 @@ def test_openrouter_uses_qwen3_vl_defaults(kb):
 
     assert isinstance(adapter, OpenAIVisionAdapter)
     assert adapter.provider_name == "openrouter"
-    assert adapter.model == "qwen/qwen3-vl-8b-instruct"
+    assert adapter.model == "nvidia/nemotron-3.5-super-vl:free"
     assert adapter.base_url == "https://openrouter.ai/api/v1"
     assert equipment_adapter.provider == "openrouter"
-    assert equipment_adapter.model == "qwen/qwen3-vl-8b-instruct"
+    assert equipment_adapter.model == "nvidia/nemotron-3.5-super-vl:free"
 
 
 def test_openrouter_allows_explicit_model_override(kb):
     settings = Settings(
         vision_provider="openrouter",
         openrouter_api_key="test-openrouter-key",
-        vision_model="qwen/qwen3-vl-8b-instruct",
+        vision_model="nvidia/nemotron-3.5-super-vl:free",
     )
     adapter = build_vision_adapter(kb, settings)
-    assert adapter.model == "qwen/qwen3-vl-8b-instruct"
+    assert adapter.model == "nvidia/nemotron-3.5-super-vl:free"
