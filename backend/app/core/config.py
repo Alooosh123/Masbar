@@ -54,9 +54,11 @@ class Settings(BaseSettings):
     vision_model: str | None = None
     vision_timeout_seconds: float = 30.0
 
-    # OpenAI-compatible provider (also works with OpenRouter and similar gateways)
+    # OpenAI-compatible providers
     openai_api_key: str | None = None
     openai_base_url: str = "https://api.openai.com/v1"
+    openrouter_api_key: str | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Cohere Chat v2 provider (native endpoint with JSON schema support)
     cohere_api_key: str | None = None
