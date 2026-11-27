@@ -64,9 +64,18 @@ def test_manual_list_and_search_api_return_source_metadata_and_page(tmp_path, mo
 
     with TestClient(app) as client:
         documents = client.get("/api/v1/manuals")
+        session = _create_pending_session("Siemens S7-1200 Control Panel")
+        confirmed = client.post(
+            "/api/v1/chat",
+            json={"message": "تأكيد المعدة", "session_id": session["session_id"]},
+        )
+        assert confirmed.status_code == 200
         search = client.get(
             "/api/v1/manuals/search",
-            params={"q": "CPU 1214C technical specifications", "equipment_model": "Siemens S7-1200 Control Panel"},
+            params={
+                "q": "CPU 1214C technical specifications",
+                "session_id": session["session_id"],
+            },
         )
         health = client.get("/health")
 
