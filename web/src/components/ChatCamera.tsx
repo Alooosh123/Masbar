@@ -8,7 +8,7 @@ import {
 } from "./Icons";
 
 interface Props {
-  onCapture: (imageBase64: string, contextText?: string) => void;
+  onCapture: (imageBase64: string, contextText?: string, mode?: "describe" | "identify") => void;
   onClose: () => void;
 }
 
@@ -249,8 +249,9 @@ export function ChatCamera({ onCapture, onClose }: Props) {
       <div className="chat-camera-actions">
         {preview ? (
           <>
-            <button type="button" className="chat-capture-btn" onClick={retake}>إعادة الالتقاط</button>
-            <button type="button" className="chat-capture-btn primary" onClick={submitPreview}>تأكيد الصورة وإرسالها</button>
+            <button type="button" className="chat-capture-btn" onClick={retake}>إعادة الاختيار</button>
+            <button type="button" className="chat-capture-btn" onClick={() => submitPreview("identify")}>تحديد المعدة المدعومة</button>
+            <button type="button" className="chat-capture-btn primary" onClick={() => submitPreview("describe")}>تحليل الصورة تلقائيًا</button>
           </>
         ) : (
           <button type="button" className="chat-capture-btn" onClick={() => fileInputRef.current?.click()}>اختيار صورة من الجهاز</button>
