@@ -140,6 +140,15 @@ def test_symptom_dialogue_without_equipment_asks_contextual_questions(client, mo
     assert "دون صورة" in fake.calls[0]["context"]
     assert fake.calls[0]["image_base64"] is None
 
+def test_no_image_symptom_dialogue_supports_english(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "The pump has unusual noise and vibration")
+    assert body["source"] == "general"
+    assert body["abstained"] is True
+    assert fake.calls
+    assert "English" in fake.calls[0]["context"] or "العربية أو الإنجليزية" in fake.calls[0]["context"]
+    assert "one question" in fake.calls[0]["context"] or "سؤالاً توضيحياً واحداً" in fake.calls[0]["context"]
+
 def test_image_description_combines_image_and_user_context(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(
