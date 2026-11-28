@@ -33,14 +33,14 @@ export function recognitionSupported(): boolean {
   return Boolean(w.SpeechRecognition || w.webkitSpeechRecognition);
 }
 
-export function createArabicRecognizer(): AnyRecognition | null {
+export function createArabicRecognizer(language: "ar-SA" | "en-US" = "ar-SA"): AnyRecognition | null {
   if (typeof window === "undefined") return null;
   const w = window as any;
   const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
   if (!Ctor) return null;
 
   const recognition = new Ctor();
-  recognition.lang = "ar-SA";
+  recognition.lang = language;
   recognition.interimResults = false;
   recognition.continuous = true;
   recognition.maxAlternatives = 1;
