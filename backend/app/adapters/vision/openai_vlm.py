@@ -101,13 +101,23 @@ class OpenAIVisionAdapter:
                 )
                 response.raise_for_status()
                 data = response.json()
-        except Exception as exc:  # pragma: no cover - network dependent
-            return VisionResult(
-                part_number=None,
-                confidence=0.0,
-                provider=f"{self.provider_name}:{self.model}",
-                error=f"vision_provider_error: {exc}",
-            )
+        except httpx.TimeoutException:  # pragma: no cover - network dependent
+            return VisionResult(None, 0.0, f"{self.provider_name}:{self.model}", error="vision_timeout")
+        except httpx.HTTPStatusError as exc:  # pragma: no cover - network dependent
+            status_code = exc.response.status_code
+            if status_code in {402, 403}:
+                error = "vision_payment_or_quota_required"
+            elif status_code == 401:
+                error = "vision_api_key_invalid"
+            elif status_code == 429:
+                error = "vision_rate_limited"
+            elif status_code >= 500:
+                error = "vision_provider_unavailable"
+            else:
+                error = "vision_provider_rejected_request"
+            return VisionResult(None, 0.0, f"{self.provider_name}:{self.model}", error=error)
+        except httpx.RequestError:  # pragma: no cover - network dependent
+            return VisionResult(None, 0.0, f"{self.provider_name}:{self.model}", error="vision_network_error")
 
         try:
             content = data["choices"][0]["message"]["content"]
