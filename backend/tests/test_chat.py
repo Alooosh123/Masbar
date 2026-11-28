@@ -129,13 +129,31 @@ def test_image_defaults_to_identification_not_general_description(client, monkey
     assert fake.calls == []
 
 
-def test_maintenance_question_without_confirmed_equipment_abstains(client, monkeypatch):
+def test_symptom_dialogue_without_equipment_asks_contextual_questions(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "low hydraulic oil level")
+    assert body["source"] == "general"
     assert body["abstained"] is True
-    assert "معدة" in body["abstention_reason_ar"]
+    assert "تنبيه" in body["message_ar"]
     assert len(body["equipment"]) == 2
-    assert fake.calls == []
+    assert fake.calls
+    assert "دون صورة" in fake.calls[0]["context"]
+    assert fake.calls[0]["image_base64"] is None
+
+def test_image_description_combines_image_and_user_context(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(
+        client,
+        "هذا جهاز في غرفة التحكم ولا أعرف موديله، تظهر لمبة حمراء",
+        image_base64="AA==",
+        mode="describe",
+    )
+    assert body["source"] == "vision"
+    assert "وصف عام للصورة" in body["message_ar"]
+    assert fake.calls
+    assert fake.calls[0]["image_base64"] == "AA=="
+    assert fake.calls[0]["describe"] is True
+    assert "لمبة حمراء" in fake.calls[0]["message"]
 
 
 def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
