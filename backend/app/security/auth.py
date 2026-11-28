@@ -435,6 +435,35 @@ class AuthStore:
             raise RuntimeError("User was not persisted")
         return user
 
+    def get_or_create_google_user(self, *, email: str, display_name: str) -> AuthUser:
+        normalized_email = email.strip().casefold()
+        if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", normalized_email):
+            raise ValueError("A valid email address is required")
+        safe_name = display_name.strip() or normalized_email.split("@", 1)[0]
+        now = self._now().isoformat()
+        with self._connect() as connection:
+            row = connection.execute("SELECT * FROM auth_users WHERE email=?", (normalized_email,)).fetchone()
+            if row is not None:
+                user = self._to_user(row)
+                if user is None or not user.is_active:
+                    raise PermissionError("Account is inactive")
+                connection.execute("UPDATE auth_users SET last_login_at=?, failed_login_attempts=0, locked_until=NULL WHERE id=?", (now, user.id))
+                self._event(connection, user.id, "google_login", "verified_google_identity")
+                user_id = user.id
+            else:
+                user_id = "usr_" + secrets.token_urlsafe(18)
+                random_password = secrets.token_urlsafe(32)
+                password_hash = self._hash_password(random_password)
+                connection.execute(
+                    "INSERT INTO auth_users(id,email,display_name,password_hash,role,is_active,created_at,last_login_at,must_change_password) VALUES(?,?,?,?, 'customer',1,?,?,0)",
+                    (user_id, normalized_email, safe_name, password_hash, now, now),
+                )
+                self._event(connection, user_id, "google_account_created", "customer")
+        created = self.get_user(user_id)
+        if created is None:
+            raise RuntimeError("Google user account was not persisted")
+        return created
+
     def get_user(self, user_id: str) -> AuthUser | None:
         with self._connect() as connection:
             row = connection.execute("SELECT * FROM auth_users WHERE id=?", (user_id,)).fetchone()
