@@ -102,7 +102,7 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
 
-  logout: () => request<{ authenticated: boolean }>("/api/v1/auth/logout", { method: "POST" }),
+  googleLogin: (credential: string) => request<{ authenticated: boolean; user: AuthUser }>("/api/v1/auth/google", { method: "POST", body: JSON.stringify({ credential }) }),\n\n  logout: () => request<{ authenticated: boolean }>("/api/v1/auth/logout", { method: "POST" }),
 
   customers: () => request<{ customers: AuthUser[] }>("/api/v1/auth/users/customers"),
 
