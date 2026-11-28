@@ -81,7 +81,6 @@ export function AuthGate({ children }: Props) {
   }, []);
 
   async function handleGoogleCredential(credential: string) {
-    if (busy) return;
     setBusy(true);
     setError("");
     try {
