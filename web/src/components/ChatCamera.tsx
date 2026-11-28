@@ -7,7 +7,7 @@ import {
 } from "./Icons";
 
 interface Props {
-  onCapture: (imageBase64: string) => void;
+  onCapture: (imageBase64: string, contextText?: string) => void;
   onClose: () => void;
 }
 
@@ -34,7 +34,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [attempt, setAttempt] = useState(0);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);\n  const [contextText, setContextText] = useState("");\n  const [selectedFileName, setSelectedFileName] = useState("");\n  const fileInputRef = useRef<HTMLInputElement>(null);
   const submittedRef = useRef(false);
   const capturedRef = useRef(false);
 
@@ -127,7 +127,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   const submitPreview = useCallback(() => {
     if (!preview || submittedRef.current) return;
     submittedRef.current = true;
-    onCapture(preview);
+    onCapture(preview, contextText.trim());
   }, [onCapture, preview]);
 
   const retake = useCallback(() => {
@@ -161,7 +161,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
 
       <div className="chat-camera-stage">
         {preview ? (
-          <img className="chat-camera-preview" src={preview} alt="معاينة الصورة الملتقطة للمعدة" />
+          <img className="chat-camera-preview" src={preview} alt="معاينة الصورة للمعدة" />
         ) : (
           <video
             ref={videoRef}
@@ -203,7 +203,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
         )}
       </div>
 
-      <div className="chat-camera-actions">
+      {preview && (\n        <div className="chat-image-context">\n          {selectedFileName && <small>الصورة المختارة: {selectedFileName}</small>}\n          <label htmlFor="chat-image-context">اشرح ما تعرفه عن الصورة أو المشكلة (اختياري)</label>\n          <textarea id="chat-image-context" value={contextText} onChange={(event) => setContextText(event.target.value)} placeholder="مثلاً: هذه مضخة، أسمع صوتًا غير طبيعي عند التشغيل، ولا أعرف رقم الطراز…" rows={3} dir="auto" />\n        </div>\n      )}\n      <div className="chat-camera-actions">
         {preview ? (
           <>
             <button type="button" className="chat-capture-btn" onClick={retake}>إعادة الالتقاط</button>
@@ -232,7 +232,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
         </button>}
       </footer>
 
-      <canvas ref={canvasRef} hidden />
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={selectImageFile} />\n      <canvas ref={canvasRef} hidden />
     </div>
   );
 }
