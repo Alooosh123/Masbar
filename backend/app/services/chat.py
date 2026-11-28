@@ -307,7 +307,9 @@ class ChatService:
         # commands must use the approved manual index, never general chat.
         if self._is_maintenance_query(message):
             if session is None:
-                if self._needs_grounded_answer(message):
+                if self._is_immediate_hazard(message):
+                    return await self._no_image_diagnostic(req, message)
+                if self._requires_procedure_or_spec(message):
                     return self._grounded_reply(None, message)
                 return await self._no_image_diagnostic(req, message)
             if not self.settings.manual_search_available:
@@ -1455,9 +1457,23 @@ class ChatService:
             "hydraulic", "oil", "fluid", "filter", "level", "leak", "maintenance",
             "service", "fault", "failure", "symptom", "diagnosis", "diagnostic",
             "repair", "troubleshoot", "pump", "pressure", "coolant", "lubrication",
+            "smoke", "fire", "burning smell", "sparking", "sparks", "unexpected movement",
+            "gas leak", "severe leak", "hot steam", "very hot",
             "هيدروليك", "زيت", "زيوت", "سائل", "فلتر", "مستوى", "تهريب",
             "تسريب", "صيانة", "عطل", "خلل", "تشخيص", "اصلاح", "مضخه",
-            "ضغط", "تبريد", "شحوم", "تزييت",
+            "ضغط", "تبريد", "شحوم", "تزييت", "دخان", "حريق", "رائحه احتراق",
+            "شرر", "شراره", "حركه مفاجئه", "تسرب خطير", "بخار شديد",
+        )
+        return any(term_in_text(message, term) for term in terms)
+
+    def _requires_procedure_or_spec(self, message: str) -> bool:
+        terms = (
+            "torque", "كم العزم", "عزم الشد", "step", "steps", "procedure",
+            "how to repair", "how do i repair", "how to replace", "how to install",
+            "disassemble", "remove", "install", "replace", "repair", "fix",
+            "فك", "تركيب", "استبدال", "كيف اصلح", "كيف اغير", "كيف افك",
+            "خطوات", "اجراء", "عزل", "loto", "wiring", "توصيل كهربائي",
+            "كم ضغط", "قيمة الضغط", "voltage", "current", "setting", "calibration",
         )
         return any(term_in_text(message, term) for term in terms)
 
