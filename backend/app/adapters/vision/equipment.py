@@ -4,6 +4,8 @@ import base64
 import binascii
 import json
 import re
+
+import httpx
 from dataclasses import dataclass
 
 import httpx
@@ -143,12 +145,25 @@ class EquipmentVisionAdapter:
                 )
                 response.raise_for_status()
                 data = response.json()
-        except Exception as exc:
-            if isinstance(exc, httpx.HTTPStatusError):
-                error = f"vision_provider_http_{exc.response.status_code}"
+        except httpx.TimeoutException:
+            return EquipmentVisionResult(None, 0.0, provider_label, "vision_timeout")
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            if status_code in {402, 403}:
+                error = "vision_payment_or_quota_required"
+            elif status_code == 401:
+                error = "vision_api_key_invalid"
+            elif status_code == 429:
+                error = "vision_rate_limited"
+            elif status_code >= 500:
+                error = "vision_provider_unavailable"
             else:
-                error = f"vision_provider_error:{type(exc).__name__}"
+                error = "vision_provider_rejected_request"
             return EquipmentVisionResult(None, 0.0, provider_label, error)
+        except httpx.RequestError:
+            return EquipmentVisionResult(None, 0.0, provider_label, "vision_network_error")
+        except Exception:
+            return EquipmentVisionResult(None, 0.0, provider_label, "vision_provider_error")
 
         try:
             if self.provider == "cohere":
