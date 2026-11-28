@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";\nimport type { ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import {
   AlertIcon,
   CameraIcon,
@@ -34,7 +35,10 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [attempt, setAttempt] = useState(0);
-  const [preview, setPreview] = useState<string | null>(null);\n  const [contextText, setContextText] = useState("");\n  const [selectedFileName, setSelectedFileName] = useState("");\n  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [contextText, setContextText] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const submittedRef = useRef(false);
   const capturedRef = useRef(false);
 
@@ -203,7 +207,14 @@ export function ChatCamera({ onCapture, onClose }: Props) {
         )}
       </div>
 
-      {preview && (\n        <div className="chat-image-context">\n          {selectedFileName && <small>الصورة المختارة: {selectedFileName}</small>}\n          <label htmlFor="chat-image-context">اشرح ما تعرفه عن الصورة أو المشكلة (اختياري)</label>\n          <textarea id="chat-image-context" value={contextText} onChange={(event) => setContextText(event.target.value)} placeholder="مثلاً: هذه مضخة، أسمع صوتًا غير طبيعي عند التشغيل، ولا أعرف رقم الطراز…" rows={3} dir="auto" />\n        </div>\n      )}\n      <div className="chat-camera-actions">
+      {preview && (
+        <div className="chat-image-context">
+          {selectedFileName && <small>الصورة المختارة: {selectedFileName}</small>}
+          <label htmlFor="chat-image-context">اشرح ما تعرفه عن الصورة أو المشكلة (اختياري)</label>
+          <textarea id="chat-image-context" value={contextText} onChange={(event) => setContextText(event.target.value)} placeholder="مثلاً: هذه مضخة، أسمع صوتًا غير طبيعي عند التشغيل، ولا أعرف رقم الطراز…" rows={3} dir="auto" />
+        </div>
+      )}
+      <div className="chat-camera-actions">
         {preview ? (
           <>
             <button type="button" className="chat-capture-btn" onClick={retake}>إعادة الالتقاط</button>
