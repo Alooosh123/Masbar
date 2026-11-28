@@ -284,6 +284,9 @@ class ChatService:
         if self._is_help(message):
             return self._help(session)
 
+        if self._is_no_image_diagnostic_start(message):
+            return await self._no_image_diagnostic(req, message)
+
         # Manual search and generation are opt-in and protected by authenticated
         # API access. The ingestion route independently enforces owner/admin roles.
         if self._is_manual_search(message):
@@ -419,7 +422,7 @@ class ChatService:
             source="system",
             equipment=equipment,
             quick_replies=self._equipment_quick_replies(equipment)
-            + ["افتح الكاميرا", "شغّل الميكروفون"],
+            + ["افتح الكاميرا", "شغّل الميكروفون", "ابدأ التشخيص بدون صورة"],
         )
 
     def _help(self, session: Session | None) -> ChatResponse:
@@ -1438,6 +1441,14 @@ class ChatService:
         return bool(tokens & {"مساعده", "help", "مساعدتك"}) or any(
             term_in_text(message, term) for term in _HELP_TERMS
         )
+
+    def _is_no_image_diagnostic_start(self, message: str) -> bool:
+        terms = (
+            "بدون صورة", "دون صورة", "لا استطيع تصوير", "ما اقدر اصور",
+            "ابدأ التشخيص", "تشخيص بدون", "no image", "without a photo",
+            "start symptom diagnosis", "diagnose without",
+        )
+        return any(term_in_text(message, term) for term in terms)
 
     def _is_maintenance_query(self, message: str) -> bool:
         terms = (
