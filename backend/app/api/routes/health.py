@@ -21,7 +21,8 @@ def health() -> HealthResponse:
         equipment=len(kb.equipment),
         vision_provider=settings.vision_provider,
         vision_ready=(settings.vision_provider == "cohere" and bool(settings.cohere_api_key))
-        or (settings.vision_provider == "openai" and bool(settings.openai_api_key)),
+        or (settings.vision_provider == "openai" and bool(settings.openai_api_key))
+        or (settings.vision_provider == "openrouter" and bool(settings.openrouter_api_key)),
         demo_mode=settings.demo_mode,
         chat_provider=settings.chat_provider if chat_is_configured(settings) else "disabled",
         chat_ready=chat_is_configured(settings),

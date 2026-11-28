@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import logging
 import re
 from dataclasses import dataclass
 
@@ -15,6 +16,9 @@ class EquipmentVisionResult:
     confidence: float
     provider: str
     error: str | None = None
+
+
+logger = logging.getLogger(__name__)
 
 
 SYSTEM_PROMPT = """أنت مصنف بصري للمعدات الصناعية.
@@ -143,12 +147,29 @@ class EquipmentVisionAdapter:
                 )
                 response.raise_for_status()
                 data = response.json()
-        except Exception as exc:
-            if isinstance(exc, httpx.HTTPStatusError):
-                error = f"vision_provider_http_{exc.response.status_code}"
+        except httpx.TimeoutException:
+            logger.warning("vision request timeout provider=%s model=%s", self.provider, self.model)
+            return EquipmentVisionResult(None, 0.0, provider_label, "vision_timeout")
+        except httpx.HTTPStatusError as exc:
+            status_code = exc.response.status_code
+            if status_code in {402, 403}:
+                error = "vision_payment_or_quota_required"
+            elif status_code == 401:
+                error = "vision_api_key_invalid"
+            elif status_code == 429:
+                error = "vision_rate_limited"
+            elif status_code >= 500:
+                error = "vision_provider_unavailable"
             else:
-                error = f"vision_provider_error:{type(exc).__name__}"
+                error = "vision_provider_rejected_request"
+            logger.warning("vision provider rejected request provider=%s model=%s status=%s code=%s", self.provider, self.model, status_code, error)
             return EquipmentVisionResult(None, 0.0, provider_label, error)
+        except httpx.RequestError:
+            logger.warning("vision network failure provider=%s model=%s", self.provider, self.model)
+            return EquipmentVisionResult(None, 0.0, provider_label, "vision_network_error")
+        except Exception:
+            logger.warning("vision unexpected failure provider=%s model=%s", self.provider, self.model)
+            return EquipmentVisionResult(None, 0.0, provider_label, "vision_provider_error")
 
         try:
             if self.provider == "cohere":

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 
 from app.core.config import get_settings
 from app.deps import get_auth_store
 from app.security.auth import (
     AUTH_COOKIE_NAME,
     AuthUser,
+    GoogleLoginRequest,
     ChangePasswordRequest,
     CreateCustomerRequest,
     CreateUserRequest,
@@ -19,10 +22,47 @@ from app.security.auth import (
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 
+def verify_google_id_token(token: str, client_id: str) -> dict:
+    claims = google_id_token.verify_oauth2_token(token, google_requests.Request(), client_id)
+    if claims.get("aud") != client_id or claims.get("email_verified") is not True:
+        raise ValueError("Google identity is not verified for this application")
+    email = claims.get("email", "")
+    if not isinstance(email, str) or not email:
+        raise ValueError("Google identity has no email")
+    return claims
+
+
+@router.post("/google")
+def google_login(payload: GoogleLoginRequest, response: Response) -> dict:
+    settings = get_settings()
+    client_id = settings.google_client_id
+    credential = payload.credential
+    if not client_id:
+        raise HTTPException(status_code=503, detail={"code": "google_auth_unconfigured", "message_ar": "تسجيل Google غير مهيأ بعد."})
+    if not isinstance(credential, str) or not credential:
+        raise HTTPException(status_code=422, detail={"code": "google_credential_missing", "message_ar": "تعذر استلام إثبات تسجيل Google."})
+    try:
+        claims = verify_google_id_token(credential, client_id)
+        user = get_auth_store().get_or_create_google_user(email=claims["email"], display_name=claims.get("name", ""))
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail={"code": "account_inactive", "message_ar": "الحساب معطل. تواصل مع مسؤول النظام."}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail={"code": "google_verification_failed", "message_ar": "فشل التحقق من حساب Google. حاول مرة أخرى."}) from exc
+    if not settings.jwt_secret_key:
+        raise HTTPException(status_code=503, detail={"code": "auth_signing_unconfigured", "message_ar": "خدمة المصادقة غير مهيأة."})
+    token = issue_access_token(user, settings.jwt_secret_key, settings.auth_token_ttl_minutes)
+    secure_cookie = settings.environment.strip().lower() in {"production", "prod"}
+    response.set_cookie(key=AUTH_COOKIE_NAME, value=token, max_age=settings.auth_token_ttl_minutes * 60,
+        httponly=True, secure=secure_cookie, samesite="lax", path="/")
+    return {"authenticated": True, "user": user.public_dict()}
+
+
 
 @router.post("/login")
 def login(payload: LoginRequest, response: Response) -> dict:
     settings = get_settings()
+    if settings.google_client_id:
+        raise HTTPException(status_code=403, detail={"code": "google_login_required", "message_ar": "تسجيل الدخول عبر Google هو الطريقة المعتمدة لهذا التطبيق."})
     try:
         user = get_auth_store().authenticate(payload.email, payload.password)
     except PermissionError as exc:

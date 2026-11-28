@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 
 import httpx
 
 from app.adapters.vision.base import VisionResult, clamp_box
 from app.knowledge.loader import KnowledgeBase
+
+logger = logging.getLogger(__name__)
+
 
 SYSTEM_PROMPT = """أنت محدد قطع غيار صناعي. مهمتك اختيار القطعة المطابقة من قائمة مرشحين فقط.
 قواعد صارمة:
@@ -101,13 +105,26 @@ class OpenAIVisionAdapter:
                 )
                 response.raise_for_status()
                 data = response.json()
-        except Exception as exc:  # pragma: no cover - network dependent
-            return VisionResult(
-                part_number=None,
-                confidence=0.0,
-                provider=f"{self.provider_name}:{self.model}",
-                error=f"vision_provider_error: {exc}",
-            )
+        except httpx.TimeoutException:  # pragma: no cover - network dependent
+            logger.warning("vision request timeout provider=%s model=%s", self.provider_name, self.model)
+            return VisionResult(None, 0.0, f"{self.provider_name}:{self.model}", error="vision_timeout")
+        except httpx.HTTPStatusError as exc:  # pragma: no cover - network dependent
+            status_code = exc.response.status_code
+            if status_code in {402, 403}:
+                error = "vision_payment_or_quota_required"
+            elif status_code == 401:
+                error = "vision_api_key_invalid"
+            elif status_code == 429:
+                error = "vision_rate_limited"
+            elif status_code >= 500:
+                error = "vision_provider_unavailable"
+            else:
+                error = "vision_provider_rejected_request"
+            logger.warning("vision provider rejected request provider=%s model=%s status=%s code=%s", self.provider_name, self.model, status_code, error)
+            return VisionResult(None, 0.0, f"{self.provider_name}:{self.model}", error=error)
+        except httpx.RequestError:  # pragma: no cover - network dependent
+            logger.warning("vision network failure provider=%s model=%s", self.provider_name, self.model)
+            return VisionResult(None, 0.0, f"{self.provider_name}:{self.model}", error="vision_network_error")
 
         try:
             content = data["choices"][0]["message"]["content"]

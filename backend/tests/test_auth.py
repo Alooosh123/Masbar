@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from app.core.config import get_settings
 from app.deps import get_assistant, reset_caches
@@ -243,3 +244,101 @@ def test_eight_character_password_is_minimum_for_bootstrap_creation_and_rotation
             },
         )
         assert rotated.status_code == 200
+
+
+def test_google_login_auto_provisions_verified_customer(monkeypatch, tmp_path):
+    _configure_auth(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    monkeypatch.setenv("SESSION_DB_PATH", str(tmp_path / "google-auth.sqlite3"))
+    get_settings.cache_clear()
+    reset_caches()
+    from app.api.routes import auth as auth_routes
+
+    monkeypatch.setattr(
+        auth_routes,
+        "verify_google_id_token",
+        lambda credential, client_id: {
+            "email": "new-customer@example.test",
+            "email_verified": True,
+            "name": "Google Customer",
+        },
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/v1/auth/google", json={"credential": "fake-test-token"})
+        assert response.status_code == 200
+        assert response.json()["authenticated"] is True
+        assert response.json()["user"]["email"] == "new-customer@example.test"
+        assert response.json()["user"]["role"] == "customer"
+        assert response.json()["user"]["must_change_password"] is False
+        assert "masbar_access" in client.cookies
+        assert client.get("/api/v1/auth/me").json()["authenticated"] is True
+
+
+def test_google_login_rejects_verification_failure(monkeypatch):
+    _configure_auth(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    get_settings.cache_clear()
+    reset_caches()
+    from app.api.routes import auth as auth_routes
+
+    monkeypatch.setattr(
+        auth_routes,
+        "verify_google_id_token",
+        lambda credential, client_id: (_ for _ in ()).throw(ValueError("unverified")),
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/v1/auth/google", json={"credential": "fake-token"})
+        assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "google_verification_failed"
+
+def test_password_login_disabled_when_google_is_configured(monkeypatch):
+    _configure_auth(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    get_settings.cache_clear()
+    reset_caches()
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": "owner@example.test", "password": "Test-owner-password-2026-is-long"},
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "google_login_required"
+
+def test_google_id_token_verifier_requires_matching_audience_and_verified_email(monkeypatch):
+    from app.api.routes import auth as auth_routes
+
+    monkeypatch.setattr(
+        auth_routes.google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, client_id: {
+            "aud": client_id,
+            "email": "verified@example.test",
+            "email_verified": True,
+        },
+    )
+    claims = auth_routes.verify_google_id_token("token", "expected-client-id")
+    assert claims["email"] == "verified@example.test"
+
+    monkeypatch.setattr(
+        auth_routes.google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, client_id: {
+            "aud": "different-client-id",
+            "email": "verified@example.test",
+            "email_verified": True,
+        },
+    )
+    with pytest.raises(ValueError):
+        auth_routes.verify_google_id_token("token", "expected-client-id")
+
+    monkeypatch.setattr(
+        auth_routes.google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, client_id: {
+            "aud": client_id,
+            "email": "unverified@example.test",
+            "email_verified": False,
+        },
+    )
+    with pytest.raises(ValueError):
+        auth_routes.verify_google_id_token("token", "expected-client-id")

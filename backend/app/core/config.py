@@ -26,6 +26,7 @@ class Settings(BaseSettings):
 
     # Application identity and signed-session configuration
     auth_required: bool = False
+    google_client_id: str | None = None
     jwt_secret_key: str | None = None
     auth_token_ttl_minutes: int = Field(default=480, ge=5, le=1440)
     bootstrap_admin_email: str | None = None

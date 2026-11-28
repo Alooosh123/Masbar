@@ -381,7 +381,7 @@ docker compose up --build
 
 - يمكن تشغيل الرؤية عبر OpenRouter + Nemotron 3.5 Super VL باستخدام `OPENROUTER_API_KEY` المحفوظ كسر في Backend، مع فصل إعداد المحادثة العامة.
 - إعداد الرؤية المقترح: `VISION_PROVIDER=openrouter` و`VISION_MODEL=nvidia/nemotron-3.5-super-vl:free` و`DEMO_MODE=false`. لا يحتاج إلى Ollama أو تنزيل نموذج.
-- المصادقة الحالية على `main` تستخدم Cookie آمنًا HttpOnly، وتُفعّل عبر `AUTH_REQUIRED=true` و`JWT_SECRET_KEY` وبيانات المالك الأول الموضحة في دليل Railway.
+- فرع الإصلاح يضيف تسجيل Google مع التحقق من ID Token والبريد الموثق، وإنشاء حساب customer تلقائيًا؛ يلزم إعداد `GOOGLE_CLIENT_ID` في Backend و`VITE_GOOGLE_CLIENT_ID` في Frontend قبل نشره. لا يمنح Google صلاحيات مرتفعة، ويحافظ على دور الحساب الموجود.
 - يستخدم الخادم Volume دائمًا في `/app/data/sessions` لقاعدة SQLite. التخزين مناسب لنسخة Backend واحدة، وليس لتشغيل عدة نسخ متزامنة.
 - بيانات الصيانة التسع ما زالت `sample`؛ لا تستخدم عزمًا أو إجراءً صناعيًا قبل استيراد كتيب OEM مرخّص ومراجعته من شخصين مستقلين.
 - اختبارات الكاميرا والميكروفون الآلية تستخدم أجهزة وهمية. اختبار الأجهزة الفعلية موثق في `docs/REAL_DEVICE_TEST_CHECKLIST_AR.md`.
