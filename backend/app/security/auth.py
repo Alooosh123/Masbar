@@ -447,7 +447,7 @@ class AuthStore:
                 user = self._to_user(row)
                 if user is None or not user.is_active:
                     raise PermissionError("Account is inactive")
-                connection.execute("UPDATE auth_users SET last_login_at=?, failed_login_attempts=0, locked_until=NULL WHERE id=?", (now, user.id))
+                connection.execute("UPDATE auth_users SET last_login_at=?, failed_login_attempts=0, locked_until=NULL, must_change_password=0 WHERE id=?", (now, user.id))
                 self._event(connection, user.id, "google_login", "verified_google_identity")
                 user_id = user.id
             else:
