@@ -176,6 +176,13 @@ def test_image_description_combines_image_and_user_context(client, monkeypatch):
     assert fake.calls[0]["history"][0].content == "I hear a clicking noise"
 
 
+def test_no_image_repair_request_remains_evidence_gated(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "How do I fix the pump?")
+    assert body["abstained"] is True
+    assert body["source"] == "system"
+    assert fake.calls == []
+
 def test_no_image_hazard_description_escalates_without_model_call(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "There is smoke and a burning smell near the machine")
