@@ -156,13 +156,15 @@ def test_image_description_combines_image_and_user_context(client, monkeypatch):
         "هذا جهاز في غرفة التحكم ولا أعرف موديله، تظهر لمبة حمراء",
         image_base64="AA==",
         mode="describe",
+        history=[{"role": "user", "content": "I hear a clicking noise"}],
     )
     assert body["source"] == "vision"
     assert "وصف عام للصورة" in body["message_ar"]
     assert fake.calls
     assert fake.calls[0]["image_base64"] == "AA=="
     assert fake.calls[0]["describe"] is True
-    assert "لمبة حمراء" in fake.calls[0]["message"]\n    assert fake.calls[0]["history"][0]["content"] == "I hear a clicking noise"
+    assert "لمبة حمراء" in fake.calls[0]["message"]
+    assert fake.calls[0]["history"][0]["content"] == "I hear a clicking noise"
 
 
 def test_no_image_hazard_description_escalates_without_model_call(client, monkeypatch):
