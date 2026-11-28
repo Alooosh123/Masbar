@@ -561,8 +561,26 @@ class ChatService:
             elif unsupported:
                 message = "لم تطابق الصورة أياً من المعدات المدعومة. لا يمكنني إسنادها إلى طراز آخر بالتخمين."
                 reason = "المعدة الظاهرة غير مدعومة أو لم تطابق القائمة المغلقة."
+            elif result.error == "vision_payment_or_quota_required":
+                message = "خدمة الرؤية تحتاج رصيدًا أو تجاوزت الحصة المجانية. لم أنشئ جلسة؛ حاول لاحقًا أو أبلغ مسؤول النظام."
+                reason = "رصيد أو حصة API غير متاحة."
+            elif result.error == "vision_api_key_invalid":
+                message = "مفتاح مزود الرؤية غير صالح أو غير مصرح. لم أنشئ جلسة؛ أبلغ مسؤول النظام."
+                reason = "مشكلة اعتماد API."
+            elif result.error == "vision_rate_limited":
+                message = "وصلنا إلى حد طلبات مزود الرؤية مؤقتًا. انتظر قليلًا ثم أعد المحاولة."
+                reason = "تجاوز حد الطلبات."
+            elif result.error == "vision_timeout":
+                message = "انتهت مهلة التعرف البصري. لم أنشئ جلسة؛ أعد المحاولة."
+                reason = "انتهت مهلة مزود الرؤية."
+            elif result.error == "vision_provider_unavailable":
+                message = "مزود الرؤية غير متاح مؤقتًا. لم أنشئ جلسة؛ أعد المحاولة لاحقًا."
+                reason = "مزود الرؤية غير متاح."
+            elif result.error == "vision_network_error":
+                message = "تعذر الاتصال بمزود الرؤية. لم أنشئ جلسة؛ تحقق من الخدمة ثم أعد المحاولة."
+                reason = "فشل الاتصال بمزود الرؤية."
             else:
-                message = "تعذر إكمال التعرف البصري بسبب استجابة أو عطل في الخدمة. لم أنشئ جلسة؛ أعد المحاولة لاحقاً."
+                message = "تعذر إكمال التعرف البصري بسبب استجابة غير صالحة أو عطل بالخدمة. لم أنشئ جلسة؛ أعد المحاولة لاحقًا."
                 reason = "فشل تقني أو استجابة غير صالحة من مزود الرؤية."
             return ChatResponse(
                 message_ar=message,
