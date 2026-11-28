@@ -289,3 +289,16 @@ def test_google_login_rejects_verification_failure(monkeypatch):
         response = client.post("/api/v1/auth/google", json={"credential": "fake-token"})
         assert response.status_code == 401
         assert response.json()["detail"]["code"] == "google_verification_failed"
+
+def test_password_login_disabled_when_google_is_configured(monkeypatch):
+    _configure_auth(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    get_settings.cache_clear()
+    reset_caches()
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": "owner@example.test", "password": "Test-owner-password-2026-is-long"},
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "google_login_required"
