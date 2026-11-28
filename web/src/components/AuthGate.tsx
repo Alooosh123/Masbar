@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { ApiError, api } from "../lib/api";
 import type { AuthUser } from "../types";
 import { AuthContext } from "./AuthContext";
@@ -65,23 +65,37 @@ export function AuthGate({ children }: Props) {
     };
   }, []);
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleGoogleCredential(credential: string) {
     if (busy) return;
-
     setBusy(true);
     setError("");
     try {
-      const result = await api.login(email.trim(), password);
+      const result = await api.googleLogin(credential);
       setUser(result.user);
-      setPassword("");
       setStatus("ready");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تسجيل الدخول. تحقق من بيانات الحساب.");
+      setError(err instanceof Error ? err.message : "تعذر التحقق من حساب Google.");
     } finally {
       setBusy(false);
     }
   }
+
+  useEffect(() => {
+    if (status !== "login") return;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+    const googleApi = window.google?.accounts?.id;
+    if (!clientId || !googleApi) return;
+    googleApi.initialize({
+      client_id: clientId,
+      callback: (response: { credential?: string }) => {
+        if (response.credential) void handleGoogleCredential(response.credential);
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+    const button = document.getElementById("google-signin-button");
+    if (button) googleApi.renderButton(button, { theme: "outline", size: "large", width: 320, text: "continue_with", shape: "pill", locale: "ar" });
+  }, [status]);
 
   async function logout() {
     try {
@@ -186,7 +200,7 @@ export function AuthGate({ children }: Props) {
           <header className="auth-form-heading">
             <p className="auth-form-eyebrow">بوابة العملاء والمستخدمين</p>
             <h2>تسجيل الدخول</h2>
-            <p>أدخل البريد الإلكتروني وكلمة المرور المخصصة لحسابك للوصول إلى التطبيق.</p>
+            <p>سجّل الدخول باستخدام حساب Google. سيتم التحقق من بريدك تلقائيًا.</p>
           </header>
 
           {status === "loading" && (
@@ -205,69 +219,23 @@ export function AuthGate({ children }: Props) {
           )}
 
           {status === "login" && (
-            <form className="auth-form" onSubmit={submit}>
-              <label className="auth-field">
-                <span className="auth-label">البريد الإلكتروني</span>
-                <input
-                  className="auth-input"
-                  type="email"
-                  dir="ltr"
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  maxLength={254}
-                  placeholder="name@example.com"
-                />
-              </label>
-
-              <label className="auth-field">
-                <span className="auth-label">كلمة المرور</span>
-                <span className="auth-input-wrap">
-                  <input
-                    className="auth-input auth-password-input"
-                    type={showPassword ? "text" : "password"}
-                    dir="ltr"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                    maxLength={256}
-                    placeholder="أدخل كلمة المرور"
-                  />
-                  <button
-                    type="button"
-                    className="auth-toggle-password"
-                    onClick={() => setShowPassword((visible) => !visible)}
-                    aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-                    aria-pressed={showPassword}
-                  >
-                    {showPassword ? "إخفاء" : "إظهار"}
-                  </button>
-                </span>
-              </label>
-
+            <div className="auth-form" aria-label="تسجيل الدخول عبر Google">
+              <div id="google-signin-button" className="google-signin-button" />
+              {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                <div className="auth-offline" role="status">
+                  تسجيل Google يحتاج إعداد Google OAuth Client ID من مسؤول النظام.
+                </div>
+              )}
               {error && <div className="auth-error" role="alert">{error}</div>}
-
-              <button
-                type="submit"
-                className="auth-submit"
-                disabled={busy || !email.trim() || !password}
-              >
-                {busy ? "جارٍ التحقق من الحساب…" : "دخول إلى مسبار"}
-                {!busy && <span aria-hidden="true">←</span>}
-              </button>
-            </form>
+              {busy && <div className="auth-offline" role="status">جارٍ التحقق من حساب Google…</div>}
+            </div>
           )}
-
           <p className="auth-account-help">
             لا تملك حسابًا بعد؟ اطلب من مسؤول المنشأة إنشاء <strong>حساب عميل</strong> وتزويدك ببيانات الدخول.
             لا يوجد تسجيل عام مفتوح في الوقت الحالي.
           </p>
           <p className="auth-form-foot">
-            حماية الحسابات مفعّلة · لا تشارك كلمة المرور مع أي شخص
+            تسجيل الدخول عبر Google · التحقق من البريد تلقائي
           </p>
         </div>
       </section>
