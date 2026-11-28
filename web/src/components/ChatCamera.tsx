@@ -128,10 +128,10 @@ export function ChatCamera({ onCapture, onClose }: Props) {
     [ready]
   );
 
-  const submitPreview = useCallback(() => {
+  const submitPreview = useCallback((mode: "describe" | "identify") => {
     if (!preview || submittedRef.current) return;
     submittedRef.current = true;
-    onCapture(preview, contextText.trim());
+    onCapture(preview, contextText.trim(), mode);
   }, [onCapture, preview, contextText]);
 
   const retake = useCallback(() => {
