@@ -909,7 +909,7 @@ class ChatService:
                 ),
                 source="system",
                 session=self._safe_session(session),
-                quick_replies=["حدد القطعة في هذه الصورة", "افتح الكاميرا", "اعرض القطع"],
+                quick_replies=["حدد المعدة من هذه الصورة", "افتح الكاميرا", "اعرض القطع"],
                 abstained=True,
                 abstention_reason_ar="تعذر التحقق من مخرجات وصف الصورة.",
             )
