@@ -137,6 +137,8 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   const retake = useCallback(() => {
     capturedRef.current = false;
     submittedRef.current = false;
+    setContextText("");
+    setSelectedFileName("");
     setPreview(null);
     setAttempt((value) => value + 1);
   }, []);
@@ -273,7 +275,8 @@ export function ChatCamera({ onCapture, onClose }: Props) {
         </button>}
       </footer>
 
-      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={selectImageFile} />\n      <canvas ref={canvasRef} hidden />
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={selectImageFile} />
+      <canvas ref={canvasRef} hidden />
     </div>
   );
 }
