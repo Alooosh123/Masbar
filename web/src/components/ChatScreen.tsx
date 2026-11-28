@@ -1154,7 +1154,7 @@ export function ChatScreen() {
             onKeyDown={handleComposerKeyDown}
             placeholder={
               listening
-                ? "أستمع الآن… تكلّم بالعربية"
+                ? "أستمع الآن… تكلّم بالعربية أو الإنجليزية"
                 : "اكتب رسالتك… أو قل: افتح الكاميرا"
             }
             aria-label="نص الرسالة"
