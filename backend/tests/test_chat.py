@@ -162,8 +162,16 @@ def test_image_description_combines_image_and_user_context(client, monkeypatch):
     assert fake.calls
     assert fake.calls[0]["image_base64"] == "AA=="
     assert fake.calls[0]["describe"] is True
-    assert "لمبة حمراء" in fake.calls[0]["message"]
+    assert "لمبة حمراء" in fake.calls[0]["message"]\n    assert fake.calls[0]["history"][0]["content"] == "I hear a clicking noise"
 
+
+def test_no_image_hazard_description_escalates_without_model_call(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "There is smoke and a burning smell near the machine")
+    assert body["source"] == "system"
+    assert body["abstained"] is True
+    assert "ابتعد" in body["message_ar"]
+    assert fake.calls == []
 
 def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
     from app.deps import get_chat_service
