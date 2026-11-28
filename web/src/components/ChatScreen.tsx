@@ -299,14 +299,14 @@ export function ChatScreen() {
   const [micError, setMicError] = useState<string | null>(null);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(true);
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);\n  const [speechLanguage, setSpeechLanguage] = useState<"ar-SA" | "en-US">("ar-SA");\n  const [recording, setRecording] = useState(false);\n  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);\n  const [recordingError, setRecordingError] = useState<string | null>(null);
 
   const messagesRef = useRef<UiMessage[]>([]);
   const sessionRef = useRef<AssistantResponse | null>(null);
   const busyRef = useRef(false);
   const autoSpeakRef = useRef(autoSpeak);
   const listeningRef = useRef(false);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<any>(null);\n  const mediaRecorderRef = useRef<MediaRecorder | null>(null);\n  const recordingStreamRef = useRef<MediaStream | null>(null);\n  const recordingChunksRef = useRef<Blob[]>([]);
   const recognitionTextRef = useRef("");
   const recognitionManualStopRef = useRef(false);
   const recognitionSubmittedRef = useRef(false);
@@ -573,7 +573,7 @@ export function ChatScreen() {
       return;
     }
     setDraft("");
-    sendRef.current(transcript);
+    sendRef.current(transcript, lastImageRef.current ? { image: lastImageRef.current, mode: "describe" } : undefined);
   }
 
   function stopListening() {
@@ -603,7 +603,7 @@ export function ChatScreen() {
       return;
     }
 
-    const recognition = createArabicRecognizer();
+    const recognition = createArabicRecognizer(speechLanguage);
     if (!recognition) {
       setMicError("خدمة التعرف الصوتي غير متاحة في هذا المتصفح. استخدم الكتابة.");
       return;
@@ -1095,7 +1095,7 @@ export function ChatScreen() {
           </button>
         </div>
 
-        <div className="chat-composer-meta">
+        <div className="chat-audio-recorder">\n          <button type="button" className={`chat-record-btn ${recording ? "is-recording" : ""}`} onClick={() => recording ? stopAudioRecording() : void startAudioRecording()} disabled={busy} aria-label={recording ? "إيقاف تسجيل الصوت" : "بدء تسجيل الصوت"}>{recording ? "إيقاف التسجيل" : "تسجيل صوت"}</button>\n          {recordedAudioUrl && <><audio controls src={recordedAudioUrl} aria-label="إعادة تشغيل التسجيل الصوتي" /><button type="button" className="chat-record-clear" onClick={clearRecordedAudio}>حذف</button></>}\n          {recordingError && <span className="chat-composer-error">{recordingError}</span>}\n          {recording && <span>جارٍ تسجيل الصوت…</span>}\n        </div>\n        <div className="chat-composer-meta">
           <span className={micError || voiceError ? "is-error" : ""}>
             {micError ||
               voiceError ||
