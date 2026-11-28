@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from app.core.config import get_settings
 from app.deps import get_assistant, reset_caches
@@ -302,3 +303,42 @@ def test_password_login_disabled_when_google_is_configured(monkeypatch):
         )
         assert response.status_code == 403
         assert response.json()["detail"]["code"] == "google_login_required"
+
+def test_google_id_token_verifier_requires_matching_audience_and_verified_email(monkeypatch):
+    from app.api.routes import auth as auth_routes
+
+    monkeypatch.setattr(
+        auth_routes.google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, client_id: {
+            "aud": client_id,
+            "email": "verified@example.test",
+            "email_verified": True,
+        },
+    )
+    claims = auth_routes.verify_google_id_token("token", "expected-client-id")
+    assert claims["email"] == "verified@example.test"
+
+    monkeypatch.setattr(
+        auth_routes.google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, client_id: {
+            "aud": "different-client-id",
+            "email": "verified@example.test",
+            "email_verified": True,
+        },
+    )
+    with pytest.raises(ValueError):
+        auth_routes.verify_google_id_token("token", "expected-client-id")
+
+    monkeypatch.setattr(
+        auth_routes.google_id_token,
+        "verify_oauth2_token",
+        lambda token, request, client_id: {
+            "aud": client_id,
+            "email": "unverified@example.test",
+            "email_verified": False,
+        },
+    )
+    with pytest.raises(ValueError):
+        auth_routes.verify_google_id_token("token", "expected-client-id")
