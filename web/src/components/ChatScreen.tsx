@@ -373,6 +373,7 @@ export function ChatScreen() {
         /* ignore */
       }
       stopSpeaking();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -1172,6 +1173,7 @@ export function ChatScreen() {
 
         <div className="chat-audio-recorder">
           <button type="button" className={`chat-record-btn ${recording ? "is-recording" : ""}`} onClick={() => recording ? stopAudioRecording() : void startAudioRecording()} disabled={busy} aria-label={recording ? "إيقاف تسجيل الصوت" : "بدء تسجيل الصوت"}>{recording ? "إيقاف التسجيل" : "تسجيل صوت"}</button>
+          <small>التسجيل محلي لإعادة الاستماع؛ النص عبر التعرف المباشر يُرسل للمساعد.</small>
           {recordedAudioUrl && <><audio controls src={recordedAudioUrl} aria-label="إعادة تشغيل التسجيل الصوتي" /><button type="button" className="chat-record-clear" onClick={clearRecordedAudio}>حذف</button></>}
           {recordingError && <span className="chat-composer-error">{recordingError}</span>}
           {recording && <span>جارٍ تسجيل الصوت…</span>}
