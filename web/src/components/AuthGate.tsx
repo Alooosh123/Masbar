@@ -10,6 +10,24 @@ interface Props {
   children: ReactNode;
 }
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (options: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
+          }) => void;
+          renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
+        };
+      };
+    };
+  }
+}
+
 type GateStatus = "loading" | "login" | "ready" | "offline";
 
 const ROLE_LABELS: Record<AuthUser["role"], string> = {
@@ -23,9 +41,6 @@ const ROLE_LABELS: Record<AuthUser["role"], string> = {
 export function AuthGate({ children }: Props) {
   const [status, setStatus] = useState<GateStatus>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showCustomerManagement, setShowCustomerManagement] = useState(false);
@@ -102,7 +117,6 @@ export function AuthGate({ children }: Props) {
       await api.logout();
     } finally {
       setUser(null);
-      setPassword("");
       setShowCustomerManagement(false);
       setStatus("login");
     }
