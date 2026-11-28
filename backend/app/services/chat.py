@@ -1456,7 +1456,8 @@ class ChatService:
         terms = (
             "hydraulic", "oil", "fluid", "filter", "level", "leak", "maintenance",
             "service", "fault", "failure", "symptom", "diagnosis", "diagnostic",
-            "repair", "fix", "troubleshoot", "steps", "procedure", "torque", "install", "replace",\n            "disassemble", "wiring", "voltage", "current", "calibration", "pump", "pressure", "coolant", "lubrication,
+            "repair", "fix", "troubleshoot", "steps", "procedure", "torque", "install", "replace",
+            "disassemble", "wiring", "voltage", "current", "calibration", "pump", "pressure", "coolant", "lubrication",
             "smoke", "fire", "burning smell", "sparking", "sparks", "unexpected movement",
             "gas leak", "severe leak", "hot steam", "very hot",
             "هيدروليك", "زيت", "زيوت", "سائل", "فلتر", "مستوى", "تهريب",
