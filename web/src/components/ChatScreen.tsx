@@ -340,6 +340,14 @@ export function ChatScreen() {
   }, [autoSpeak]);
 
   useEffect(() => {
+    return () => {
+      if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+    };
+  }, [recordedAudioUrl]);
+
+
+
+  useEffect(() => {
     const element = inputRef.current;
     if (!element) return;
     element.style.height = "auto";
@@ -712,10 +720,59 @@ export function ChatScreen() {
     void send(reply);
   }
 
-  function handleCameraCapture(image: string) {
+  async function startAudioRecording() {
+    setRecordingError(null);
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setRecordingError("تسجيل الصوت غير مدعوم في هذا المتصفح. استخدم تحويل الكلام إلى نص.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => setRecordingError("حدث خطأ أثناء تسجيل الصوت.");
+      recorder.onstop = () => {
+        const blob = new Blob(recordingChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        if (blob.size > 0) setRecordedAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach((track) => track.stop());
+        if (recordingStreamRef.current === stream) recordingStreamRef.current = null;
+        setRecording(false);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+      // Run live bilingual speech recognition alongside recording; the transcript
+      // is what is sent to MISBAR, while the raw recording remains local for replay.
+      startListeningRef.current();
+    } catch {
+      setRecordingError("تعذر الوصول إلى الميكروفون. تحقق من الإذن ثم أعد المحاولة.");
+    }
+  }
+
+  function stopAudioRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    else setRecording(false);
+    if (listeningRef.current) stopListeningRef.current();
+  }
+
+  function clearRecordedAudio() {
+    setRecordedAudioUrl(null);
+    setRecordingError(null);
+  }
+
+  function handleCameraCapture(image: string, contextText = "") {
     setCameraOpen(false);
     lastImageRef.current = image;
-    void send("حدد المعدات من الصورة", { image, mode: "identify" });
+    const context = contextText.trim();
+    void send(
+      context || "حلل الصورة، وصف العناصر الظاهرة، واستخرج النص المقروء إن أمكن.",
+      { image, mode: context ? "describe" : "identify" },
+    );
   }
 
   function resetConversation() {
@@ -1064,6 +1121,17 @@ export function ChatScreen() {
           >
             <CameraIcon size={22} />
           </button>
+
+          <select
+            className="chat-language-select"
+            aria-label="لغة تحويل الكلام إلى نص"
+            value={speechLanguage}
+            onChange={(event) => setSpeechLanguage(event.target.value as "ar-SA" | "en-US")}
+            disabled={listening}
+          >
+            <option value="ar-SA">العربية</option>
+            <option value="en-US">English</option>
+          </select>
 
           <button
             type="button"
