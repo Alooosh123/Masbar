@@ -253,7 +253,8 @@ export function ChatCamera({ onCapture, onClose }: Props) {
             <button type="button" className="chat-capture-btn primary" onClick={submitPreview}>تأكيد الصورة وإرسالها</button>
           </>
         ) : (
-          <button type="button" className="chat-capture-btn" onClick={() => fileInputRef.current?.click()}>اختيار صورة من الجهاز</button>\n          <button type="button" className="chat-capture-btn primary" onClick={capture} disabled={!ready}>
+          <button type="button" className="chat-capture-btn" onClick={() => fileInputRef.current?.click()}>اختيار صورة من الجهاز</button>
+          <button type="button" className="chat-capture-btn primary" onClick={capture} disabled={!ready}>
             <CameraIcon size={20} />
             التقاط الصورة
           </button>
