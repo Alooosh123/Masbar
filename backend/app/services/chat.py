@@ -302,18 +302,9 @@ class ChatService:
         # commands must use the approved manual index, never general chat.
         if self._is_maintenance_query(message):
             if session is None:
-                equipment = self.assistant.list_equipment()
-                return ChatResponse(
-                    message_ar=(
-                        "أحتاج أولاً إلى صورة وتأكيد المعدة حتى أبحث في دليلها المعتمد. "
-                        "لا أستخدم قاعدة معرفة عامة لإعطاء معلومات صيانة."
-                    ),
-                    source="system",
-                    equipment=equipment,
-                    quick_replies=self._equipment_quick_replies(equipment),
-                    abstained=True,
-                    abstention_reason_ar="لا توجد معدة مؤكدة لتقييد البحث في دليلها.",
-                )
+                if self._needs_grounded_answer(message):
+                    return self._grounded_reply(None, message)
+                return await self._no_image_diagnostic(req, message)
             if not self.settings.manual_search_available:
                 return ChatResponse(
                     message_ar=(
