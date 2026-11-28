@@ -437,7 +437,7 @@ class AuthStore:
 
     def get_or_create_google_user(self, *, email: str, display_name: str) -> AuthUser:
         normalized_email = email.strip().casefold()
-        if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", normalized_email):
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", normalized_email):
             raise ValueError("A valid email address is required")
         safe_name = display_name.strip() or normalized_email.split("@", 1)[0]
         now = self._now().isoformat()
