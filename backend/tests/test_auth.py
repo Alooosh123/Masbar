@@ -243,3 +243,48 @@ def test_eight_character_password_is_minimum_for_bootstrap_creation_and_rotation
             },
         )
         assert rotated.status_code == 200
+
+
+def test_google_login_auto_provisions_verified_customer(monkeypatch):
+    _configure_auth(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    get_settings.cache_clear()
+    reset_caches()
+    from app.api.routes import auth as auth_routes
+
+    monkeypatch.setattr(
+        auth_routes,
+        "verify_google_id_token",
+        lambda credential, client_id: {
+            "email": "new-customer@example.test",
+            "email_verified": True,
+            "name": "Google Customer",
+        },
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/v1/auth/google", json={"credential": "fake-test-token"})
+        assert response.status_code == 200
+        assert response.json()["authenticated"] is True
+        assert response.json()["user"]["email"] == "new-customer@example.test"
+        assert response.json()["user"]["role"] == "customer"
+        assert response.json()["user"]["must_change_password"] is False
+        assert "masbar_access" in client.cookies
+        assert client.get("/api/v1/auth/me").json()["authenticated"] is True
+
+
+def test_google_login_rejects_verification_failure(monkeypatch):
+    _configure_auth(monkeypatch)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    get_settings.cache_clear()
+    reset_caches()
+    from app.api.routes import auth as auth_routes
+
+    monkeypatch.setattr(
+        auth_routes,
+        "verify_google_id_token",
+        lambda credential, client_id: (_ for _ in ()).throw(ValueError("unverified")),
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/v1/auth/google", json={"credential": "fake-token"})
+        assert response.status_code == 401
+        assert response.json()["detail"]["code"] == "google_verification_failed"
