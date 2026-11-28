@@ -156,7 +156,7 @@ def test_no_image_symptom_dialogue_supports_english(client, monkeypatch):
     assert body["abstained"] is True
     assert fake.calls
     assert "English" in fake.calls[0]["context"] or "العربية أو الإنجليزية" in fake.calls[0]["context"]
-    assert "one question" in fake.calls[0]["context"] or "سؤالاً توضيحياً واحداً" in fake.calls[0]["context"]
+    assert "one contextual question" in fake.calls[0]["context"] or "سؤالاً توضيحياً واحداً" in fake.calls[0]["context"]
 
 def test_image_description_combines_image_and_user_context(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
@@ -173,7 +173,7 @@ def test_image_description_combines_image_and_user_context(client, monkeypatch):
     assert fake.calls[0]["image_base64"] == "AA=="
     assert fake.calls[0]["describe"] is True
     assert "لمبة حمراء" in fake.calls[0]["message"]
-    assert fake.calls[0]["history"][0]["content"] == "I hear a clicking noise"
+    assert fake.calls[0]["history"][0].content == "I hear a clicking noise"
 
 
 def test_no_image_hazard_description_escalates_without_model_call(client, monkeypatch):
