@@ -2,6 +2,9 @@ import asyncio
 import base64
 import json
 
+import httpx
+import pytest
+
 from app.adapters.vision.equipment import EquipmentVisionAdapter
 
 
@@ -205,3 +208,67 @@ def test_openrouter_equipment_identification_uses_openai_compatible_api(monkeypa
     assert captured["payload"]["messages"][1]["content"][1]["image_url"]["url"].startswith(
         "data:image/jpeg;base64,"
     )
+
+@pytest.mark.parametrize(
+    ("status_code", "expected"),
+    [
+        (401, "vision_api_key_invalid"),
+        (402, "vision_payment_or_quota_required"),
+        (403, "vision_payment_or_quota_required"),
+        (429, "vision_rate_limited"),
+        (503, "vision_provider_unavailable"),
+        (400, "vision_provider_rejected_request"),
+    ],
+)
+def test_equipment_vision_sanitizes_provider_http_errors(monkeypatch, status_code, expected):
+    class FakeResponse:
+        def __init__(self, endpoint):
+            self.response = httpx.Response(status_code, request=httpx.Request("POST", endpoint))
+        def raise_for_status(self):
+            self.response.raise_for_status()
+        def json(self):
+            return {}
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            pass
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            return None
+        async def post(self, endpoint, **kwargs):
+            return FakeResponse(endpoint)
+
+    monkeypatch.setattr("app.adapters.vision.equipment.httpx.AsyncClient", FakeAsyncClient)
+    adapter = EquipmentVisionAdapter(
+        provider="openrouter",
+        api_key="secret-test-key",
+        base_url="https://openrouter.ai/api/v1",
+        model="test-model",
+    )
+    result = asyncio.run(adapter.identify(base64.b64encode(b"test").decode(), ["Model A"]))
+    assert result.error == expected
+    assert "secret-test-key" not in str(result)
+
+
+def test_equipment_vision_maps_timeout_to_safe_code(monkeypatch):
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            pass
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            return None
+        async def post(self, *args, **kwargs):
+            raise httpx.TimeoutException("simulated timeout")
+
+    monkeypatch.setattr("app.adapters.vision.equipment.httpx.AsyncClient", FakeAsyncClient)
+    adapter = EquipmentVisionAdapter(
+        provider="openrouter",
+        api_key="secret-test-key",
+        base_url="https://openrouter.ai/api/v1",
+        model="test-model",
+    )
+    result = asyncio.run(adapter.identify(base64.b64encode(b"test").decode(), ["Model A"]))
+    assert result.error == "vision_timeout"
+    assert "secret-test-key" not in str(result)
