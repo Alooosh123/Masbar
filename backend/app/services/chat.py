@@ -342,6 +342,70 @@ class ChatService:
         return await self._general_reply(req, session, message)
 
     # --------------------------------------------------------------- greetings
+    def _is_immediate_hazard(self, message: str) -> bool:
+        hazard_terms = (
+            "smoke", "burning smell", "fire", "sparking", "sparks", "unexpected movement",
+            "severe leak", "gas leak", "hot steam", "very hot", "رائحة احتراق", "دخان",
+            "حريق", "شرر", "شرارة", "حركة مفاجئة", "تسرب خطير", "بخار شديد",
+        )
+        return any(term_in_text(message, term) for term in hazard_terms)
+
+    async def _no_image_diagnostic(self, req: ChatRequest, message: str) -> ChatResponse:
+        """Collect symptoms conversationally; never substitute for OEM troubleshooting."""
+        if self._is_immediate_hazard(message):
+            return ChatResponse(
+                message_ar=(
+                    "أتعامل مع الوصف كمؤشر خطر محتمل. ابتعد عن المعدة والمنطقة المتأثرة، "
+                    "ولا تقترب أو تحاول الفحص/الإصلاح. اتبع إجراءات الطوارئ والسلامة في موقعك، "
+                    "وأبلغ المسؤول أو فريق السلامة المختص. لا يمكن إجراء تشخيص حواري أثناء وجود خطر."
+                ),
+                source="system",
+                equipment=self.assistant.list_equipment(),
+                quick_replies=["هل الموقع آمن الآن؟"],
+                abstained=True,
+                abstention_reason_ar="تم رصد وصف قد يشير إلى خطر فوري.",
+            )
+        if self.chat is None:
+            safe_text = (
+                "يمكننا بدء التشخيص بالحوار دون صورة أو اسم معدة. أخبرني أولاً: "
+                "ما العرض الذي لاحظته، ومتى بدأ؟ لا أقدّم خطوات إصلاح أو قيم تشغيل قبل "
+                "معرفة المعدة ومطابقة دليلها."
+            )
+        else:
+            safety_context = (
+                "No-image symptom gathering mode. Ask exactly one contextual question per reply and "
+                "progressively collect symptom, onset, alarm/code, recent maintenance, and operating "
+                "conditions. Do not assume equipment, component, or root cause. Do not provide repair, "
+                "disassembly, installation, torque, pressure/temperature/electrical values, wiring, "
+                "or LOTO steps. Do not claim OEM/manual evidence. For smoke, fire, burning smell, "
+                "severe leak, or unexpected motion, stop troubleshooting and direct the user away to "
+                "site emergency/safety procedures and qualified personnel. Reply in the user's language, "
+                "Arabic or English. State that this is preliminary symptom collection, not diagnosis."
+            )
+            try:
+                reply = await self.chat.reply(message=message, history=req.history, context=safety_context)
+            except Exception:
+                logger.exception("No-image diagnostic conversation failed")
+                reply = None
+            safe_text = sanitize_user_facing_text(reply.text) if reply and not reply.error else None
+            if not safe_text:
+                safe_text = (
+                    "لنبدأ من الأعراض دون افتراض نوع المعدة: ما الذي لاحظته تحديداً، "
+                    "ومتى بدأ؟ هل يوجد صوت أو رائحة أو إنذار أو تغير في الأداء؟"
+                )
+        safe_text += (
+            "\n\nتنبيه: هذا حوار أولي لتجميع الأعراض فقط، وليس تشخيصاً مؤكداً أو تعليمات إصلاح. "
+            "لا تنفذ أعمالاً تشغيلية؛ عند وجود خطر، اتبع إجراءات السلامة المحلية واستعن بمختص."
+        )
+        return ChatResponse(
+            message_ar=safe_text,
+            source="general",
+            equipment=self.assistant.list_equipment(),
+            quick_replies=["ما الذي لاحظته؟", "متى بدأ العطل؟", "هل يظهر إنذار؟"],
+            abstained=True,
+            abstention_reason_ar="لا توجد صورة أو معدة مؤكدة أو وثيقة OEM؛ الحوار لجمع الأعراض فقط.",
+        )
+
     def _welcome(self) -> ChatResponse:
         equipment = self.assistant.list_equipment()
         return ChatResponse(
