@@ -108,7 +108,10 @@ export function AuthGate({ children }: Props) {
       cancel_on_tap_outside: true,
     });
     const button = document.getElementById("google-signin-button");
-    if (button) googleApi.renderButton(button, { theme: "outline", size: "large", width: 320, text: "continue_with", shape: "pill", locale: "ar" });
+    if (button) {
+      button.replaceChildren();
+      googleApi.renderButton(button, { theme: "outline", size: "large", width: 320, text: "continue_with", shape: "pill", locale: "ar" });
+    }
   }, [status]);
 
   async function logout() {
