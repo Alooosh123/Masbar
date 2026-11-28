@@ -215,6 +215,8 @@ class ChatService:
         has_image = bool(req.image_base64)
 
         if has_image:
+            if req.mode == "describe":
+                return await self._describe(req, session, message)
             return await self._identify_equipment(req.image_base64)
 
         if session is not None and message.strip():
@@ -889,7 +891,7 @@ class ChatService:
         # describing what is actually visible in the photo.
         reply = await self.chat.reply(
             message=message,
-            history=[],
+            history=req.history,
             context=None,
             image_base64=req.image_base64,
             describe=True,
