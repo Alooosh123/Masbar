@@ -60,6 +60,8 @@ def google_login(payload: dict, response: Response) -> dict:
 @router.post("/login")
 def login(payload: LoginRequest, response: Response) -> dict:
     settings = get_settings()
+    if settings.google_client_id:
+        raise HTTPException(status_code=403, detail={"code": "google_login_required", "message_ar": "تسجيل الدخول عبر Google هو الطريقة المعتمدة لهذا التطبيق."})
     try:
         user = get_auth_store().authenticate(payload.email, payload.password)
     except PermissionError as exc:
