@@ -78,6 +78,8 @@ def test_manual_search_returns_page_and_document_citation(tmp_path):
     assert hits[0].pdf_page_number == 9
     assert hits[0].printed_page_number == 9
     assert hits[0].section_title == "Replacement of shaft seal"
+    assert hits[0].revision == "2007-04"
+    assert hits[0].source_url == "https://www.grundfos.com/"
     assert "position 105" in hits[0].excerpt
 
 
@@ -176,3 +178,12 @@ def test_pdf_ingestion_requires_rights_confirmation(tmp_path):
             rights_confirmed=False,
             rights_note="Permission not checked",
         )
+
+@pytest.mark.parametrize("query", ["shaft seal replacement", "مانع التسرب replacement", "ختم العمود replacement"])
+def test_manual_search_supports_bilingual_synonyms_with_source_page(tmp_path, query):
+    _make_index(tmp_path)
+    library = ManualLibrary.load(tmp_path)
+    hits = library.search(query, equipment_model="Grundfos CR 5 Model A")
+    assert hits
+    assert any(hit.section_title == "Replacement of shaft seal" and hit.pdf_page_number == 9 for hit in hits)
+    assert hits[0].source_url
