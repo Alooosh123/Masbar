@@ -711,8 +711,8 @@ export function ChatScreen() {
   }
 
   function handleQuickReply(reply: string) {
-    if (reply === "حدد القطعة في هذه الصورة" && lastImageRef.current) {
-      void send("حدد القطعة", {
+    if (reply === "حدد المعدة من هذه الصورة" && lastImageRef.current) {
+      void send("حدد المعدة", {
         image: lastImageRef.current,
         mode: "identify",
       });
