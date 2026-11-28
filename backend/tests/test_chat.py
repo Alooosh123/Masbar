@@ -175,24 +175,25 @@ def test_no_image_hazard_description_escalates_without_model_call(client, monkey
     assert "ابتعد" in body["message_ar"]
     assert fake.calls == []
 
-def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
+def test_maintenance_symptom_dialogue_without_confirmed_session_is_not_manual_search(
+    client, monkeypatch
+):
     from app.deps import get_chat_service
 
     service = get_chat_service()
     service.settings.manual_search_enabled = True
     service.settings.environment = "test"
-
     fake = _use_fake_chat(monkeypatch)
+
     start = _chat(client, "ابدأ جلسة على 320D")
     assert start["session"] is None
     assert start["abstained"] is True
     assert "320D غير مدعومة" in start["message_ar"]
-    assert "المعدات المتاحة" in start["message_ar"]
     body = _chat(client, "low hydraulic oil level")
+    assert body["source"] == "general"
     assert body["abstained"] is True
-    assert "معدة" in body["abstention_reason_ar"]
-    assert fake.calls == []
-
+    assert fake.calls
+    assert "دون صورة" in fake.calls[0]["context"]
 
 def test_image_identification_does_not_fall_back_to_mock_provider(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
