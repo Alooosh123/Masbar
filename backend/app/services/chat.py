@@ -378,7 +378,7 @@ class ChatService:
             )
         else:
             safety_context = (
-                "No-image symptom gathering mode. Ask exactly one contextual question per reply and "
+                "No-image symptom gathering mode (تشخيص دون صورة). Ask exactly one contextual question per reply and "
                 "progressively collect symptom, onset, alarm/code, recent maintenance, and operating "
                 "conditions. Do not assume equipment, component, or root cause. Do not provide repair, "
                 "disassembly, installation, torque, pressure/temperature/electrical values, wiring, "
