@@ -9,6 +9,7 @@ from app.deps import get_auth_store
 from app.security.auth import (
     AUTH_COOKIE_NAME,
     AuthUser,
+    GoogleLoginRequest,
     ChangePasswordRequest,
     CreateCustomerRequest,
     CreateUserRequest,
@@ -32,10 +33,10 @@ def verify_google_id_token(token: str, client_id: str) -> dict:
 
 
 @router.post("/google")
-def google_login(payload: dict, response: Response) -> dict:
+def google_login(payload: GoogleLoginRequest, response: Response) -> dict:
     settings = get_settings()
     client_id = settings.google_client_id
-    credential = payload.get("credential") if isinstance(payload, dict) else None
+    credential = payload.credential
     if not client_id:
         raise HTTPException(status_code=503, detail={"code": "google_auth_unconfigured", "message_ar": "تسجيل Google غير مهيأ بعد."})
     if not isinstance(credential, str) or not credential:
