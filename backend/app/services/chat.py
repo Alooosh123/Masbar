@@ -215,6 +215,8 @@ class ChatService:
         has_image = bool(req.image_base64)
 
         if has_image:
+            if req.mode == "describe":
+                return await self._describe(req, session, message)
             return await self._identify_equipment(req.image_base64)
 
         if session is not None and message.strip():
@@ -282,6 +284,9 @@ class ChatService:
         if self._is_help(message):
             return self._help(session)
 
+        if self._is_no_image_diagnostic_start(message):
+            return await self._no_image_diagnostic(req, message)
+
         # Manual search and generation are opt-in and protected by authenticated
         # API access. The ingestion route independently enforces owner/admin roles.
         if self._is_manual_search(message):
@@ -302,18 +307,11 @@ class ChatService:
         # commands must use the approved manual index, never general chat.
         if self._is_maintenance_query(message):
             if session is None:
-                equipment = self.assistant.list_equipment()
-                return ChatResponse(
-                    message_ar=(
-                        "أحتاج أولاً إلى صورة وتأكيد المعدة حتى أبحث في دليلها المعتمد. "
-                        "لا أستخدم قاعدة معرفة عامة لإعطاء معلومات صيانة."
-                    ),
-                    source="system",
-                    equipment=equipment,
-                    quick_replies=self._equipment_quick_replies(equipment),
-                    abstained=True,
-                    abstention_reason_ar="لا توجد معدة مؤكدة لتقييد البحث في دليلها.",
-                )
+                if self._is_immediate_hazard(message):
+                    return await self._no_image_diagnostic(req, message)
+                if self._requires_procedure_or_spec(message):
+                    return self._grounded_reply(None, message)
+                return await self._no_image_diagnostic(req, message)
             if not self.settings.manual_search_available:
                 return ChatResponse(
                     message_ar=(
@@ -351,6 +349,70 @@ class ChatService:
         return await self._general_reply(req, session, message)
 
     # --------------------------------------------------------------- greetings
+    def _is_immediate_hazard(self, message: str) -> bool:
+        hazard_terms = (
+            "smoke", "burning smell", "fire", "sparking", "sparks", "unexpected movement",
+            "severe leak", "gas leak", "hot steam", "very hot", "رائحة احتراق", "دخان",
+            "حريق", "شرر", "شرارة", "حركة مفاجئة", "تسرب خطير", "بخار شديد",
+        )
+        return any(term_in_text(message, term) for term in hazard_terms)
+
+    async def _no_image_diagnostic(self, req: ChatRequest, message: str) -> ChatResponse:
+        """Collect symptoms conversationally; never substitute for OEM troubleshooting."""
+        if self._is_immediate_hazard(message):
+            return ChatResponse(
+                message_ar=(
+                    "أتعامل مع الوصف كمؤشر خطر محتمل. ابتعد عن المعدة والمنطقة المتأثرة، "
+                    "ولا تقترب أو تحاول الفحص/الإصلاح. اتبع إجراءات الطوارئ والسلامة في موقعك، "
+                    "وأبلغ المسؤول أو فريق السلامة المختص. لا يمكن إجراء تشخيص حواري أثناء وجود خطر."
+                ),
+                source="system",
+                equipment=self.assistant.list_equipment(),
+                quick_replies=["هل الموقع آمن الآن؟"],
+                abstained=True,
+                abstention_reason_ar="تم رصد وصف قد يشير إلى خطر فوري.",
+            )
+        if self.chat is None:
+            safe_text = (
+                "يمكننا بدء التشخيص بالحوار دون صورة أو اسم معدة. أخبرني أولاً: "
+                "ما العرض الذي لاحظته، ومتى بدأ؟ لا أقدّم خطوات إصلاح أو قيم تشغيل قبل "
+                "معرفة المعدة ومطابقة دليلها."
+            )
+        else:
+            safety_context = (
+                "No-image symptom gathering mode (تشخيص دون صورة). Ask exactly one contextual question per reply and "
+                "progressively collect symptom, onset, alarm/code, recent maintenance, and operating "
+                "conditions. Do not assume equipment, component, or root cause. Do not provide repair, "
+                "disassembly, installation, torque, pressure/temperature/electrical values, wiring, "
+                "or LOTO steps. Do not claim OEM/manual evidence. For smoke, fire, burning smell, "
+                "severe leak, or unexpected motion, stop troubleshooting and direct the user away to "
+                "site emergency/safety procedures and qualified personnel. Reply in the user's language, "
+                "Arabic or English. State that this is preliminary symptom collection, not diagnosis."
+            )
+            try:
+                reply = await self.chat.reply(message=message, history=req.history, context=safety_context)
+            except Exception:
+                logger.exception("No-image diagnostic conversation failed")
+                reply = None
+            safe_text = sanitize_user_facing_text(reply.text) if reply and not reply.error else None
+            if not safe_text:
+                safe_text = (
+                    "لنبدأ من الأعراض دون افتراض نوع المعدة: ما الذي لاحظته تحديداً، "
+                    "ومتى بدأ؟ هل يوجد صوت أو رائحة أو إنذار أو تغير في الأداء؟"
+                )
+        safe_text += (
+            "\n\nتنبيه: هذا حوار أولي لتجميع الأعراض فقط، وليس تشخيصاً مؤكداً أو تعليمات إصلاح. "
+            "لا تنفذ أعمالاً تشغيلية؛ عند وجود خطر، اتبع إجراءات السلامة المحلية واستعن بمختص."
+        )
+        return ChatResponse(
+            message_ar=safe_text,
+            source="general",
+            equipment=self.assistant.list_equipment(),
+            quick_replies=["ما الذي لاحظته؟", "متى بدأ العطل؟", "هل يظهر إنذار؟"],
+            abstained=True,
+            abstention_reason_ar="لا توجد صورة أو معدة مؤكدة أو وثيقة OEM؛ الحوار لجمع الأعراض فقط.",
+        )
+
     def _welcome(self) -> ChatResponse:
         equipment = self.assistant.list_equipment()
         return ChatResponse(
@@ -362,7 +424,7 @@ class ChatService:
             source="system",
             equipment=equipment,
             quick_replies=self._equipment_quick_replies(equipment)
-            + ["افتح الكاميرا", "شغّل الميكروفون"],
+            + ["افتح الكاميرا", "شغّل الميكروفون", "ابدأ التشخيص بدون صورة"],
         )
 
     def _help(self, session: Session | None) -> ChatResponse:
@@ -852,7 +914,7 @@ class ChatService:
         # describing what is actually visible in the photo.
         reply = await self.chat.reply(
             message=message,
-            history=[],
+            history=req.history,
             context=None,
             image_base64=req.image_base64,
             describe=True,
@@ -870,7 +932,7 @@ class ChatService:
                 ),
                 source="system",
                 session=self._safe_session(session),
-                quick_replies=["حدد القطعة في هذه الصورة", "افتح الكاميرا", "اعرض القطع"],
+                quick_replies=["حدد المعدة من هذه الصورة", "افتح الكاميرا", "اعرض القطع"],
                 abstained=True,
                 abstention_reason_ar="تعذر التحقق من مخرجات وصف الصورة.",
             )
@@ -1400,14 +1462,37 @@ class ChatService:
             term_in_text(message, term) for term in _HELP_TERMS
         )
 
+    def _is_no_image_diagnostic_start(self, message: str) -> bool:
+        terms = (
+            "بدون صورة", "دون صورة", "لا استطيع تصوير", "ما اقدر اصور",
+            "ابدأ التشخيص", "تشخيص بدون", "no image", "without a photo",
+            "start symptom diagnosis", "diagnose without",
+        )
+        return any(term_in_text(message, term) for term in terms)
+
     def _is_maintenance_query(self, message: str) -> bool:
         terms = (
             "hydraulic", "oil", "fluid", "filter", "level", "leak", "maintenance",
             "service", "fault", "failure", "symptom", "diagnosis", "diagnostic",
-            "repair", "troubleshoot", "pump", "pressure", "coolant", "lubrication",
+            "repair", "fix", "troubleshoot", "steps", "procedure", "torque", "install", "replace",
+            "disassemble", "wiring", "voltage", "current", "calibration", "pump", "pressure", "coolant", "lubrication",
+            "smoke", "fire", "burning smell", "sparking", "sparks", "unexpected movement",
+            "gas leak", "severe leak", "hot steam", "very hot",
             "هيدروليك", "زيت", "زيوت", "سائل", "فلتر", "مستوى", "تهريب",
             "تسريب", "صيانة", "عطل", "خلل", "تشخيص", "اصلاح", "مضخه",
-            "ضغط", "تبريد", "شحوم", "تزييت",
+            "ضغط", "تبريد", "شحوم", "تزييت", "دخان", "حريق", "رائحه احتراق",
+            "شرر", "شراره", "حركه مفاجئه", "تسرب خطير", "بخار شديد",
+        )
+        return any(term_in_text(message, term) for term in terms)
+
+    def _requires_procedure_or_spec(self, message: str) -> bool:
+        terms = (
+            "torque", "كم العزم", "عزم الشد", "step", "steps", "procedure",
+            "how to repair", "how do i repair", "how to replace", "how to install",
+            "disassemble", "remove", "install", "replace", "repair", "fix",
+            "فك", "تركيب", "استبدال", "كيف اصلح", "كيف اغير", "كيف افك",
+            "خطوات", "اجراء", "عزل", "loto", "wiring", "توصيل كهربائي",
+            "كم ضغط", "قيمة الضغط", "voltage", "current", "setting", "calibration",
         )
         return any(term_in_text(message, term) for term in terms)
 

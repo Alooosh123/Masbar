@@ -6,8 +6,6 @@ on:
       - main
       - "codex/**"
   pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read

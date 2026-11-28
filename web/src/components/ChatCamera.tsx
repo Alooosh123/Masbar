@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import {
   AlertIcon,
   CameraIcon,
@@ -7,7 +8,7 @@ import {
 } from "./Icons";
 
 interface Props {
-  onCapture: (imageBase64: string) => void;
+  onCapture: (imageBase64: string, contextText?: string, mode?: "describe" | "identify") => void;
   onClose: () => void;
 }
 
@@ -35,6 +36,9 @@ export function ChatCamera({ onCapture, onClose }: Props) {
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [attempt, setAttempt] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
+  const [contextText, setContextText] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const submittedRef = useRef(false);
   const capturedRef = useRef(false);
 
@@ -124,18 +128,50 @@ export function ChatCamera({ onCapture, onClose }: Props) {
     [ready]
   );
 
-  const submitPreview = useCallback(() => {
+  const submitPreview = useCallback((mode: "describe" | "identify") => {
     if (!preview || submittedRef.current) return;
     submittedRef.current = true;
-    onCapture(preview);
-  }, [onCapture, preview]);
+    onCapture(preview, contextText.trim(), mode);
+  }, [onCapture, preview, contextText]);
 
   const retake = useCallback(() => {
     capturedRef.current = false;
     submittedRef.current = false;
+    setContextText("");
+    setSelectedFileName("");
     setPreview(null);
     setAttempt((value) => value + 1);
   }, []);
+
+  function selectImageFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("اختر ملف صورة فقط.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("حجم الصورة أكبر من 5 ميجابايت. اختر صورة أصغر.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => setError("تعذر قراءة ملف الصورة. اختر الملف مجددًا.");
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setError("تعذر تحميل الصورة المختارة.");
+        return;
+      }
+      capturedRef.current = true;
+      submittedRef.current = false;
+      setPreview(reader.result);
+      setSelectedFileName(file.name);
+      setContextText("");
+      setError(null);
+      setReady(false);
+    };
+    reader.readAsDataURL(file);
+  }
 
   return (
     <div
@@ -161,7 +197,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
 
       <div className="chat-camera-stage">
         {preview ? (
-          <img className="chat-camera-preview" src={preview} alt="معاينة الصورة الملتقطة للمعدة" />
+          <img className="chat-camera-preview" src={preview} alt="معاينة الصورة للمعدة" />
         ) : (
           <video
             ref={videoRef}
@@ -203,17 +239,28 @@ export function ChatCamera({ onCapture, onClose }: Props) {
         )}
       </div>
 
+      {preview && (
+        <div className="chat-image-context">
+          {selectedFileName && <small>الصورة المختارة: {selectedFileName}</small>}
+          <label htmlFor="chat-image-context">اشرح ما تعرفه عن الصورة أو المشكلة (اختياري)</label>
+          <textarea id="chat-image-context" value={contextText} onChange={(event) => setContextText(event.target.value)} placeholder="مثلاً: هذه مضخة، أسمع صوتًا غير طبيعي عند التشغيل، ولا أعرف رقم الطراز…" rows={3} dir="auto" />
+        </div>
+      )}
       <div className="chat-camera-actions">
         {preview ? (
           <>
-            <button type="button" className="chat-capture-btn" onClick={retake}>إعادة الالتقاط</button>
-            <button type="button" className="chat-capture-btn primary" onClick={submitPreview}>تأكيد الصورة وإرسالها</button>
+            <button type="button" className="chat-capture-btn" onClick={retake}>إعادة الاختيار</button>
+            <button type="button" className="chat-capture-btn" onClick={() => submitPreview("identify")}>تحديد المعدة المدعومة</button>
+            <button type="button" className="chat-capture-btn primary" onClick={() => submitPreview("describe")}>تحليل الصورة تلقائيًا</button>
           </>
         ) : (
-          <button type="button" className="chat-capture-btn primary" onClick={capture} disabled={!ready}>
-            <CameraIcon size={20} />
-            التقاط الصورة
-          </button>
+          <>
+            <button type="button" className="chat-capture-btn" onClick={() => fileInputRef.current?.click()}>اختيار صورة من الجهاز</button>
+            <button type="button" className="chat-capture-btn primary" onClick={capture} disabled={!ready}>
+              <CameraIcon size={20} />
+              التقاط الصورة
+            </button>
+          </>
         )}
       </div>
 
@@ -232,6 +279,7 @@ export function ChatCamera({ onCapture, onClose }: Props) {
         </button>}
       </footer>
 
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={selectImageFile} />
       <canvas ref={canvasRef} hidden />
     </div>
   );

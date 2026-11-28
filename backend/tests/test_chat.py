@@ -129,33 +129,87 @@ def test_image_defaults_to_identification_not_general_description(client, monkey
     assert fake.calls == []
 
 
-def test_maintenance_question_without_confirmed_equipment_abstains(client, monkeypatch):
+def test_no_image_diagnostic_has_explicit_start_command(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "ابدأ التشخيص بدون صورة")
+    assert body["source"] == "general"
+    assert body["abstained"] is True
+    assert fake.calls
+    assert "No-image" in fake.calls[0]["context"]
+    assert fake.calls[0]["image_base64"] is None
+
+def test_symptom_dialogue_without_equipment_asks_contextual_questions(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "low hydraulic oil level")
+    assert body["source"] == "general"
     assert body["abstained"] is True
-    assert "معدة" in body["abstention_reason_ar"]
+    assert "تنبيه" in body["message_ar"]
     assert len(body["equipment"]) == 2
+    assert fake.calls
+    assert "دون صورة" in fake.calls[0]["context"]
+    assert fake.calls[0]["image_base64"] is None
+
+def test_no_image_symptom_dialogue_supports_english(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "The pump has unusual noise and vibration")
+    assert body["source"] == "general"
+    assert body["abstained"] is True
+    assert fake.calls
+    assert "English" in fake.calls[0]["context"] or "العربية أو الإنجليزية" in fake.calls[0]["context"]
+    assert "one contextual question" in fake.calls[0]["context"] or "سؤالاً توضيحياً واحداً" in fake.calls[0]["context"]
+
+def test_image_description_combines_image_and_user_context(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(
+        client,
+        "هذا جهاز في غرفة التحكم ولا أعرف موديله، تظهر لمبة حمراء",
+        image_base64="AA==",
+        mode="describe",
+        history=[{"role": "user", "content": "I hear a clicking noise"}],
+    )
+    assert body["source"] == "vision"
+    assert "وصف عام للصورة" in body["message_ar"]
+    assert fake.calls
+    assert fake.calls[0]["image_base64"] == "AA=="
+    assert fake.calls[0]["describe"] is True
+    assert "لمبة حمراء" in fake.calls[0]["message"]
+    assert fake.calls[0]["history"][0].content == "I hear a clicking noise"
+
+
+def test_no_image_repair_request_remains_evidence_gated(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "How do I fix the pump?")
+    assert body["abstained"] is True
+    assert body["source"] == "system"
     assert fake.calls == []
 
+def test_no_image_hazard_description_escalates_without_model_call(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "There is smoke and a burning smell near the machine")
+    assert body["source"] == "system"
+    assert body["abstained"] is True
+    assert "ابتعد" in body["message_ar"]
+    assert fake.calls == []
 
-def test_maintenance_question_with_session_uses_manual_retrieval(client, monkeypatch):
+def test_maintenance_symptom_dialogue_without_confirmed_session_is_not_manual_search(
+    client, monkeypatch
+):
     from app.deps import get_chat_service
 
     service = get_chat_service()
     service.settings.manual_search_enabled = True
     service.settings.environment = "test"
-
     fake = _use_fake_chat(monkeypatch)
+
     start = _chat(client, "ابدأ جلسة على 320D")
     assert start["session"] is None
     assert start["abstained"] is True
     assert "320D غير مدعومة" in start["message_ar"]
-    assert "المعدات المتاحة" in start["message_ar"]
     body = _chat(client, "low hydraulic oil level")
+    assert body["source"] == "general"
     assert body["abstained"] is True
-    assert "معدة" in body["abstention_reason_ar"]
-    assert fake.calls == []
-
+    assert fake.calls
+    assert "دون صورة" in fake.calls[0]["context"]
 
 def test_image_identification_does_not_fall_back_to_mock_provider(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)

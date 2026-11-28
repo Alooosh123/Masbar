@@ -300,6 +300,10 @@ export function ChatScreen() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [speechLanguage, setSpeechLanguage] = useState<"ar-SA" | "en-US">("ar-SA");
+  const [recording, setRecording] = useState(false);
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string | null>(null);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
 
   const messagesRef = useRef<UiMessage[]>([]);
   const sessionRef = useRef<AssistantResponse | null>(null);
@@ -307,6 +311,9 @@ export function ChatScreen() {
   const autoSpeakRef = useRef(autoSpeak);
   const listeningRef = useRef(false);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
   const recognitionTextRef = useRef("");
   const recognitionManualStopRef = useRef(false);
   const recognitionSubmittedRef = useRef(false);
@@ -331,6 +338,14 @@ export function ChatScreen() {
   useEffect(() => {
     autoSpeakRef.current = autoSpeak;
   }, [autoSpeak]);
+
+  useEffect(() => {
+    return () => {
+      if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
+    };
+  }, [recordedAudioUrl]);
+
+
 
   useEffect(() => {
     const element = inputRef.current;
@@ -358,6 +373,7 @@ export function ChatScreen() {
         /* ignore */
       }
       stopSpeaking();
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -573,7 +589,7 @@ export function ChatScreen() {
       return;
     }
     setDraft("");
-    sendRef.current(transcript);
+    sendRef.current(transcript, lastImageRef.current ? { image: lastImageRef.current, mode: "describe" } : undefined);
   }
 
   function stopListening() {
@@ -603,7 +619,7 @@ export function ChatScreen() {
       return;
     }
 
-    const recognition = createArabicRecognizer();
+    const recognition = createArabicRecognizer(speechLanguage);
     if (!recognition) {
       setMicError("خدمة التعرف الصوتي غير متاحة في هذا المتصفح. استخدم الكتابة.");
       return;
@@ -695,8 +711,8 @@ export function ChatScreen() {
   }
 
   function handleQuickReply(reply: string) {
-    if (reply === "حدد القطعة في هذه الصورة" && lastImageRef.current) {
-      void send("حدد القطعة", {
+    if (reply === "حدد المعدة من هذه الصورة" && lastImageRef.current) {
+      void send("حدد المعدة", {
         image: lastImageRef.current,
         mode: "identify",
       });
@@ -705,10 +721,59 @@ export function ChatScreen() {
     void send(reply);
   }
 
-  function handleCameraCapture(image: string) {
+  async function startAudioRecording() {
+    setRecordingError(null);
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setRecordingError("تسجيل الصوت غير مدعوم في هذا المتصفح. استخدم تحويل الكلام إلى نص.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      recordingChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordingChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => setRecordingError("حدث خطأ أثناء تسجيل الصوت.");
+      recorder.onstop = () => {
+        const blob = new Blob(recordingChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        if (blob.size > 0) setRecordedAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach((track) => track.stop());
+        if (recordingStreamRef.current === stream) recordingStreamRef.current = null;
+        setRecording(false);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+      // Run live bilingual speech recognition alongside recording; the transcript
+      // is what is sent to MISBAR, while the raw recording remains local for replay.
+      startListeningRef.current();
+    } catch {
+      setRecordingError("تعذر الوصول إلى الميكروفون. تحقق من الإذن ثم أعد المحاولة.");
+    }
+  }
+
+  function stopAudioRecording() {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    else setRecording(false);
+    if (listeningRef.current) stopListeningRef.current();
+  }
+
+  function clearRecordedAudio() {
+    setRecordedAudioUrl(null);
+    setRecordingError(null);
+  }
+
+  function handleCameraCapture(image: string, contextText = "", mode: "describe" | "identify" = "describe") {
     setCameraOpen(false);
     lastImageRef.current = image;
-    void send("حدد المعدات من الصورة", { image, mode: "identify" });
+    const context = contextText.trim();
+    void send(
+      context || (mode === "identify" ? "حدد المعدة من الصورة" : "حلل الصورة، وصف العناصر الظاهرة، واستخرج النص المقروء إن أمكن."),
+      { image, mode },
+    );
   }
 
   function resetConversation() {
@@ -1058,6 +1123,17 @@ export function ChatScreen() {
             <CameraIcon size={22} />
           </button>
 
+          <select
+            className="chat-language-select"
+            aria-label="لغة تحويل الكلام إلى نص"
+            value={speechLanguage}
+            onChange={(event) => setSpeechLanguage(event.target.value as "ar-SA" | "en-US")}
+            disabled={listening}
+          >
+            <option value="ar-SA">العربية</option>
+            <option value="en-US">English</option>
+          </select>
+
           <button
             type="button"
             className={`chat-tool-btn mic ${listening ? "is-listening" : ""}`}
@@ -1078,7 +1154,7 @@ export function ChatScreen() {
             onKeyDown={handleComposerKeyDown}
             placeholder={
               listening
-                ? "أستمع الآن… تكلّم بالعربية"
+                ? "أستمع الآن… تكلّم بالعربية أو الإنجليزية"
                 : "اكتب رسالتك… أو قل: افتح الكاميرا"
             }
             aria-label="نص الرسالة"
@@ -1095,6 +1171,13 @@ export function ChatScreen() {
           </button>
         </div>
 
+        <div className="chat-audio-recorder">
+          <button type="button" className={`chat-record-btn ${recording ? "is-recording" : ""}`} onClick={() => recording ? stopAudioRecording() : void startAudioRecording()} disabled={busy} aria-label={recording ? "إيقاف تسجيل الصوت" : "بدء تسجيل الصوت"}>{recording ? "إيقاف التسجيل" : "تسجيل صوت"}</button>
+          <small>التسجيل محلي لإعادة الاستماع؛ النص عبر التعرف المباشر يُرسل للمساعد.</small>
+          {recordedAudioUrl && <><audio controls src={recordedAudioUrl} aria-label="إعادة تشغيل التسجيل الصوتي" /><button type="button" className="chat-record-clear" onClick={clearRecordedAudio}>حذف</button></>}
+          {recordingError && <span className="chat-composer-error">{recordingError}</span>}
+          {recording && <span>جارٍ تسجيل الصوت…</span>}
+        </div>
         <div className="chat-composer-meta">
           <span className={micError || voiceError ? "is-error" : ""}>
             {micError ||

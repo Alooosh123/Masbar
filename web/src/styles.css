@@ -4480,3 +4480,89 @@ body, #root { overflow-x: hidden; }
   .chat-history-btn { min-height: 40px; }
   .chat-tool-btn, .chat-send-btn { width: 44px; min-width: 44px; height: 44px; }
 }
+
+/* MISBAR multimodal controls */
+.chat-image-context {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-solid);
+}
+.chat-image-context label {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.chat-image-context small {
+  color: var(--muted);
+  font-size: 11px;
+  direction: ltr;
+  text-align: start;
+}
+.chat-image-context textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 74px;
+  padding: 10px 12px;
+  color: var(--text);
+  background: rgba(2, 6, 23, 0.72);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.chat-language-select {
+  min-width: 65px;
+  color: var(--text);
+  background: var(--panel-solid);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 7px 6px;
+  font: inherit;
+  font-size: 11px;
+}
+.chat-audio-recorder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.chat-record-btn,
+.chat-record-clear {
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 8px 11px;
+  background: var(--panel-solid);
+  color: var(--text);
+  font-size: 11px;
+}
+.chat-record-btn.is-recording {
+  color: #fecaca;
+  border-color: rgba(239, 68, 68, 0.65);
+  background: var(--red-soft);
+}
+.chat-record-clear {
+  color: var(--muted);
+}
+.chat-audio-recorder audio {
+  width: min(100%, 320px);
+  height: 36px;
+}
+.chat-composer-error {
+  color: #fca5a5;
+}
+@media (max-width: 480px) {
+  .chat-audio-recorder audio {
+    width: 100%;
+  }
+  .chat-camera-actions {
+    flex-wrap: wrap;
+  }
+}
