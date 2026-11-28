@@ -766,13 +766,13 @@ export function ChatScreen() {
     setRecordingError(null);
   }
 
-  function handleCameraCapture(image: string, contextText = "") {
+  function handleCameraCapture(image: string, contextText = "", mode: "describe" | "identify" = "describe") {
     setCameraOpen(false);
     lastImageRef.current = image;
     const context = contextText.trim();
     void send(
-      context || "حلل الصورة، وصف العناصر الظاهرة، واستخرج النص المقروء إن أمكن.",
-      { image, mode: context ? "describe" : "identify" },
+      context || (mode === "identify" ? "حدد المعدة من الصورة" : "حلل الصورة، وصف العناصر الظاهرة، واستخرج النص المقروء إن أمكن."),
+      { image, mode },
     );
   }
 
