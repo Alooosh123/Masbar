@@ -141,6 +141,36 @@ export function ChatCamera({ onCapture, onClose }: Props) {
     setAttempt((value) => value + 1);
   }, []);
 
+  function selectImageFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("اختر ملف صورة فقط.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("حجم الصورة أكبر من 5 ميجابايت. اختر صورة أصغر.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => setError("تعذر قراءة ملف الصورة. اختر الملف مجددًا.");
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        setError("تعذر تحميل الصورة المختارة.");
+        return;
+      }
+      capturedRef.current = true;
+      submittedRef.current = false;
+      setPreview(reader.result);
+      setSelectedFileName(file.name);
+      setContextText("");
+      setError(null);
+      setReady(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <div
       className="chat-camera"
