@@ -129,6 +129,15 @@ def test_image_defaults_to_identification_not_general_description(client, monkey
     assert fake.calls == []
 
 
+def test_no_image_diagnostic_has_explicit_start_command(client, monkeypatch):
+    fake = _use_fake_chat(monkeypatch)
+    body = _chat(client, "ابدأ التشخيص بدون صورة")
+    assert body["source"] == "general"
+    assert body["abstained"] is True
+    assert fake.calls
+    assert "No-image" in fake.calls[0]["context"]
+    assert fake.calls[0]["image_base64"] is None
+
 def test_symptom_dialogue_without_equipment_asks_contextual_questions(client, monkeypatch):
     fake = _use_fake_chat(monkeypatch)
     body = _chat(client, "low hydraulic oil level")
