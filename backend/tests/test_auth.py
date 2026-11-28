@@ -245,9 +245,10 @@ def test_eight_character_password_is_minimum_for_bootstrap_creation_and_rotation
         assert rotated.status_code == 200
 
 
-def test_google_login_auto_provisions_verified_customer(monkeypatch):
+def test_google_login_auto_provisions_verified_customer(monkeypatch, tmp_path):
     _configure_auth(monkeypatch)
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-google-client-id")
+    monkeypatch.setenv("SESSION_DB_PATH", str(tmp_path / "google-auth.sqlite3"))
     get_settings.cache_clear()
     reset_caches()
     from app.api.routes import auth as auth_routes
