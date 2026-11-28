@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";\nimport type { ChangeEvent } from "react";
 import {
   AlertIcon,
   CameraIcon,
